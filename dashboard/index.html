@@ -82,7 +82,6 @@
       white-space: pre-line;
     }
 
-    /* Bloque simple para credenciales */
     .creds {
       margin: 0 0 14px;
       padding: 10px 12px;
@@ -153,17 +152,26 @@
     <div class="log" id="log-box"></div>
   </div>
 
+  <!-- 1) Config pública del dashboard (host/topics) -->
+  <script src="./config.js"></script>
+
+  <!-- 2) Cliente MQTT via WebSocket -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <!-- 3) Lógica del dashboard -->
   <script>
     // =========================
-    // CONFIG (EDITAR ESTO)
+    // CONFIG (desde dashboard/config.js)
     // =========================
-    const HIVEMQ_HOST = "1f1fff2e23204fa08aef0663add440bc.s1.eu.hivemq.cloud";
-    const MQTT_WSS_URL = `wss://${HIVEMQ_HOST}:8884/mqtt`;
+    if (!window.APP_CONFIG) {
+      throw new Error("APP_CONFIG no está definido. ¿Incluiste dashboard/config.js antes del script?");
+    }
 
-    // IMPORTANTE: estos topics deben coincidir con tu config.h del ESP32
-    const TOPIC_CMD   = "devices/esp32-01/led/gpio4/set";   // dashboard -> ESP32 (comando)
-    const TOPIC_STATE = "devices/esp32-01/led/gpio4/state"; // ESP32 -> dashboard (estado)
+    const { MQTT_WSS_URL, TOPIC_CMD, TOPIC_STATE, HIVEMQ_HOST, DEVICE_ID } = window.APP_CONFIG;
+
+    if (!MQTT_WSS_URL || !TOPIC_CMD || !TOPIC_STATE) {
+      throw new Error("APP_CONFIG incompleto: falta MQTT_WSS_URL, TOPIC_CMD o TOPIC_STATE");
+    }
 
     // =========================
     // UI refs
@@ -207,6 +215,7 @@
       btnOff.disabled = false;
     }
 
+    // Crea / recrea la conexión MQTT (WSS)
     function connectMqtt(username, password) {
       if (client) {
         try { client.end(true); } catch (_) {}
@@ -216,7 +225,10 @@
       const clientId = "dashboard-" + Math.random().toString(16).slice(2, 10);
       setDisconnectedUi("Conectando…");
 
-      log(`Conectando a ${MQTT_WSS_URL}`);
+      log(`Broker: ${HIVEMQ_HOST || "(host)"} | Device: ${DEVICE_ID || "(n/a)"}`);
+      log(`WSS: ${MQTT_WSS_URL}`);
+      log(`Topics: set=${TOPIC_CMD} | state=${TOPIC_STATE}`);
+
       client = mqtt.connect(MQTT_WSS_URL, {
         clientId,
         username,
@@ -280,15 +292,15 @@
     btnOn.addEventListener("click", () => sendCommand("ON"));
     btnOff.addEventListener("click", () => sendCommand("OFF"));
 
-    // Credenciales: cargar/guardar en localStorage
+    // =========================
+    // Credenciales: localStorage
+    // =========================
     const LS_USER = "mqtt_user";
     const LS_PASS = "mqtt_pass";
 
     function loadCreds() {
-      const u = localStorage.getItem(LS_USER) || "";
-      const p = localStorage.getItem(LS_PASS) || "";
-      userInput.value = u;
-      passInput.value = p;
+      userInput.value = localStorage.getItem(LS_USER) || "";
+      passInput.value = localStorage.getItem(LS_PASS) || "";
     }
 
     function saveCreds(u, p) {
@@ -325,7 +337,7 @@
     ledStatus.textContent = "DESCONOCIDO";
     loadCreds();
 
-    // Si ya hay creds guardadas, intentamos conectar automáticamente
+    // Autoconectar si hay creds guardadas
     if (userInput.value && passInput.value) {
       connectMqtt(userInput.value.trim(), passInput.value);
     } else {
