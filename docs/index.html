@@ -314,12 +314,7 @@
 
         <div class="card">
           <div class="card-title">
-            <span class="icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 8a7 7 0 1 1-13.2 3H2v4h4v-4h3.8A7 7 0 0 1 21 8Z"/>
-                <path d="M15 8h.01"/>
-              </svg>
-            </span>
+            <span class="icon" aria-hidden="true">🔑</span>
             Credenciales MQTT
           </div>
 
@@ -343,7 +338,6 @@
 
           <button id="btn-connect" class="btn-primary">
             Conectar
-            <span aria-hidden="true">↳</span>
           </button>
 
           <button id="btn-clear" class="btn-secondary">Borrar credenciales guardadas</button>
@@ -391,7 +385,7 @@
 
         <div>
           <div class="log-header">
-            <div class="log-title">REGISTRO DE EVENTOS</div>
+            <div class="log-title">Log</div>
             <button class="log-clear" id="btn-log-clear">Limpiar</button>
           </div>
           <div class="log" id="log-box"></div>
