@@ -2,183 +2,427 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard LED ESP32</title>
+  <title>Panel de Control LED</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: dark; }
-    body {
-      margin: 0; padding: 0; min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      background: radial-gradient(circle at top, #1f2933, #0b1015 60%);
+    :root{
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
     }
-    .card {
-      background: rgba(17, 24, 39, 0.95);
-      border-radius: 18px;
-      padding: 24px 28px;
-      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.4);
-      max-width: 420px;
+
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: #eef2f7;
+      padding: 18px 12px;
+    }
+
+    /* Wrapper para poder escalar en desktop */
+    .stage{
       width: 100%;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-    }
-    h1 { margin: 0 0 4px; font-size: 1.4rem; color: #e5e7eb; }
-    .subtitle { margin: 0 0 16px; font-size: 0.9rem; color: #9ca3af; }
-
-    .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .status-label { font-size: 0.9rem; color: #9ca3af; }
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 8px;
-      border-radius: 999px; padding: 4px 12px;
-      font-size: 0.85rem; font-weight: 500;
-      background: rgba(31, 41, 55, 0.9);
-      border: 1px solid rgba(55, 65, 81, 0.9);
-    }
-    .dot {
-      width: 10px; height: 10px; border-radius: 999px;
-      background: #4b5563;
-      box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.9);
-    }
-    .dot.on { background: #22c55e; box-shadow: 0 0 14px rgba(34, 197, 94, 0.9); }
-    .dot.off { background: #ef4444; box-shadow: 0 0 14px rgba(239, 68, 68, 0.9); }
-    .status-text { text-transform: uppercase; letter-spacing: 0.06em; }
-    .status-text.on { color: #bbf7d0; }
-    .status-text.off { color: #fecaca; }
-
-    .conn-row {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 18px; font-size: 0.8rem; color: #9ca3af;
-    }
-    .conn-pill {
-      border-radius: 999px; padding: 3px 10px;
-      border: 1px solid rgba(55, 65, 81, 0.9);
-      background: rgba(15, 23, 42, 0.8);
-      font-size: 0.75rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
 
-    .buttons { display: flex; gap: 10px; margin-bottom: 12px; }
-    button {
-      flex: 1;
-      border-radius: 999px;
-      border: none;
-      padding: 10px 0;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
-    }
-    button:active { transform: scale(0.97); box-shadow: none; }
-    .btn-on { background: linear-gradient(135deg, #16a34a, #22c55e); color: #ecfdf5; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35); }
-    .btn-off { background: linear-gradient(135deg, #b91c1c, #ef4444); color: #fee2e2; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35); }
-    .btn-on:disabled, .btn-off:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-
-    .log {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.7rem; color: #9ca3af;
-      background: rgba(15, 23, 42, 0.8);
-      border-radius: 10px;
-      padding: 8px 10px;
-      max-height: 120px;
-      overflow-y: auto;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-      white-space: pre-line;
+    .shell{
+      width: min(520px, 100%);
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 22px;
+      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.10);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      transform-origin: top center;
     }
 
-    .creds {
-      margin: 0 0 14px;
-      padding: 10px 12px;
+    /* Auto-compact en pantallas grandes */
+    @media (min-width: 900px){
+      .shell{ transform: scale(0.85); }
+    }
+    @media (min-width: 1200px){
+      .shell{ transform: scale(0.78); }
+    }
+
+    .header{
+      padding: 16px 16px 10px;
+      text-align: center;
+    }
+
+    h1{
+      margin:0;
+      font-size: 1.55rem;
+      font-weight: 850;
+      letter-spacing: -0.03em;
+      color:#0f172a;
+    }
+
+    .divider{
+      height: 1px;
+      background: rgba(15, 23, 42, 0.07);
+    }
+
+    .content{
+      padding: 12px 12px 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .card{
+      background: #f8fafc;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .card-title{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      font-weight: 800;
+      color: #334155;
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+    }
+
+    .icon{
+      width: 22px;
+      height: 22px;
+      display:grid;
+      place-items:center;
+      color: #3b82f6;
+    }
+
+    .fields{
+      display:grid;
+      gap: 8px;
+    }
+
+    .field{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid rgba(15, 23, 42, 0.10);
       border-radius: 12px;
-      border: 1px solid rgba(55, 65, 81, 0.9);
-      background: rgba(15, 23, 42, 0.55);
+      padding: 9px 10px;
     }
-    .creds-row { display: flex; gap: 8px; margin-top: 8px; }
-    .creds input {
-      flex: 1;
-      background: rgba(31, 41, 55, 0.7);
-      border: 1px solid rgba(55, 65, 81, 0.9);
-      border-radius: 10px;
-      padding: 8px 10px;
-      color: #e5e7eb;
+
+    .field svg{
+      width: 18px;
+      height: 18px;
+      color: rgba(15, 23, 42, 0.45);
+      flex: 0 0 auto;
+    }
+
+    .field input{
+      border: none;
       outline: none;
-      font-size: 0.85rem;
+      width: 100%;
+      font-size: 0.95rem;
+      background: transparent;
+      color: #0f172a;
+      min-width: 0;
     }
-    .creds .small { font-size: 0.75rem; color: #9ca3af; }
-    .btn-secondary {
+
+    .btn-primary{
       margin-top: 8px;
       width: 100%;
-      border-radius: 10px;
-      padding: 8px 0;
-      background: rgba(31, 41, 55, 0.85);
-      color: #e5e7eb;
-      border: 1px solid rgba(55, 65, 81, 0.9);
+      border: none;
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 1.0rem;
+      font-weight: 800;
+      background: #111827;
+      color: #ffffff;
+      cursor: pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.16);
+    }
+    .btn-primary:active{ transform: scale(0.99); }
+
+    .btn-secondary{
+      margin-top: 8px;
+      width: 100%;
+      border-radius: 14px;
+      padding: 9px 10px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      background: #ffffff;
+      color: #0f172a;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      cursor: pointer;
+    }
+
+    .row-card{
+      background: #f8fafc;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 16px;
+      padding: 11px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .row-label{
+      font-weight: 800;
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    .pill, .wifi{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      min-width: 138px;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .dot{
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #94a3b8;
+      flex: 0 0 auto;
+    }
+    .dot.on{ background: #22c55e; }
+    .dot.off{ background: #ef4444; }
+
+    .wifi svg{
+      width: 16px; height: 16px;
+      flex: 0 0 auto;
+    }
+
+    .actions{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .action-btn{
+      border: none;
+      border-radius: 16px;
+      padding: 14px 12px;
+      min-height: 92px;
+      cursor:pointer;
+      display:flex;
+      flex-direction: column;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 1.05rem;
+      color: #ffffff;
+      box-shadow: 0 12px 22px rgba(15, 23, 42, 0.11);
+      transition: transform 0.08s ease;
+    }
+    .action-btn:active{ transform: scale(0.985); }
+    .action-btn:disabled{
+      opacity: 0.45;
+      cursor: not-allowed;
       box-shadow: none;
+      transform: none;
+    }
+
+    .btn-on{ background: #22c55e; }
+    .btn-off{ background: #ef4444; }
+
+    .action-btn svg{ width: 28px; height: 28px; }
+
+    .log-header{
+      display:flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+
+    .log-title{
+      font-weight: 950;
+      letter-spacing: 0.06em;
+      color: rgba(15, 23, 42, 0.55);
+      font-size: 0.9rem;
+    }
+
+    .log-clear{
+      background: none;
+      border: none;
+      color: #2563eb;
+      font-weight: 900;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .log{
+      margin-top: 8px;
+      background: #0b1220;
+      border: 1px solid rgba(15, 23, 42, 0.18);
+      border-radius: 14px;
+      padding: 10px 10px;
+      max-height: 160px;
+      overflow-y: auto;
+      white-space: pre-line;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+    }
+
+    .footer{
+      padding: 8px 12px 12px;
+      text-align:center;
+      color: rgba(15, 23, 42, 0.40);
+      font-weight: 800;
+      font-size: 0.88rem;
+    }
+
+    .muted{ color: rgba(15, 23, 42, 0.42); font-weight: 800; }
+
+    @media (max-width: 360px){
+      .actions{ grid-template-columns: 1fr; }
+      .pill, .wifi{ min-width: 100%; }
+      .row-card{ justify-content: flex-start; }
     }
   </style>
 </head>
 
 <body>
-  <div class="card">
-    <h1>Panel LED ESP32</h1>
-    <p class="subtitle">Control remoto vía MQTT (HiveMQ Cloud)</p>
-
-    <div class="creds">
-      <div class="small">
-        Credenciales MQTT (se guardan en este navegador). No las hardcodeamos para no subirlas a GitHub.
+  <div class="stage">
+    <div class="shell">
+      <div class="header">
+        <h1>Panel de Control LED</h1>
       </div>
-      <div class="creds-row">
-        <input id="mqtt-user" placeholder="MQTT Username (ej: User-dashboard-01)" autocomplete="username" />
-        <input id="mqtt-pass" placeholder="MQTT Password" type="password" autocomplete="current-password" />
+      <div class="divider"></div>
+
+      <div class="content">
+
+        <div class="card">
+          <div class="card-title">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 8a7 7 0 1 1-13.2 3H2v4h4v-4h3.8A7 7 0 0 1 21 8Z"/>
+                <path d="M15 8h.01"/>
+              </svg>
+            </span>
+            Credenciales MQTT
+          </div>
+
+          <div class="fields">
+            <div class="field">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21a8 8 0 0 0-16 0"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <input id="mqtt-user" placeholder="User-dashboard-01" autocomplete="username" />
+            </div>
+
+            <div class="field">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input id="mqtt-pass" placeholder="Password" type="password" autocomplete="current-password" />
+            </div>
+          </div>
+
+          <button id="btn-connect" class="btn-primary">
+            Conectar
+            <span aria-hidden="true">↳</span>
+          </button>
+
+          <button id="btn-clear" class="btn-secondary">Borrar credenciales guardadas</button>
+        </div>
+
+        <div class="row-card">
+          <div class="row-label">Estado del LED</div>
+          <div class="pill">
+            <span id="led-dot" class="dot"></span>
+            <span id="led-status">DESCONOCIDO</span>
+          </div>
+        </div>
+
+        <div class="row-card">
+          <div class="row-label">Conexión MQTT</div>
+          <div class="wifi" id="conn-status">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+              <path d="M8.5 15.5a6.5 6.5 0 0 1 7 0"/>
+              <path d="M12 19h.01"/>
+            </svg>
+            <span id="conn-text">Desconectado</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-on" class="action-btn btn-on" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v10"/>
+              <path d="M6.38 6.38a9 9 0 1 0 11.24 0"/>
+            </svg>
+            Encender
+          </button>
+
+          <button id="btn-off" class="action-btn btn-off" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 2h4"/>
+              <path d="M12 14a4 4 0 0 0 4-4V6H8v4a4 4 0 0 0 4 4Z"/>
+              <path d="M6 6h12"/>
+              <path d="M4 4l16 16"/>
+            </svg>
+            Apagar
+          </button>
+        </div>
+
+        <div>
+          <div class="log-header">
+            <div class="log-title">REGISTRO DE EVENTOS</div>
+            <button class="log-clear" id="btn-log-clear">Limpiar</button>
+          </div>
+          <div class="log" id="log-box"></div>
+        </div>
+
       </div>
-      <button id="btn-connect" class="btn-secondary">Conectar</button>
-      <button id="btn-clear" class="btn-secondary" style="margin-top:6px;">Borrar credenciales guardadas</button>
-    </div>
 
-    <div class="status-row">
-      <span class="status-label">Estado del LED</span>
-      <span class="status-pill">
-        <span id="led-dot" class="dot off"></span>
-        <span id="led-status" class="status-text off">DESCONOCIDO</span>
-      </span>
+      <div class="footer">
+        <span class="muted">v1.3.2</span> • <span class="muted">IoT Dashboard</span>
+      </div>
     </div>
-
-    <div class="conn-row">
-      <span>Conexión MQTT</span>
-      <span id="conn-status" class="conn-pill">Desconectado</span>
-    </div>
-
-    <div class="buttons">
-      <button id="btn-on" class="btn-on" disabled>Encender</button>
-      <button id="btn-off" class="btn-off" disabled>Apagar</button>
-    </div>
-
-    <div class="log" id="log-box"></div>
   </div>
 
-  <!-- 1) Config pública del dashboard (host/topics) -->
   <script src="./config.js"></script>
-
-  <!-- 2) Cliente MQTT via WebSocket -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- 3) Lógica del dashboard -->
   <script>
-    // =========================
-    // CONFIG (desde dashboard/config.js)
-    // =========================
     if (!window.APP_CONFIG) {
-      throw new Error("APP_CONFIG no está definido. ¿Incluiste dashboard/config.js antes del script?");
+      alert("APP_CONFIG no está definido. ¿Incluiste config.js?");
+      throw new Error("APP_CONFIG no definido");
     }
 
     const { MQTT_WSS_URL, TOPIC_CMD, TOPIC_STATE, HIVEMQ_HOST, DEVICE_ID } = window.APP_CONFIG;
-
     if (!MQTT_WSS_URL || !TOPIC_CMD || !TOPIC_STATE) {
-      throw new Error("APP_CONFIG incompleto: falta MQTT_WSS_URL, TOPIC_CMD o TOPIC_STATE");
+      alert("APP_CONFIG incompleto: falta MQTT_WSS_URL, TOPIC_CMD o TOPIC_STATE");
+      throw new Error("APP_CONFIG incompleto");
     }
 
-    // =========================
-    // UI refs
-    // =========================
     const ledDot = document.getElementById("led-dot");
     const ledStatus = document.getElementById("led-status");
-    const connStatus = document.getElementById("conn-status");
+    const connText = document.getElementById("conn-text");
     const btnOn = document.getElementById("btn-on");
     const btnOff = document.getElementById("btn-off");
     const logBox = document.getElementById("log-box");
@@ -186,36 +430,68 @@
     const passInput = document.getElementById("mqtt-pass");
     const btnConnect = document.getElementById("btn-connect");
     const btnClear = document.getElementById("btn-clear");
+    const btnLogClear = document.getElementById("btn-log-clear");
 
     let client = null;
+    let lastState = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
 
     function log(msg) {
       const time = new Date().toLocaleTimeString();
       logBox.textContent = `[${time}] ${msg}\n` + logBox.textContent;
     }
 
+    function setConnUi(stateText) {
+      connText.textContent = stateText;
+    }
+
+    function updateButtons() {
+      const connected = !!(client && client.connected);
+
+      if (!connected) {
+        btnOn.disabled = true;
+        btnOff.disabled = true;
+        return;
+      }
+
+      if (lastState === "ON") {
+        btnOn.disabled = true;
+        btnOff.disabled = false;
+      } else if (lastState === "OFF") {
+        btnOn.disabled = false;
+        btnOff.disabled = true;
+      } else {
+        btnOn.disabled = false;
+        btnOff.disabled = false;
+      }
+    }
+
     function setLedState(state) {
-      const isOn = state === "ON";
-      ledDot.classList.toggle("on", isOn);
-      ledDot.classList.toggle("off", !isOn);
-      ledStatus.textContent = isOn ? "ENCENDIDO" : "APAGADO";
-      ledStatus.classList.toggle("on", isOn);
-      ledStatus.classList.toggle("off", !isOn);
+      lastState = state;
+
+      if (state === "ON") {
+        ledDot.className = "dot on";
+        ledStatus.textContent = "ENCENDIDO";
+      } else if (state === "OFF") {
+        ledDot.className = "dot off";
+        ledStatus.textContent = "APAGADO";
+      } else {
+        ledDot.className = "dot";
+        ledStatus.textContent = "DESCONOCIDO";
+      }
+
+      updateButtons();
     }
 
-    function setDisconnectedUi(reason = "Desconectado") {
-      connStatus.textContent = reason;
-      btnOn.disabled = true;
-      btnOff.disabled = true;
+    function disconnectUi() {
+      setConnUi("Desconectado");
+      updateButtons();
     }
 
-    function setConnectedUi() {
-      connStatus.textContent = "Conectado";
-      btnOn.disabled = false;
-      btnOff.disabled = false;
+    function connectUi() {
+      setConnUi("Conectado");
+      updateButtons();
     }
 
-    // Crea / recrea la conexión MQTT (WSS)
     function connectMqtt(username, password) {
       if (client) {
         try { client.end(true); } catch (_) {}
@@ -223,9 +499,10 @@
       }
 
       const clientId = "dashboard-" + Math.random().toString(16).slice(2, 10);
-      setDisconnectedUi("Conectando…");
+      setConnUi("Conectando…");
+      updateButtons();
 
-      log(`Broker: ${HIVEMQ_HOST || "(host)"} | Device: ${DEVICE_ID || "(n/a)"}`);
+      log(`Broker: ${(HIVEMQ_HOST || "(host)")}${DEVICE_ID ? " | " + DEVICE_ID : ""}`);
       log(`WSS: ${MQTT_WSS_URL}`);
       log(`Topics: set=${TOPIC_CMD} | state=${TOPIC_STATE}`);
 
@@ -240,7 +517,7 @@
 
       client.on("connect", () => {
         log("Conectado al broker como " + clientId);
-        setConnectedUi();
+        connectUi();
 
         client.subscribe(TOPIC_STATE, { qos: 0 }, (err) => {
           if (!err) log("Suscripto a " + TOPIC_STATE);
@@ -249,28 +526,30 @@
       });
 
       client.on("reconnect", () => {
-        connStatus.textContent = "Reconectando…";
+        setConnUi("Reconectando…");
         log("Intentando reconectar...");
+        updateButtons();
       });
 
       client.on("close", () => {
-        setDisconnectedUi("Desconectado");
+        disconnectUi();
         log("Conexión cerrada");
       });
 
       client.on("offline", () => {
-        setDisconnectedUi("Offline");
+        setConnUi("Offline");
+        updateButtons();
         log("Cliente offline");
       });
 
       client.on("error", (err) => {
-        setDisconnectedUi("Error");
+        setConnUi("Error");
+        updateButtons();
         log("Error MQTT: " + err.message);
       });
 
       client.on("message", (topic, payload) => {
         const msg = payload.toString().trim().toUpperCase();
-
         if (topic === TOPIC_STATE) {
           log("Estado recibido: " + msg);
           if (msg === "ON" || msg === "OFF") setLedState(msg);
@@ -292,9 +571,11 @@
     btnOn.addEventListener("click", () => sendCommand("ON"));
     btnOff.addEventListener("click", () => sendCommand("OFF"));
 
-    // =========================
-    // Credenciales: localStorage
-    // =========================
+    btnLogClear.addEventListener("click", () => {
+      logBox.textContent = "";
+      log("Log limpiado");
+    });
+
     const LS_USER = "mqtt_user";
     const LS_PASS = "mqtt_pass";
 
@@ -329,15 +610,14 @@
         try { client.end(true); } catch (_) {}
         client = null;
       }
-      setDisconnectedUi("Desconectado");
+      disconnectUi();
+      setLedState("UNKNOWN");
     });
 
-    // Estado inicial
-    setDisconnectedUi("Desconectado");
-    ledStatus.textContent = "DESCONOCIDO";
+    setLedState("UNKNOWN");
+    disconnectUi();
     loadCreds();
 
-    // Autoconectar si hay creds guardadas
     if (userInput.value && passInput.value) {
       connectMqtt(userInput.value.trim(), passInput.value);
     } else {
