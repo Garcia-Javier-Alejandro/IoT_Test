@@ -312,7 +312,7 @@
 
       <div class="content">
 
-        <div class="card">
+        <div class="card" id="login-card">
           <div class="card-title">
             <span class="icon" aria-hidden="true">🔑</span>
             Credenciales MQTT
@@ -340,7 +340,7 @@
             Conectar
           </button>
 
-          <button id="btn-clear" class="btn-secondary">Borrar credenciales guardadas</button>
+          <!-- Borrar credenciales fue eliminado -->
         </div>
 
         <div class="row-card">
@@ -423,7 +423,7 @@
     const userInput = document.getElementById("mqtt-user");
     const passInput = document.getElementById("mqtt-pass");
     const btnConnect = document.getElementById("btn-connect");
-    const btnClear = document.getElementById("btn-clear");
+    const loginCard = document.getElementById("login-card");
     const btnLogClear = document.getElementById("btn-log-clear");
 
     let client = null;
@@ -479,11 +479,13 @@
     function disconnectUi() {
       setConnUi("Desconectado");
       updateButtons();
+      if (loginCard) loginCard.style.display = '';
     }
 
     function connectUi() {
       setConnUi("Conectado");
       updateButtons();
+      if (loginCard) loginCard.style.display = 'none';
     }
 
     function connectMqtt(username, password) {
@@ -592,20 +594,6 @@
       }
       saveCreds(u, p);
       connectMqtt(u, p);
-    });
-
-    btnClear.addEventListener("click", () => {
-      localStorage.removeItem(LS_USER);
-      localStorage.removeItem(LS_PASS);
-      userInput.value = "";
-      passInput.value = "";
-      log("Credenciales borradas del navegador");
-      if (client) {
-        try { client.end(true); } catch (_) {}
-        client = null;
-      }
-      disconnectUi();
-      setLedState("UNKNOWN");
     });
 
     setLedState("UNKNOWN");
