@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard LED ESP32</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: dark; }
+    body {
+      margin: 0; padding: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at top, #1f2933, #0b1015 60%);
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.95);
+      border-radius: 18px;
+      padding: 24px 28px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.4);
+      max-width: 420px;
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+    h1 { margin: 0 0 4px; font-size: 1.4rem; color: #e5e7eb; }
+    .subtitle { margin: 0 0 16px; font-size: 0.9rem; color: #9ca3af; }
+
+    .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .status-label { font-size: 0.9rem; color: #9ca3af; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      border-radius: 999px; padding: 4px 12px;
+      font-size: 0.85rem; font-weight: 500;
+      background: rgba(31, 41, 55, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #4b5563;
+      box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.9);
+    }
+    .dot.on { background: #22c55e; box-shadow: 0 0 14px rgba(34, 197, 94, 0.9); }
+    .dot.off { background: #ef4444; box-shadow: 0 0 14px rgba(239, 68, 68, 0.9); }
+    .status-text { text-transform: uppercase; letter-spacing: 0.06em; }
+    .status-text.on { color: #bbf7d0; }
+    .status-text.off { color: #fecaca; }
+
+    .conn-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px; font-size: 0.8rem; color: #9ca3af;
+    }
+    .conn-pill {
+      border-radius: 999px; padding: 3px 10px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.8);
+      font-size: 0.75rem;
+    }
+
+    .buttons { display: flex; gap: 10px; margin-bottom: 12px; }
+    button {
+      flex: 1;
+      border-radius: 999px;
+      border: none;
+      padding: 10px 0;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+    }
+    button:active { transform: scale(0.97); box-shadow: none; }
+    .btn-on { background: linear-gradient(135deg, #16a34a, #22c55e); color: #ecfdf5; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35); }
+    .btn-off { background: linear-gradient(135deg, #b91c1c, #ef4444); color: #fee2e2; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35); }
+    .btn-on:disabled, .btn-off:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+    .log {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.7rem; color: #9ca3af;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 10px;
+      padding: 8px 10px;
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      white-space: pre-line;
+    }
+
+    /* Bloque simple para credenciales */
+    .creds {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.55);
+    }
+    .creds-row { display: flex; gap: 8px; margin-top: 8px; }
+    .creds input {
+      flex: 1;
+      background: rgba(31, 41, 55, 0.7);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: #e5e7eb;
+      outline: none;
+      font-size: 0.85rem;
+    }
+    .creds .small { font-size: 0.75rem; color: #9ca3af; }
+    .btn-secondary {
+      margin-top: 8px;
+      width: 100%;
+      border-radius: 10px;
+      padding: 8px 0;
+      background: rgba(31, 41, 55, 0.85);
+      color: #e5e7eb;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      box-shadow: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Panel LED ESP32</h1>
+    <p class="subtitle">Control remoto vía MQTT (HiveMQ Cloud)</p>
+
+    <div class="creds">
+      <div class="small">
+        Credenciales MQTT (se guardan en este navegador). No las hardcodeamos para no subirlas a GitHub.
+      </div>
+      <div class="creds-row">
+        <input id="mqtt-user" placeholder="MQTT Username (ej: User-dashboard-01)" autocomplete="username" />
+        <input id="mqtt-pass" placeholder="MQTT Password" type="password" autocomplete="current-password" />
+      </div>
+      <button id="btn-connect" class="btn-secondary">Conectar</button>
+      <button id="btn-clear" class="btn-secondary" style="margin-top:6px;">Borrar credenciales guardadas</button>
+    </div>
+
+    <div class="status-row">
+      <span class="status-label">Estado del LED</span>
+      <span class="status-pill">
+        <span id="led-dot" class="dot off"></span>
+        <span id="led-status" class="status-text off">DESCONOCIDO</span>
+      </span>
+    </div>
+
+    <div class="conn-row">
+      <span>Conexión MQTT</span>
+      <span id="conn-status" class="conn-pill">Desconectado</span>
+    </div>
+
+    <div class="buttons">
+      <button id="btn-on" class="btn-on" disabled>Encender</button>
+      <button id="btn-off" class="btn-off" disabled>Apagar</button>
+    </div>
+
+    <div class="log" id="log-box"></div>
+  </div>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    // =========================
+    // CONFIG (EDITAR ESTO)
+    // =========================
+    const HIVEMQ_HOST = "1f1fff2e23204fa08aef0663add440bc.s1.eu.hivemq.cloud";
+    const MQTT_WSS_URL = `wss://${HIVEMQ_HOST}:8884/mqtt`;
+
+    // IMPORTANTE: estos topics deben coincidir con tu config.h del ESP32
+    const TOPIC_CMD   = "devices/esp32-01/led/gpio4/set";   // dashboard -> ESP32 (comando)
+    const TOPIC_STATE = "devices/esp32-01/led/gpio4/state"; // ESP32 -> dashboard (estado)
+
+    // =========================
+    // UI refs
+    // =========================
+    const ledDot = document.getElementById("led-dot");
+    const ledStatus = document.getElementById("led-status");
+    const connStatus = document.getElementById("conn-status");
+    const btnOn = document.getElementById("btn-on");
+    const btnOff = document.getElementById("btn-off");
+    const logBox = document.getElementById("log-box");
+    const userInput = document.getElementById("mqtt-user");
+    const passInput = document.getElementById("mqtt-pass");
+    const btnConnect = document.getElementById("btn-connect");
+    const btnClear = document.getElementById("btn-clear");
+
+    let client = null;
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      logBox.textContent = `[${time}] ${msg}\n` + logBox.textContent;
+    }
+
+    function setLedState(state) {
+      const isOn = state === "ON";
+      ledDot.classList.toggle("on", isOn);
+      ledDot.classList.toggle("off", !isOn);
+      ledStatus.textContent = isOn ? "ENCENDIDO" : "APAGADO";
+      ledStatus.classList.toggle("on", isOn);
+      ledStatus.classList.toggle("off", !isOn);
+    }
+
+    function setDisconnectedUi(reason = "Desconectado") {
+      connStatus.textContent = reason;
+      btnOn.disabled = true;
+      btnOff.disabled = true;
+    }
+
+    function setConnectedUi() {
+      connStatus.textContent = "Conectado";
+      btnOn.disabled = false;
+      btnOff.disabled = false;
+    }
+
+    function connectMqtt(username, password) {
+      if (client) {
+        try { client.end(true); } catch (_) {}
+        client = null;
+      }
+
+      const clientId = "dashboard-" + Math.random().toString(16).slice(2, 10);
+      setDisconnectedUi("Conectando…");
+
+      log(`Conectando a ${MQTT_WSS_URL}`);
+      client = mqtt.connect(MQTT_WSS_URL, {
+        clientId,
+        username,
+        password,
+        clean: true,
+        reconnectPeriod: 2000,
+        connectTimeout: 8000,
+      });
+
+      client.on("connect", () => {
+        log("Conectado al broker como " + clientId);
+        setConnectedUi();
+
+        client.subscribe(TOPIC_STATE, { qos: 0 }, (err) => {
+          if (!err) log("Suscripto a " + TOPIC_STATE);
+          else log("Error al suscribirse: " + err.message);
+        });
+      });
+
+      client.on("reconnect", () => {
+        connStatus.textContent = "Reconectando…";
+        log("Intentando reconectar...");
+      });
+
+      client.on("close", () => {
+        setDisconnectedUi("Desconectado");
+        log("Conexión cerrada");
+      });
+
+      client.on("offline", () => {
+        setDisconnectedUi("Offline");
+        log("Cliente offline");
+      });
+
+      client.on("error", (err) => {
+        setDisconnectedUi("Error");
+        log("Error MQTT: " + err.message);
+      });
+
+      client.on("message", (topic, payload) => {
+        const msg = payload.toString().trim().toUpperCase();
+
+        if (topic === TOPIC_STATE) {
+          log("Estado recibido: " + msg);
+          if (msg === "ON" || msg === "OFF") setLedState(msg);
+        }
+      });
+    }
+
+    function sendCommand(command) {
+      if (!client || !client.connected) {
+        log("No conectado al broker, no se envía comando");
+        return;
+      }
+      client.publish(TOPIC_CMD, command, { qos: 0 }, (err) => {
+        if (err) log("Error al publicar comando: " + err.message);
+        else log("Comando enviado: " + command);
+      });
+    }
+
+    btnOn.addEventListener("click", () => sendCommand("ON"));
+    btnOff.addEventListener("click", () => sendCommand("OFF"));
+
+    // Credenciales: cargar/guardar en localStorage
+    const LS_USER = "mqtt_user";
+    const LS_PASS = "mqtt_pass";
+
+    function loadCreds() {
+      const u = localStorage.getItem(LS_USER) || "";
+      const p = localStorage.getItem(LS_PASS) || "";
+      userInput.value = u;
+      passInput.value = p;
+    }
+
+    function saveCreds(u, p) {
+      localStorage.setItem(LS_USER, u);
+      localStorage.setItem(LS_PASS, p);
+    }
+
+    btnConnect.addEventListener("click", () => {
+      const u = userInput.value.trim();
+      const p = passInput.value;
+      if (!u || !p) {
+        log("Completá username y password");
+        return;
+      }
+      saveCreds(u, p);
+      connectMqtt(u, p);
+    });
+
+    btnClear.addEventListener("click", () => {
+      localStorage.removeItem(LS_USER);
+      localStorage.removeItem(LS_PASS);
+      userInput.value = "";
+      passInput.value = "";
+      log("Credenciales borradas del navegador");
+      if (client) {
+        try { client.end(true); } catch (_) {}
+        client = null;
+      }
+      setDisconnectedUi("Desconectado");
+    });
+
+    // Estado inicial
+    setDisconnectedUi("Desconectado");
+    ledStatus.textContent = "DESCONOCIDO";
+    loadCreds();
+
+    // Si ya hay creds guardadas, intentamos conectar automáticamente
+    if (userInput.value && passInput.value) {
+      connectMqtt(userInput.value.trim(), passInput.value);
+    } else {
+      log("Ingresá credenciales MQTT y presioná Conectar");
+    }
+  </script>
+</body>
+</html>

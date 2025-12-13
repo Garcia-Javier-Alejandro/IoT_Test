@@ -1,13 +1,5 @@
-#pragma once
-
-// Bajado de:
-// https://letsencrypt.org/certs/isrgrootx1.pem
-//
-// HiveMQ Cloud usa este Root CA para TLS. :contentReference[oaicite:2]{index=2}
-
 static const char* LETS_ENCRYPT_ISRG_ROOT_X1 = R"EOF(
 -----BEGIN CERTIFICATE-----
-
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
 TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
 cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
