@@ -1,151 +1,211 @@
-// ESP32 - Conexión WiFi (STA) + Webserver para controlar GPIO4
-// LED: GPIO4 -> resistencia -> LED -> GND  (HIGH=ON, LOW=OFF)
-
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WebServer.h>
 
-static const int LED_PIN = 4;
-static bool ledState = false;
+#include <WiFi.h>              // WiFi del ESP32
+#include <WiFiClientSecure.h>  // Cliente TLS (HTTPS/MQTTS)
+#include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
+#include <time.h>              // Para NTP (hora del sistema)
 
-// WiFi credenciales
-const char* WIFI_SSID = "ClaroWifi6545";
-const char* WIFI_PASS = "123456789";
+// Tus headers (definidos por vos)
+#include "config.h"    // host/puertos/topics/device_id (NO secretos)
+#include "secrets.h"   // wifi y mqtt user/pass (SECRETO, no va a GitHub)
+#include "ca_cert.h"   // certificado Root CA (público)
 
-WebServer server(80);
+// -------------------- Hardware --------------------
+static const int LED_PIN = 4;     // GPIO4 -> resistencia -> LED -> GND
+static bool ledState = false;     // Estado "lógico" del LED
 
-// Aplica el estado lógico al pin físico
+// -------------------- MQTT/TLS --------------------
+// Cliente TLS (se usa para conectar a un servidor con certificado)
+WiFiClientSecure tlsClient;
+
+// Cliente MQTT que viaja por el tlsClient
+PubSubClient mqtt(tlsClient);
+
+// Aplica ledState al pin real
 void applyLed() {
   digitalWrite(LED_PIN, ledState ? HIGH : LOW);
 }
 
-String htmlPage() {
+// Convierte payload MQTT (bytes) a String
+String payloadToString(const byte* payload, unsigned int length) {
   String s;
-  s += "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>";
-  s += "<title>ESP32 GPIO4</title></head><body style='font-family:Arial;padding:16px'>";
-  s += "<h2>GPIO4 LED Control</h2>";
-  s += "<p>Estado: <b>";
-  s += (ledState ? "ON" : "OFF");
-  s += "</b></p>";
-  s += "<p>";
-  s += "<a href='/on'><button style='padding:12px 18px'>Encender</button></a> ";
-  s += "<a href='/off'><button style='padding:12px 18px'>Apagar</button></a> ";
-  s += "<a href='/toggle'><button style='padding:12px 18px'>Toggle</button></a>";
-  s += "</p>";
-  s += "<p><a href='/state'>/state (JSON)</a></p>";
-  s += "</body></html>";
+  s.reserve(length);
+  for (unsigned int i = 0; i < length; i++) s += (char)payload[i];
+  s.trim();
   return s;
 }
 
-void handleRoot() { server.send(200, "text/html", htmlPage()); }
+// Publica el estado actual del LED en el topic de "state"
+// retain=true: el broker guarda el último valor y se lo entrega a quien se suscriba después.
+void publishState() {
+  const char* msg = ledState ? "ON" : "OFF";
 
-void handleOn() {
-  ledState = true; applyLed();
-  server.sendHeader("Location", "/");
-  server.send(302, "text/plain", "ON");
+  bool ok = mqtt.publish(TOPIC_LED_STATE, msg, true /*retain*/);
+
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_LED_STATE);
+  Serial.print(" = ");
+  Serial.print(msg);
+  Serial.print(" (retain) -> ");
+  Serial.println(ok ? "OK" : "FAIL");
 }
 
-void handleOff() {
-  ledState = false; applyLed();
-  server.sendHeader("Location", "/");
-  server.send(302, "text/plain", "OFF");
+// Esta función se llama cada vez que llega un mensaje MQTT
+void onMqttMessage(char* topic, byte* payload, unsigned int length) {
+  String t = String(topic);
+  String msg = payloadToString(payload, length);
+  msg.toUpperCase();
+
+  Serial.print("[MQTT] RX ");
+  Serial.print(t);
+  Serial.print(" : ");
+  Serial.println(msg);
+
+  // Solo reaccionamos a nuestro topic de comando
+  if (t == TOPIC_LED_SET) {
+    if (msg == "ON" || msg == "1") {
+      ledState = true;
+    } else if (msg == "OFF" || msg == "0") {
+      ledState = false;
+    } else {
+      Serial.println("[MQTT] Comando desconocido. Usá ON/OFF/1/0");
+      return;
+    }
+
+    applyLed();       // cambia el pin
+    publishState();   // refleja el estado hacia el dashboard
+  }
 }
 
-void handleToggle() {
-  ledState = !ledState; applyLed();
-  server.sendHeader("Location", "/");
-  server.send(302, "text/plain", "TOGGLE");
-}
-
-void handleState() {
-  String json = String("{\"gpio\":4,\"state\":\"") + (ledState ? "ON" : "OFF") + "\"}";
-  server.send(200, "application/json", json);
-}
-
-void connectWiFi() {
+// -------------------- WiFi --------------------
+bool connectWiFi() {
   WiFi.mode(WIFI_STA);
-
-  Serial.println();
-  Serial.print("Conectando a WiFi SSID: ");
-  Serial.println(WIFI_SSID);
-
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-  // Log de progreso: puntos mientras intenta conectar
-  const uint32_t startMs = millis();
-  const uint32_t timeoutMs = 20000; // 20s
+  Serial.println();
+  Serial.print("[WiFi] Conectando a ");
+  Serial.println(WIFI_SSID);
 
-  while (WiFi.status() != WL_CONNECTED && (millis() - startMs) < timeoutMs) {
+  const uint32_t start = millis();
+  while (WiFi.status() != WL_CONNECTED && (millis() - start) < 20000) {
     Serial.print(".");
     delay(500);
   }
   Serial.println();
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("WiFi conectado.");
-    Serial.print("IP asignada: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("Abrí en el navegador: http://");
-    Serial.print(WiFi.localIP());
-    Serial.println("/");
-  } else {
-    Serial.println("No se pudo conectar a WiFi (timeout).");
-    Serial.println("Tip: revisá SSID/pass, banda 2.4GHz, y que el router no tenga aislamiento raro.");
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] ERROR: timeout conectando.");
+    return false;
   }
+
+  Serial.println("[WiFi] OK conectado.");
+  Serial.print("[WiFi] IP: ");
+  Serial.println(WiFi.localIP());
+  return true;
 }
 
+// -------------------- Tiempo/NTP --------------------
+// TLS valida fechas del certificado. Si el ESP32 tiene hora "cualquiera", puede fallar el handshake.
+// Por eso sincronizamos NTP antes de conectar MQTT TLS.
+bool syncTimeNTP() {
+  Serial.println("[NTP] Sincronizando hora...");
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+
+  time_t now = time(nullptr);
+  const uint32_t start = millis();
+
+  // Esperamos hasta que la hora sea “razonable”
+  while (now < 1700000000 && (millis() - start) < 15000) {
+    Serial.print(".");
+    delay(500);
+    now = time(nullptr);
+  }
+  Serial.println();
+
+  if (now < 1700000000) {
+    Serial.println("[NTP] WARN: no sincronizó (timeout). TLS puede fallar.");
+    return false;
+  }
+
+  Serial.print("[NTP] OK epoch: ");
+  Serial.println((long)now);
+  return true;
+}
+
+// -------------------- MQTT TLS --------------------
+void setupMqtt() {
+  // Endpoint MQTT TLS (8883) del broker
+  mqtt.setServer(MQTT_HOST, MQTT_PORT);
+
+  // Callback para mensajes entrantes
+  mqtt.setCallback(onMqttMessage);
+
+  // Cargamos la CA raíz para que el ESP32 pueda validar el certificado del broker
+  tlsClient.setCACert(LETS_ENCRYPT_ISRG_ROOT_X1);
+}
+
+bool connectMqtt() {
+  Serial.print("[MQTT] Conectando a ");
+  Serial.print(MQTT_HOST);
+  Serial.print(":");
+  Serial.println(MQTT_PORT);
+
+  // ClientID: conviene que sea estable y único.
+  // DEVICE_ID viene de config.h
+  const char* clientId = DEVICE_ID;
+
+  // MQTT_USER / MQTT_PASS vienen de secrets.h
+  bool ok = mqtt.connect(clientId, MQTT_USER, MQTT_PASS);
+
+  if (!ok) {
+    Serial.print("[MQTT] ERROR connect rc=");
+    Serial.println(mqtt.state()); // código de error de PubSubClient
+    return false;
+  }
+
+  Serial.println("[MQTT] OK conectado.");
+
+  // Nos suscribimos al topic de comando
+  mqtt.subscribe(TOPIC_LED_SET);
+  Serial.print("[MQTT] Subscribed: ");
+  Serial.println(TOPIC_LED_SET);
+
+  // Publicamos estado inicial (y queda retenido)
+  publishState();
+  return true;
+}
+
+// -------------------- Arduino entrypoints --------------------
 void setup() {
   Serial.begin(115200);
-  delay(200);
+  delay(500);
 
   pinMode(LED_PIN, OUTPUT);
   ledState = false;
   applyLed();
 
+  // 1) WiFi
   connectWiFi();
 
-  // Si no hay WiFi, igual levantamos server (pero obvio no vas a poder llegar por red)
-  server.on("/", handleRoot);
-  server.on("/on", handleOn);
-  server.on("/off", handleOff);
-  server.on("/toggle", handleToggle);
-  server.on("/state", handleState);
-  // Alias: algunas UIs/clients piden /status
-server.on("/status", []() {
-  // devolvé lo mismo que /state
-  String json = String("{\"gpio\":4,\"state\":\"") + (ledState ? "ON" : "OFF") + "\"}";
-  server.send(200, "application/json", json);
-});
+  // 2) Hora para TLS
+  syncTimeNTP();
 
-// Evita requests típicas del navegador
-server.on("/favicon.ico", []() {
-  server.send(204); // No Content
-});
-
-// Captura cualquier otra ruta no registrada
-server.onNotFound([]() {
-  Serial.print("[HTTP 404] Not found: ");
-  Serial.println(server.uri());
-  server.send(404, "text/plain", "Not found");
-});
-
-// Responde favicon para que no “ensucie” el log
-server.on("/favicon.ico", []() {
-  server.send(204); // No Content
-});
-
-// Handler genérico para cualquier ruta no registrada
-server.onNotFound([]() {
-  Serial.print("[HTTP 404] Not found: ");
-  Serial.println(server.uri());
-  server.send(404, "text/plain", "Not found");
-});
-
-
-  server.begin();
-  Serial.println("HTTP server iniciado (puerto 80).");
+  // 3) MQTT
+  setupMqtt();
+  connectMqtt();
 }
 
 void loop() {
-  server.handleClient();
+  // Si se cae WiFi, intentamos recuperar
+  if (WiFi.status() != WL_CONNECTED) {
+    connectWiFi();
+  }
+
+  // Si se cae MQTT, reconectamos
+  if (!mqtt.connected()) {
+    connectMqtt();
+  }
+
+  // Mantiene viva la conexión y procesa mensajes entrantes
+  mqtt.loop();
 }
