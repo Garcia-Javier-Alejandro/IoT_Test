@@ -10,9 +10,14 @@
       color-scheme: light;
     }
 
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
     body{
       margin:0;
-      min-height:100vh;
+      min-height:100svh;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -46,6 +51,9 @@
     @media (min-width: 1200px){
       .shell{ transform: scale(0.78); }
     }
+    @media (pointer: coarse){
+  .shell{ transform: none !important; }
+}
 
     .header{
       padding: 16px 16px 10px;
@@ -271,18 +279,24 @@
     }
 
     .log{
-      margin-top: 8px;
-      background: #0b1220;
-      border: 1px solid rgba(15, 23, 42, 0.18);
-      border-radius: 14px;
-      padding: 10px 10px;
-      max-height: 160px;
-      overflow-y: auto;
-      white-space: pre-line;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.82rem;
-      color: #cbd5e1;
+  margin-top: 8px;
+  background: #0b1220;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 14px;
+  padding: 10px 10px;
+  max-height: 160px;
+  overflow-y: auto;
+
+  /* clave para móvil: envolver líneas y cortar URLs largas */
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: hidden;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.82rem;
+  color: #cbd5e1;
     }
+
 
     .footer{
       padding: 8px 12px 12px;
