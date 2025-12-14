@@ -1,1 +1,2 @@
-Este proyecto es para hacer pruebas de IoT
+Este proyecto nuclea esfuerzos de desarrollos en IoT
+
