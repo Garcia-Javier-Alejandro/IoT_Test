@@ -97,10 +97,18 @@ const HistoryModule = (() => {
 
     for (const e of eventsMs) {
       const tSec = Math.floor(Number(e.ts) / 1000);
-      if (!Number.isFinite(tSec)) continue;
+      if (!Number.isFinite(tSec)) {
+        console.warn('Invalid timestamp:', e.ts);
+        continue;
+      }
       x.push(tSec);
       y.push(e.state === "ON" ? 1 : 0);
     }
+    
+    if (x.length > 0) {
+      console.log('Data time range:', new Date(x[0] * 1000).toLocaleString(), 'to', new Date(x[x.length - 1] * 1000).toLocaleString());
+    }
+    
     return [x, y];
   }
 
@@ -111,7 +119,12 @@ const HistoryModule = (() => {
   function renderPlot(range = "24h") {
     lastRange = range;
 
-    if (!historyChart) return;
+    if (!historyChart) {
+      console.warn('historyChart element is null');
+      return;
+    }
+
+    console.log('renderPlot called with', historyEvents.length, 'events');
 
     // Update hint text
     if (hintEl) {
@@ -121,6 +134,8 @@ const HistoryModule = (() => {
     }
 
     const data = buildAlignedData(historyEvents);
+    console.log('Built data:', data);
+    console.log('X data points:', data[0].length, 'Y data points:', data[1].length);
 
     // No data: destroy chart and show empty state
     if (!data[0].length) {
@@ -208,11 +223,20 @@ const HistoryModule = (() => {
         )
         .sort((a, b) => a.ts - b.ts);
 
+      console.log('History loaded:', historyEvents.length, 'events');
+      console.log('First event:', historyEvents[0]);
+      console.log('Last event:', historyEvents[historyEvents.length - 1]);
+      console.log('lastUpdateEl:', lastUpdateEl);
+      
       logFn(`Histórico cargado: ${historyEvents.length} eventos`);
 
       // Update last update timestamp
       if (lastUpdateEl) {
-        lastUpdateEl.textContent = "Última actualización: " + new Date().toLocaleTimeString();
+        const timestamp = new Date().toLocaleTimeString();
+        lastUpdateEl.textContent = "Última actualización: " + timestamp;
+        console.log('Updated timestamp to:', timestamp);
+      } else {
+        console.warn('lastUpdateEl is null!');
       }
 
       // Render chart in next frame to ensure layout is ready
