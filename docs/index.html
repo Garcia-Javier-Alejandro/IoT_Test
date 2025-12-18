@@ -400,26 +400,49 @@ html, body {
         <div>
           <div class="log-header">
             <div class="log-title">Log</div>
-            <button class="log-clear" id="btn-log-clear">Limpiar</button>
+            <div>
+                  <button class="log-clear" id="btn-log-toggle">Ocultar</button>
+                  <button class="log-clear" id="btn-log-clear">Limpiar</button>
+            </div>
           </div>
+        <div class="collapsible" id="log-panel">
           <div class="log" id="log-box"></div>
         </div>
-
-        <div>
-          <div class="log-header">
-            <div>
-              <div class="log-title">Histórico (24h)</div>
-              <div id="history-last" class="muted" style="font-weight:700; font-size:0.82rem; margin-top:4px;">Última actualización: —</div>
-            </div>
-            <div>
-              <button class="log-clear" id="btn-history-refresh">Actualizar</button>
-              <button class="log-clear" id="btn-history-clear">Limpiar</button>
-            </div>
-          </div>
-          <div class="log" id="history-box"></div>
-        </div>
-
       </div>
+
+
+// REFORMATEAR ESTO      
+<div>
+  <div class="log-header">
+    <div>
+      <div class="log-title">Histórico (24h)</div>
+      <div id="history-last" class="muted" style="font-weight:700; font-size:0.82rem; margin-top:4px;">
+        Última actualización: —
+      </div>
+    </div>
+
+    <div>
+      <button class="log-clear" id="btn-history-refresh">Actualizar</button>
+      <button class="log-clear" id="btn-history-clear">Limpiar</button>
+    </div>
+  </div>
+
+  <!-- OJO: history-box ya no es "texto plano". Ahora contiene la UI de timeline -->
+  <div id="history-box" class="timelineWrap">
+    <div class="timelineAxis" id="timelineAxis"></div>
+
+    <div class="timeline" id="timeline">
+      <div class="timelineGrid"></div>
+      <div class="timelineSegments" id="timelineSegments"></div>
+      <div class="timelineEvents" id="timelineEvents"></div>
+    </div>
+
+    <div class="hint muted" id="historyHint"></div>
+  </div>
+
+  <div class="tooltip" id="timelineTooltip" style="display:none;"></div>
+</div>
+
 
       <div class="footer">
         <span class="muted">v1.3.2</span> • <span class="muted">IoT Dashboard</span>
@@ -453,8 +476,16 @@ html, body {
     const btnConnect = document.getElementById("btn-connect");
     const loginCard = document.getElementById("login-card");
     const btnLogClear = document.getElementById("btn-log-clear");
+    const axisEl = document.getElementById("timelineAxis");
+    const timelineEl = document.getElementById("timeline");
+    const segEl = document.getElementById("timelineSegments");
+    const evtEl = document.getElementById("timelineEvents");
+    const hintEl = document.getElementById("historyHint");
+    const tipEl = document.getElementById("timelineTooltip");
+
 
     let client = null;
+    let historyEvents = [];
     let historyTimer = null; // Interval ID for auto-refreshing history
     let lastState = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
 
@@ -628,6 +659,93 @@ html, body {
 let historyDebounceTimer = null;
 let historyInFlight = false;
 
+function parseRangeToMs(r){
+  if (r === "1h") return 1*60*60*1000;
+  if (r === "6h") return 6*60*60*1000;
+  if (r === "24h") return 24*60*60*1000;
+  if (r === "7d") return 7*24*60*60*1000;
+  return 24*60*60*1000;
+}
+
+function xOf(ts, startMs, endMs, width){
+  const p = (ts - startMs) / (endMs - startMs);
+  return Math.max(0, Math.min(width, p * width));
+}
+
+function stateClass(s){ return (s === "ON") ? "on" : "off"; }
+
+function renderAxis(startMs, endMs){
+  if (!axisEl) return;
+  axisEl.innerHTML = "";
+  const labels = 5;
+  for (let i=0;i<labels;i++){
+    const t = startMs + (endMs-startMs)*(i/(labels-1));
+    const span = document.createElement("span");
+    span.textContent = new Date(t).toLocaleString();
+    axisEl.appendChild(span);
+  }
+}
+
+function renderTimeline(range = "24h"){
+  if (!timelineEl || !segEl || !evtEl) return;
+
+  const rangeMs = parseRangeToMs(range);
+  const endMs = Date.now();
+  const startMs = endMs - rangeMs;
+
+  renderAxis(startMs, endMs);
+
+  const w = timelineEl.clientWidth;
+  segEl.innerHTML = "";
+  evtEl.innerHTML = "";
+
+  const ev = historyEvents.filter(e => e.ts >= startMs && e.ts <= endMs);
+
+  if (ev.length === 0) return;
+
+  const fragSeg = document.createDocumentFragment();
+  const fragDot = document.createDocumentFragment();
+
+  for (let i=0;i<ev.length;i++){
+    const a = ev[i];
+    const bTs = (i < ev.length-1) ? ev[i+1].ts : endMs;
+
+    const x1 = xOf(a.ts, startMs, endMs, w);
+    const x2 = xOf(bTs, startMs, endMs, w);
+
+    const seg = document.createElement("div");
+    seg.className = `seg ${stateClass(a.state)}`;
+    seg.style.left = `${x1}px`;
+    seg.style.width = `${Math.max(2, x2 - x1)}px`;
+    fragSeg.appendChild(seg);
+
+    const dot = document.createElement("div");
+    dot.className = `dot ${stateClass(a.state)}`;
+    dot.style.left = `${x1}px`;
+
+    dot.addEventListener("mouseenter", () => {
+      if (!tipEl) return;
+      tipEl.style.display = "block";
+      tipEl.textContent = `${new Date(a.ts).toLocaleString()} — ${a.state}`;
+    });
+    dot.addEventListener("mousemove", (e) => {
+      if (!tipEl) return;
+      tipEl.style.left = `${e.clientX + 12}px`;
+      tipEl.style.top  = `${e.clientY + 12}px`;
+    });
+    dot.addEventListener("mouseleave", () => {
+      if (!tipEl) return;
+      tipEl.style.display = "none";
+    });
+
+    fragDot.appendChild(dot);
+  }
+
+  segEl.appendChild(fragSeg);
+  evtEl.appendChild(fragDot);
+}
+
+
 function scheduleHistoryRefresh(range = "24h", delay = 1200) {
   if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
 
@@ -645,46 +763,52 @@ function scheduleHistoryRefresh(range = "24h", delay = 1200) {
   }, delay);
 }
 
-    btnHistoryClear.addEventListener("click", () => {
-      if (!historyBox) return;
-      historyBox.textContent = "";
-      log("Histórico limpiado");
-    });
-
-    async function loadHistory(range = "24h") {
-      if (!historyBox) return;
-      try {
-        historyBox.textContent = "Cargando histórico...";
-        const deviceId = (window.APP_CONFIG && APP_CONFIG.DEVICE_ID) ? APP_CONFIG.DEVICE_ID : "esp32-01";
-        const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
-        const res = await fetch(url, { cache: "no-store" });
+btnHistoryClear.addEventListener("click", () => {
+  historyEvents = [];
+  if (tipEl) tipEl.style.display = "none";
+  renderTimeline("24h");
+  log("Histórico limpiado");
+});
 
 
-        const res = await fetch(url);
-        const data = await res.json();
 
-        if (!data.ok) {
-          historyBox.textContent = "Error:\n" + JSON.stringify(data, null, 2);
-          return;
-        }
 
-        if (!data.items || data.items.length === 0) {
-          historyBox.textContent = "(sin eventos en el rango)";
-          if (historyLast) historyLast.textContent = 'Última actualización: ' + new Date().toLocaleTimeString();
-          return;
-        }
+// Requiere: historyEvents (array) + renderTimeline() + hintEl + historyLast
+async function loadHistory(range = "24h") {
+  try {
+    const deviceId = (window.APP_CONFIG && APP_CONFIG.DEVICE_ID) ? APP_CONFIG.DEVICE_ID : "esp32-01";
+    const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
 
-        const lines = data.items.map(ev => {
-          const tsLocal = new Date(ev.ts).toLocaleString();
-          return `${tsLocal}  ->  ${ev.state}`;
-        });
+    if (hintEl) hintEl.textContent = "Cargando histórico...";
+    const historyRes = await fetch(url, { cache: "no-store" });
+    const data = await res.json();
 
-        historyBox.textContent = lines.join("\n");
-        if (historyLast) historyLast.textContent = 'Última actualización: ' + new Date().toLocaleTimeString();
-      } catch (e) {
-        historyBox.textContent = "Error:\n" + String(e);
-      }
+    if (!data.ok) {
+      if (hintEl) hintEl.textContent = "Error cargando histórico";
+      log("History error: " + JSON.stringify(data));
+      return;
     }
+
+    const items = Array.isArray(data.items) ? data.items : [];
+
+    historyEvents = items
+      .map(ev => ({ ts: Number(ev.ts), state: ev.state }))
+      .filter(e => Number.isFinite(e.ts) && (e.state === "ON" || e.state === "OFF"))
+      .sort((a, b) => a.ts - b.ts);
+
+    if (historyLast) historyLast.textContent = "Última actualización: " + new Date().toLocaleTimeString();
+
+    if (hintEl) hintEl.textContent = (historyEvents.length === 0)
+      ? "(sin eventos en el rango)"
+      : `${historyEvents.length} evento(s)`;
+
+    renderTimeline(range);
+  } catch (e) {
+    if (hintEl) hintEl.textContent = "Error cargando histórico";
+    log("History exception: " + String(e));
+  }
+}
+
 
     if (btnHistoryRefresh) btnHistoryRefresh.addEventListener("click", () => loadHistory("24h"));
     // Optionally load once on connect/initial load if you want:
