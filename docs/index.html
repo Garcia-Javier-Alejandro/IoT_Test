@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css">
   <meta charset="UTF-8" />
   <title>Panel de Control LED</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -426,18 +427,97 @@ html, body {
     </div>
   </div>
 
-  <!-- OJO: history-box ya no es "texto plano". Ahora contiene la UI de timeline -->
-  <div id="history-box" class="timelineWrap">
-    <div class="timelineAxis" id="timelineAxis"></div>
+<div id="history-box" class="timelineWrap">
+  <div id="historyChart" style="width:100%; height:160px;"></div>
+  <div class="hint muted" id="historyHint"></div>
+</div>
+const historyChart = document.getElementById("historyChart");
+const hintEl = document.getElementById("historyHint");
 
-    <div class="timeline" id="timeline">
-      <div class="timelineGrid"></div>
-      <div class="timelineSegments" id="timelineSegments"></div>
-      <div class="timelineEvents" id="timelineEvents"></div>
-    </div>
+let historyEvents = [];   // [{ts: ms, state:"ON"|"OFF"}]
+let historyPlot = null;
+let lastRange = "24h";
 
-    <div class="hint muted" id="historyHint"></div>
-  </div>
+function buildAlignedData(eventsMs) {
+  // uPlot usa unix timestamps en segundos para time scale (convertimos ms -> s)
+  const x = [];
+  const y = [];
+
+  for (const e of eventsMs) {
+    const tSec = Math.floor(Number(e.ts) / 1000);
+    if (!Number.isFinite(tSec)) continue;
+    x.push(tSec);
+    y.push(e.state === "ON" ? 1 : 0);
+  }
+  return [x, y];
+}
+
+function renderHistoryPlot(range = "24h") {
+  lastRange = range;
+  if (!historyChart) return;
+
+// Re-render del gráfico si cambia el tamaño de la ventana
+window.addEventListener("resize", () => renderHistoryPlot(lastRange));
+
+
+  // Mensajito auxiliar (sin destruir el chart)
+  if (hintEl) hintEl.textContent = historyEvents.length ? `${historyEvents.length} evento(s)` : "(sin eventos en el rango)";
+
+  const data = buildAlignedData(historyEvents);
+
+  // Si no hay data, destruimos el plot para no mostrar basura visual
+  if (!data[0].length) {
+    if (historyPlot) {
+      historyPlot.destroy();
+      historyPlot = null;
+    }
+    historyChart.innerHTML = "";
+    return;
+  }
+
+  const stepped = (uPlot.paths && uPlot.paths.stepped)
+    ? uPlot.paths.stepped({ align: 1 })
+    : null;
+
+  const opts = {
+    width: historyChart.clientWidth || 600,
+    height: 160,
+    scales: {
+      x: { time: true },
+      y: {
+        auto: false,
+        range: (u, min, max) => [-0.2, 1.2],
+      },
+    },
+    axes: [
+      { }, // x time axis
+      {
+        splits: (u) => [0, 1],
+        values: (u, splits) => splits.map(v => (v === 1 ? "ON" : "OFF")),
+      },
+    ],
+    series: [
+      {}, // x
+      {
+        label: "Estado",
+        width: 2,
+        paths: stepped || undefined,
+        value: (u, v) => (v === 1 ? "ON" : "OFF"),
+      }
+    ],
+  };
+
+  if (!historyPlot) {
+    historyChart.innerHTML = "";
+    historyPlot = new uPlot(opts, data, historyChart);
+  } else {
+    // Ajuste de tamaño si cambió el layout
+    const w = historyChart.clientWidth || opts.width;
+    historyPlot.setSize({ width: w, height: 160 });
+    historyPlot.setData(data);
+  }
+}
+
 
   <div class="tooltip" id="timelineTooltip" style="display:none;"></div>
 </div>
@@ -764,56 +844,38 @@ function scheduleHistoryRefresh(range = "24h", delay = 1200) {
 
 btnHistoryClear.addEventListener("click", () => {
   historyEvents = [];
-  if (tipEl) tipEl.style.display = "none";
-  renderTimeline("24h");
+  renderHistoryPlot(lastRange);
   log("Histórico limpiado");
 });
 
 
 
-
-// Requiere: historyEvents (array) + renderTimeline() + hintEl + historyLast
 async function loadHistory(range = "24h") {
   try {
     const deviceId = (window.APP_CONFIG && APP_CONFIG.DEVICE_ID) ? APP_CONFIG.DEVICE_ID : "esp32-01";
     const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
 
     if (hintEl) hintEl.textContent = "Cargando histórico...";
-    log(`History: GET ${url}`);
-
     const historyRes = await fetch(url, { cache: "no-store" });
-    log(`History: HTTP ${historyRes.status}`);
-
-    if (!historyRes.ok) {
-      if (hintEl) hintEl.textContent = `Error HTTP ${historyRes.status}`;
-      return;
-    }
-
     const data = await historyRes.json();
-    log(`History: ok=${data?.ok} keys=${Object.keys(data || {}).join(",")}`);
 
-    if (!data || !data.ok) {
-      if (hintEl) hintEl.textContent = "Error: respuesta no-ok";
+    if (!data.ok) {
+      if (hintEl) hintEl.textContent = "Error cargando histórico";
       return;
     }
 
-    // Acepta items o events para no depender del backend exacto
-    const items = Array.isArray(data.items) ? data.items
-                : Array.isArray(data.events) ? data.events
-                : [];
-
+    const items = Array.isArray(data.items) ? data.items : [];
     historyEvents = items
       .map(ev => ({ ts: Number(ev.ts), state: ev.state }))
       .filter(e => Number.isFinite(e.ts) && (e.state === "ON" || e.state === "OFF"))
       .sort((a, b) => a.ts - b.ts);
 
     if (historyLast) historyLast.textContent = "Última actualización: " + new Date().toLocaleTimeString();
-    if (hintEl) hintEl.textContent = historyEvents.length ? `${historyEvents.length} evento(s)` : "(sin eventos en el rango)";
 
-    renderTimeline(range);
+    // Render del chart (en el próximo frame para asegurar layout)
+    requestAnimationFrame(() => renderHistoryPlot(range));
   } catch (e) {
     if (hintEl) hintEl.textContent = "Error cargando histórico";
-    log("History exception: " + String(e));
   }
 }
 
@@ -821,9 +883,9 @@ async function loadHistory(range = "24h") {
 
 
 
+
     if (btnHistoryRefresh) btnHistoryRefresh.addEventListener("click", () => loadHistory("24h"));
-    // Optionally load once on connect/initial load if you want:
-    // loadHistory("24h");
+
 
     // Clean up on page unload
     window.addEventListener('beforeunload', () => {
@@ -874,5 +936,8 @@ async function loadHistory(range = "24h") {
     // Cargar histórico una vez al inicio (opcional, recomendado)
     if (historyBox) loadHistory("24h");
   </script>
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
+
+
 </body>
 </html>
