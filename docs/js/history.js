@@ -176,9 +176,18 @@ const HistoryModule = (() => {
         {}, // x series
         {
           label: "Estado",
-          width: 2,
+          width: 3,
+          stroke: "#3b82f6", // Blue color
+          fill: "rgba(59, 130, 246, 0.1)", // Light blue fill
           paths: stepped || undefined,
           value: (u, v) => (v === 1 ? "ON" : "OFF"),
+          points: {
+            show: true,
+            size: 5,
+            width: 2,
+            stroke: "#3b82f6",
+            fill: "#ffffff",
+          },
         },
       ],
     };

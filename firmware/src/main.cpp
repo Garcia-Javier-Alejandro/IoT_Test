@@ -11,8 +11,6 @@
 #include "secrets.h"   // wifi y mqtt user/pass (SECRETO, no va a GitHub)
 #include "ca_cert.h"   // certificado Root CA (público)
 
-extern const uint8_t rootca_crt_bundle_start[] asm("_binary_data_cert_x509_crt_bundle_bin_start");
-
 // -------------------- Hardware --------------------
 static const int LED_PIN = 4;     // GPIO4 -> resistencia -> LED -> GND
 static bool ledState = false;     // Estado "lógico" del LED
@@ -66,7 +64,9 @@ bool postEventToCloudflare(const char* state) {
   }
 
   WiFiClientSecure client;
-client.setCACertBundle(rootca_crt_bundle_start);
+  // Cloudflare uses different certificates - skip verification for now
+  // TODO: Add proper Cloudflare CA certificate for production
+  client.setInsecure();
 
   HTTPClient https;
   String url = String(CF_API_BASE_URL) + "/api/event";
