@@ -9,6 +9,7 @@ const HistoryModule = (() => {
   let historyPlot = null;
   let historyChart = null;
   let hintEl = null;
+  let lastUpdateEl = null;
   let lastRange = "24h";
   let historyTimer = null;
   let historyDebounceTimer = null;
@@ -22,9 +23,10 @@ const HistoryModule = (() => {
    * @param {HTMLElement} clearBtn - Button to clear history
    * @param {HTMLElement} lastUpdateEl - Element to show last update time
    */
-  function init(chartEl, hintElem, refreshBtn, clearBtn, lastUpdateEl) {
+  function init(chartEl, hintElem, refreshBtn, clearBtn, lastUpdate) {
     historyChart = chartEl;
     hintEl = hintElem;
+    lastUpdateEl = lastUpdate;
 
     if (refreshBtn) {
       refreshBtn.addEventListener("click", () => load("24h"));
@@ -207,6 +209,11 @@ const HistoryModule = (() => {
         .sort((a, b) => a.ts - b.ts);
 
       logFn(`Histórico cargado: ${historyEvents.length} eventos`);
+
+      // Update last update timestamp
+      if (lastUpdateEl) {
+        lastUpdateEl.textContent = "Última actualización: " + new Date().toLocaleTimeString();
+      }
 
       // Render chart in next frame to ensure layout is ready
       requestAnimationFrame(() => renderPlot(range));
