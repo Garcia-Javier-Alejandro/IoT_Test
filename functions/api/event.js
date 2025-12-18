@@ -1,30 +1,65 @@
-export async function onRequest({ request }) {
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+function requireApiKey(request, env) {
+  const key = request.headers.get("x-api-key");
+  if (!env.API_KEY) return { ok: false, status: 500, error: "API_KEY not configured in environment" };
+  if (!key || key !== env.API_KEY) return { ok: false, status: 401, error: "Unauthorized" };
+  return { ok: true };
+}
+
+function normalizeState(state) {
+  const s = String(state || "").toUpperCase().trim();
+  if (s === "ON" || s === "OFF") return s;
+  return null;
+}
+
+export async function onRequest({ request, env }) {
   if (request.method !== "POST") {
-    return new Response(
-      JSON.stringify({ ok: false, error: "Method Not Allowed. Use POST." }),
-      { status: 405, headers: { "content-type": "application/json; charset=utf-8" } }
-    );
+    return json({ ok: false, error: "Method Not Allowed. Use POST." }, 405);
   }
+
+  const auth = requireApiKey(request, env);
+  if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
   let payload;
   try {
     payload = await request.json();
   } catch {
-    return new Response(
-      JSON.stringify({ ok: false, error: "Invalid JSON body" }),
-      { status: 400, headers: { "content-type": "application/json; charset=utf-8" } }
-    );
+    return json({ ok: false, error: "Invalid JSON body" }, 400);
   }
 
-  // Esperado a futuro: { deviceId: "esp32-01", ts: 173..., state: "ON"|"OFF" }
-  const body = {
-    ok: true,
-    endpoint: "POST /api/event",
-    received: payload,
-    note: "stub (next step: write to D1)"
-  };
+  const deviceId = (payload.deviceId || "esp32-01").toString().trim();
+  const state = normalizeState(payload.state);
+  const ts = Number.isFinite(payload.ts) ? Number(payload.ts) : Date.now();
 
-  return new Response(JSON.stringify(body, null, 2), {
-    headers: { "content-type": "application/json; charset=utf-8" }
-  });
+  if (!deviceId) return json({ ok: false, error: "deviceId is required" }, 400);
+  if (!state) return json({ ok: false, error: 'state must be "ON" or "OFF"' }, 400);
+  if (!Number.isFinite(ts) || ts <= 0) return json({ ok: false, error: "ts must be a positive number (epoch ms)" }, 400);
+
+  try {
+    const stmt = env.DB
+      .prepare("INSERT INTO events (device_id, ts, state) VALUES (?, ?, ?)")
+      .bind(deviceId, ts, state);
+
+    const result = await stmt.run();
+
+    return json({
+      ok: true,
+      inserted: {
+        deviceId,
+        ts,
+        state,
+      },
+      meta: {
+        success: result.success,
+      },
+    });
+  } catch (e) {
+    return json({ ok: false, error: "DB insert failed", detail: String(e) }, 500);
+  }
 }
