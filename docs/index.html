@@ -405,6 +405,20 @@ html, body {
           <div class="log" id="log-box"></div>
         </div>
 
+        <div>
+          <div class="log-header">
+            <div>
+              <div class="log-title">Histórico (24h)</div>
+              <div id="history-last" class="muted" style="font-weight:700; font-size:0.82rem; margin-top:4px;">Última actualización: —</div>
+            </div>
+            <div>
+              <button class="log-clear" id="btn-history-refresh">Actualizar</button>
+              <button class="log-clear" id="btn-history-clear">Limpiar</button>
+            </div>
+          </div>
+          <div class="log" id="history-box"></div>
+        </div>
+
       </div>
 
       <div class="footer">
@@ -441,6 +455,7 @@ html, body {
     const btnLogClear = document.getElementById("btn-log-clear");
 
     let client = null;
+    let historyTimer = null; // Interval ID for auto-refreshing history
     let lastState = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
 
     function log(msg) {
@@ -494,12 +509,26 @@ html, body {
       setConnUi("Desconectado");
       updateButtons();
       if (loginCard) loginCard.style.display = '';
+      // Stop any running history auto-refresh when disconnected
+      if (historyTimer) {
+        clearInterval(historyTimer);
+        historyTimer = null;
+      }
     }
 
     function connectUi() {
       setConnUi("Conectado");
       updateButtons();
       if (loginCard) loginCard.style.display = 'none';
+      // Load history immediately on connect and start periodic refresh (every 300s)
+      if (historyBox) loadHistory("24h");
+      if (historyTimer) clearInterval(historyTimer);
+      historyTimer = setInterval(() => loadHistory("24h"), 300000);
+      // Also clear any scheduled debounce when starting periodic refresh
+      if (historyDebounceTimer) {
+        clearTimeout(historyDebounceTimer);
+        historyDebounceTimer = null;
+      }
     }
 
     function connectMqtt(username, password) {
@@ -562,7 +591,11 @@ html, body {
         const msg = payload.toString().trim().toUpperCase();
         if (topic === TOPIC_STATE) {
           log("Estado recibido: " + msg);
-          if (msg === "ON" || msg === "OFF") setLedState(msg);
+          if (msg === "ON" || msg === "OFF") {
+            setLedState(msg);
+            // Source-of-truth = D1 (server). Schedule a debounced refresh
+            scheduleHistoryRefresh(1200);
+          }
         }
       });
     }
@@ -584,6 +617,76 @@ html, body {
     btnLogClear.addEventListener("click", () => {
       logBox.textContent = "";
       log("Log limpiado");
+    });
+
+    const historyBox = document.getElementById("history-box");
+    const btnHistoryClear = document.getElementById("btn-history-clear");
+    const btnHistoryRefresh = document.getElementById("btn-history-refresh");
+    const historyLast = document.getElementById("history-last");
+
+    // Debounce timer to avoid hammering the backend on rapid state updates
+    let historyDebounceTimer = null;
+    function scheduleHistoryRefresh(delay = 1200) {
+      if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
+      historyDebounceTimer = setTimeout(() => {
+        historyDebounceTimer = null;
+        if (historyBox) loadHistory("24h");
+      }, delay);
+    }
+
+    btnHistoryClear.addEventListener("click", () => {
+      if (!historyBox) return;
+      historyBox.textContent = "";
+      log("Histórico limpiado");
+    });
+
+    async function loadHistory(range = "24h") {
+      if (!historyBox) return;
+      try {
+        historyBox.textContent = "Cargando histórico...";
+        const deviceId = (window.APP_CONFIG && APP_CONFIG.DEVICE_ID) ? APP_CONFIG.DEVICE_ID : "esp32-01";
+        const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.ok) {
+          historyBox.textContent = "Error:\n" + JSON.stringify(data, null, 2);
+          return;
+        }
+
+        if (!data.items || data.items.length === 0) {
+          historyBox.textContent = "(sin eventos en el rango)";
+          if (historyLast) historyLast.textContent = 'Última actualización: ' + new Date().toLocaleTimeString();
+          return;
+        }
+
+        const lines = data.items.map(ev => {
+          const tsLocal = new Date(ev.ts).toLocaleString();
+          return `${tsLocal}  ->  ${ev.state}`;
+        });
+
+        historyBox.textContent = lines.join("\n");
+        if (historyLast) historyLast.textContent = 'Última actualización: ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        historyBox.textContent = "Error:\n" + String(e);
+      }
+    }
+
+    if (btnHistoryRefresh) btnHistoryRefresh.addEventListener("click", () => loadHistory("24h"));
+    // Optionally load once on connect/initial load if you want:
+    // loadHistory("24h");
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      if (historyTimer) {
+        clearInterval(historyTimer);
+        historyTimer = null;
+      }
+      if (historyDebounceTimer) {
+        clearTimeout(historyDebounceTimer);
+        historyDebounceTimer = null;
+      }
     });
 
     const LS_USER = "mqtt_user";
@@ -619,6 +722,9 @@ html, body {
     } else {
       log("Ingresá credenciales MQTT y presioná Conectar");
     }
+
+    // Cargar histórico una vez al inicio (opcional, recomendado)
+    if (historyBox) loadHistory("24h");
   </script>
 </body>
 </html>
