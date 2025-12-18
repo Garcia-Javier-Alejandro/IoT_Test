@@ -411,7 +411,6 @@ html, body {
       </div>
 
 
-// REFORMATEAR ESTO      
 <div>
   <div class="log-header">
     <div>
@@ -780,16 +779,28 @@ async function loadHistory(range = "24h") {
     const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
 
     if (hintEl) hintEl.textContent = "Cargando histórico...";
-    const historyRes = await fetch(url, { cache: "no-store" });
-    const data = await res.json();
+    log(`History: GET ${url}`);
 
-    if (!data.ok) {
-      if (hintEl) hintEl.textContent = "Error cargando histórico";
-      log("History error: " + JSON.stringify(data));
+    const historyRes = await fetch(url, { cache: "no-store" });
+    log(`History: HTTP ${historyRes.status}`);
+
+    if (!historyRes.ok) {
+      if (hintEl) hintEl.textContent = `Error HTTP ${historyRes.status}`;
       return;
     }
 
-    const items = Array.isArray(data.items) ? data.items : [];
+    const data = await historyRes.json();
+    log(`History: ok=${data?.ok} keys=${Object.keys(data || {}).join(",")}`);
+
+    if (!data || !data.ok) {
+      if (hintEl) hintEl.textContent = "Error: respuesta no-ok";
+      return;
+    }
+
+    // Acepta items o events para no depender del backend exacto
+    const items = Array.isArray(data.items) ? data.items
+                : Array.isArray(data.events) ? data.events
+                : [];
 
     historyEvents = items
       .map(ev => ({ ts: Number(ev.ts), state: ev.state }))
@@ -797,10 +808,7 @@ async function loadHistory(range = "24h") {
       .sort((a, b) => a.ts - b.ts);
 
     if (historyLast) historyLast.textContent = "Última actualización: " + new Date().toLocaleTimeString();
-
-    if (hintEl) hintEl.textContent = (historyEvents.length === 0)
-      ? "(sin eventos en el rango)"
-      : `${historyEvents.length} evento(s)`;
+    if (hintEl) hintEl.textContent = historyEvents.length ? `${historyEvents.length} evento(s)` : "(sin eventos en el rango)";
 
     renderTimeline(range);
   } catch (e) {
@@ -808,6 +816,9 @@ async function loadHistory(range = "24h") {
     log("History exception: " + String(e));
   }
 }
+
+
+
 
 
     if (btnHistoryRefresh) btnHistoryRefresh.addEventListener("click", () => loadHistory("24h"));
