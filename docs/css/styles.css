@@ -370,6 +370,41 @@ h1 {
   font-size: 0.82rem;
 }
 
+.time-range-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.range-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: white;
+  color: #334155;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.range-btn:hover {
+  background: #f1f5f9;
+  border-color: #3b82f6;
+}
+
+.range-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.range-btn:active {
+  transform: scale(0.98);
+}
+
 /* Footer */
 .footer {
   padding: 8px 12px 12px;

@@ -153,6 +153,22 @@ const AppModule = (() => {
    * @param {string} topicCmd - MQTT topic for commands
    */
   function wireUIEvents(topicCmd) {
+    // Time range selector buttons
+    if (elements.rangeButtons) {
+      elements.rangeButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const range = btn.getAttribute("data-range");
+          elements.rangeButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          HistoryModule.load(
+            range,
+            window.APP_CONFIG.DEVICE_ID || "esp32-01",
+            LogModule.append
+          );
+        });
+      });
+    }
+
     // Connect button
     if (elements.btnConnect) {
       elements.btnConnect.addEventListener("click", () => {
