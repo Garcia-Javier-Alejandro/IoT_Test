@@ -5,13 +5,12 @@
 #include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
 #include <time.h>              // Para NTP (hora del sistema)
 #include <HTTPClient.h>        // Cliente HTTP 
-
+#include <esp_crt_bundle.h>
 
 // Tus headers (definidos por vos)
 #include "config.h"    // host/puertos/topics/device_id (NO secretos)
 #include "secrets.h"   // wifi y mqtt user/pass (SECRETO, no va a GitHub)
 #include "ca_cert.h"   // certificado Root CA (público)
-#include "esp32_cert_bundle.h"
 
 // -------------------- Hardware --------------------
 static const int LED_PIN = 4;     // GPIO4 -> resistencia -> LED -> GND
@@ -66,7 +65,7 @@ bool postEventToCloudflare(const char* state) {
   }
 
   WiFiClientSecure client;
-client.setCACertBundle(x509_crt_bundle, x509_crt_bundle_len);
+client.setCACertBundle(esp_crt_bundle_attach);
 
   HTTPClient https;
   String url = String(CF_API_BASE_URL) + "/api/event";
