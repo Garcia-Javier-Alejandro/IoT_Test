@@ -625,14 +625,25 @@ html, body {
     const historyLast = document.getElementById("history-last");
 
     // Debounce timer to avoid hammering the backend on rapid state updates
-    let historyDebounceTimer = null;
-    function scheduleHistoryRefresh(delay = 1200) {
-      if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
-      historyDebounceTimer = setTimeout(() => {
-        historyDebounceTimer = null;
-        if (historyBox) loadHistory("24h");
-      }, delay);
+let historyDebounceTimer = null;
+let historyInFlight = false;
+
+function scheduleHistoryRefresh(range = "24h", delay = 1200) {
+  if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
+
+  historyDebounceTimer = setTimeout(async () => {
+    historyDebounceTimer = null;
+    if (!historyBox) return;
+    if (historyInFlight) return;
+
+    historyInFlight = true;
+    try {
+      await loadHistory(range);
+    } finally {
+      historyInFlight = false;
     }
+  }, delay);
+}
 
     btnHistoryClear.addEventListener("click", () => {
       if (!historyBox) return;
@@ -645,7 +656,9 @@ html, body {
       try {
         historyBox.textContent = "Cargando histórico...";
         const deviceId = (window.APP_CONFIG && APP_CONFIG.DEVICE_ID) ? APP_CONFIG.DEVICE_ID : "esp32-01";
-        const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200`;
+        const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
+        const res = await fetch(url, { cache: "no-store" });
+
 
         const res = await fetch(url);
         const data = await res.json();
