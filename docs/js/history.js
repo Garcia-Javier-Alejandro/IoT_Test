@@ -139,6 +139,7 @@ const HistoryModule = (() => {
 
     // No data: destroy chart and show empty state
     if (!data[0].length) {
+      console.log('No data to render, clearing chart');
       if (historyPlot) {
         historyPlot.destroy();
         historyPlot = null;
@@ -151,6 +152,8 @@ const HistoryModule = (() => {
     const stepped = uPlot.paths && uPlot.paths.stepped
       ? uPlot.paths.stepped({ align: 1 })
       : null;
+
+    console.log('Creating uPlot with stepped:', stepped);
 
     const opts = {
       width: historyChart.clientWidth || 600,
@@ -182,12 +185,16 @@ const HistoryModule = (() => {
 
     // Create or update chart
     if (!historyPlot) {
+      console.log('Creating new uPlot chart with data:', data);
       historyChart.innerHTML = "";
       historyPlot = new uPlot(opts, data, historyChart);
+      console.log('uPlot created:', historyPlot);
     } else {
+      console.log('Updating existing uPlot chart');
       const w = historyChart.clientWidth || opts.width;
       historyPlot.setSize({ width: w, height: 160 });
       historyPlot.setData(data);
+      console.log('uPlot updated');
     }
   }
 
