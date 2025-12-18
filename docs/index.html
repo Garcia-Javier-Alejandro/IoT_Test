@@ -1,332 +1,28 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css">
+  <!-- External libraries -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
+  <link rel="stylesheet" href="/css/styles.css" />
+
   <meta charset="UTF-8" />
   <title>Panel de Control LED</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color-scheme: light;
-    }
-
-html, body {
-  width: 100%;
-  overflow-x: hidden;
-}
-
-    body{
-      margin:0;
-      min-height:100svh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background: #eef2f7;
-      padding: 18px 12px;
-    }
-
-    /* Wrapper para poder escalar en desktop */
-    .stage{
-      width: 100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    .shell{
-      width: min(520px, 100%);
-      margin: 0 auto;
-      background: #ffffff;
-      border-radius: 22px;
-      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.10);
-      border: 1px solid rgba(15, 23, 42, 0.06);
-      overflow: hidden;
-      transform-origin: top center;
-    }
-
-    /* Auto-compact en pantallas grandes */
-    @media (min-width: 900px){
-      .shell{ transform: scale(0.85); }
-    }
-    @media (min-width: 1200px){
-      .shell{ transform: scale(0.78); }
-    }
-    @media (pointer: coarse){
-  .shell{ transform: none !important; }
-}
-
-    .header{
-      padding: 16px 16px 10px;
-      text-align: center;
-    }
-
-    h1{
-      margin:0;
-      font-size: 1.55rem;
-      font-weight: 850;
-      letter-spacing: -0.03em;
-      color:#0f172a;
-    }
-
-    .divider{
-      height: 1px;
-      background: rgba(15, 23, 42, 0.07);
-    }
-
-    .content{
-      padding: 12px 12px 14px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .card{
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      border-radius: 16px;
-      padding: 12px;
-    }
-
-    .card-title{
-      display:flex;
-      align-items:center;
-      gap: 8px;
-      font-weight: 800;
-      color: #334155;
-      margin: 0 0 10px;
-      font-size: 0.95rem;
-    }
-
-    .icon{
-      width: 22px;
-      height: 22px;
-      display:grid;
-      place-items:center;
-      color: #3b82f6;
-    }
-
-    .fields{
-      display:grid;
-      gap: 8px;
-    }
-
-    .field{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      background: #ffffff;
-      border: 1px solid rgba(15, 23, 42, 0.10);
-      border-radius: 12px;
-      padding: 9px 10px;
-    }
-
-    .field svg{
-      width: 18px;
-      height: 18px;
-      color: rgba(15, 23, 42, 0.45);
-      flex: 0 0 auto;
-    }
-
-    .field input{
-      border: none;
-      outline: none;
-      width: 100%;
-      font-size: 0.95rem;
-      background: transparent;
-      color: #0f172a;
-      min-width: 0;
-    }
-
-    .btn-primary{
-      margin-top: 8px;
-      width: 100%;
-      border: none;
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 1.0rem;
-      font-weight: 800;
-      background: #111827;
-      color: #ffffff;
-      cursor: pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap: 10px;
-      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.16);
-    }
-    .btn-primary:active{ transform: scale(0.99); }
-
-    .btn-secondary{
-      margin-top: 8px;
-      width: 100%;
-      border-radius: 14px;
-      padding: 9px 10px;
-      font-size: 0.88rem;
-      font-weight: 800;
-      background: #ffffff;
-      color: #0f172a;
-      border: 1px solid rgba(15, 23, 42, 0.12);
-      cursor: pointer;
-    }
-
-    .row-card{
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      border-radius: 16px;
-      padding: 11px 12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .row-label{
-      font-weight: 800;
-      color: #334155;
-      font-size: 0.95rem;
-    }
-
-    .pill, .wifi{
-      display:inline-flex;
-      align-items:center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(15, 23, 42, 0.12);
-      background: #e2e8f0;
-      color: #334155;
-      font-weight: 900;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
-      font-size: 0.85rem;
-      min-width: 138px;
-      justify-content: center;
-      white-space: nowrap;
-    }
-
-    .dot{
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      background: #94a3b8;
-      flex: 0 0 auto;
-    }
-    .dot.on{ background: #22c55e; }
-    .dot.off{ background: #ef4444; }
-
-    .wifi svg{
-      width: 16px; height: 16px;
-      flex: 0 0 auto;
-    }
-
-    .actions{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .action-btn{
-      border: none;
-      border-radius: 16px;
-      padding: 14px 12px;
-      min-height: 92px;
-      cursor:pointer;
-      display:flex;
-      flex-direction: column;
-      align-items:center;
-      justify-content:center;
-      gap: 10px;
-      font-weight: 900;
-      font-size: 1.05rem;
-      color: #ffffff;
-      box-shadow: 0 12px 22px rgba(15, 23, 42, 0.11);
-      transition: transform 0.08s ease;
-    }
-    .action-btn:active{ transform: scale(0.985); }
-    .action-btn:disabled{
-      opacity: 0.45;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
-
-    .btn-on{ background: #22c55e; }
-    .btn-off{ background: #ef4444; }
-
-    .action-btn svg{ width: 28px; height: 28px; }
-
-    .log-header{
-      display:flex;
-      align-items: baseline;
-      justify-content: space-between;
-      padding: 0 4px;
-    }
-
-    .log-title{
-      font-weight: 950;
-      letter-spacing: 0.06em;
-      color: rgba(15, 23, 42, 0.55);
-      font-size: 0.9rem;
-    }
-
-    .log-clear{
-      background: none;
-      border: none;
-      color: #2563eb;
-      font-weight: 900;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-
-    .log{
-  margin-top: 8px;
-  background: #0b1220;
-  border: 1px solid rgba(15, 23, 42, 0.18);
-  border-radius: 14px;
-  padding: 10px 10px;
-  max-height: 160px;
-  overflow-y: auto;
-
-  /* clave para móvil: envolver líneas y cortar URLs largas */
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-x: hidden;
-
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.82rem;
-  color: #cbd5e1;
-    }
-
-
-    .footer{
-      padding: 8px 12px 12px;
-      text-align:center;
-      color: rgba(15, 23, 42, 0.40);
-      font-weight: 800;
-      font-size: 0.88rem;
-    }
-
-    .muted{ color: rgba(15, 23, 42, 0.42); font-weight: 800; }
-
-    @media (max-width: 360px){
-      .actions{ grid-template-columns: 1fr; }
-      .pill, .wifi{ min-width: 100%; }
-      .row-card{ justify-content: flex-start; }
-    }
-  </style>
 </head>
 
 <body>
   <div class="stage">
     <div class="shell">
+      <!-- Header -->
       <div class="header">
         <h1>Panel de Control LED</h1>
       </div>
       <div class="divider"></div>
 
+      <!-- Main content -->
       <div class="content">
 
+        <!-- Login card -->
         <div class="card" id="login-card">
           <div class="card-title">
             <span class="icon" aria-hidden="true">🔑</span>
@@ -354,10 +50,9 @@ html, body {
           <button id="btn-connect" class="btn-primary">
             Conectar
           </button>
-
-          <!-- Borrar credenciales fue eliminado -->
         </div>
 
+        <!-- LED Status -->
         <div class="row-card">
           <div class="row-label">Estado del LED</div>
           <div class="pill">
@@ -366,6 +61,7 @@ html, body {
           </div>
         </div>
 
+        <!-- MQTT Connection Status -->
         <div class="row-card">
           <div class="row-label">Conexión MQTT</div>
           <div class="wifi" id="conn-status">
@@ -378,6 +74,7 @@ html, body {
           </div>
         </div>
 
+        <!-- ON/OFF Buttons -->
         <div class="actions">
           <button id="btn-on" class="action-btn btn-on" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -398,546 +95,60 @@ html, body {
           </button>
         </div>
 
+        <!-- Log Panel -->
         <div>
           <div class="log-header">
             <div class="log-title">Log</div>
             <div>
-                  <button class="log-clear" id="btn-log-toggle">Ocultar</button>
-                  <button class="log-clear" id="btn-log-clear">Limpiar</button>
+              <button class="log-clear" id="btn-log-toggle">Ocultar</button>
+              <button class="log-clear" id="btn-log-clear">Limpiar</button>
             </div>
           </div>
-        <div class="collapsible" id="log-panel">
-          <div class="log" id="log-box"></div>
+          <div class="collapsible" id="log-panel">
+            <div class="log" id="log-box"></div>
+          </div>
         </div>
+
+        <!-- History Panel -->
+        <div>
+          <div class="log-header">
+            <div>
+              <div class="log-title">Histórico (24h)</div>
+              <div id="history-last" class="muted" style="font-weight:700; font-size:0.82rem; margin-top:4px;">
+                Última actualización: —
+              </div>
+            </div>
+
+            <div>
+              <button class="log-clear" id="btn-history-refresh">Actualizar</button>
+              <button class="log-clear" id="btn-history-clear">Limpiar</button>
+            </div>
+          </div>
+
+          <div id="history-box" class="timelineWrap">
+            <div id="historyChart" style="width:100%; height:160px;"></div>
+            <div class="hint muted" id="historyHint"></div>
+          </div>
+        </div>
+
       </div>
 
-
-<div>
-  <div class="log-header">
-    <div>
-      <div class="log-title">Histórico (24h)</div>
-      <div id="history-last" class="muted" style="font-weight:700; font-size:0.82rem; margin-top:4px;">
-        Última actualización: —
-      </div>
-    </div>
-
-    <div>
-      <button class="log-clear" id="btn-history-refresh">Actualizar</button>
-      <button class="log-clear" id="btn-history-clear">Limpiar</button>
-    </div>
-  </div>
-
-<div id="history-box" class="timelineWrap">
-  <div id="historyChart" style="width:100%; height:160px;"></div>
-  <div class="hint muted" id="historyHint"></div>
-</div>
-const historyChart = document.getElementById("historyChart");
-const hintEl = document.getElementById("historyHint");
-
-let historyEvents = [];   // [{ts: ms, state:"ON"|"OFF"}]
-let historyPlot = null;
-let lastRange = "24h";
-
-function buildAlignedData(eventsMs) {
-  // uPlot usa unix timestamps en segundos para time scale (convertimos ms -> s)
-  const x = [];
-  const y = [];
-
-  for (const e of eventsMs) {
-    const tSec = Math.floor(Number(e.ts) / 1000);
-    if (!Number.isFinite(tSec)) continue;
-    x.push(tSec);
-    y.push(e.state === "ON" ? 1 : 0);
-  }
-  return [x, y];
-}
-
-function renderHistoryPlot(range = "24h") {
-  lastRange = range;
-if (!historyChart) return;
-
-// Re-render del gráfico si cambia el tamaño de la ventana
-window.addEventListener("resize", () => renderHistoryPlot(lastRange));
-
-
-  // Mensajito auxiliar (sin destruir el chart)
-  if (hintEl) hintEl.textContent = historyEvents.length ? `${historyEvents.length} evento(s)` : "(sin eventos en el rango)";
-
-  const data = buildAlignedData(historyEvents);
-
-  // Si no hay data, destruimos el plot para no mostrar basura visual
-  if (!data[0].length) {
-    if (historyPlot) {
-      historyPlot.destroy();
-      historyPlot = null;
-    }
-    historyChart.innerHTML = "";
-    return;
-  }
-
-  const stepped = (uPlot.paths && uPlot.paths.stepped)
-    ? uPlot.paths.stepped({ align: 1 })
-    : null;
-
-  const opts = {
-    width: historyChart.clientWidth || 600,
-    height: 160,
-    scales: {
-      x: { time: true },
-      y: {
-        auto: false,
-        range: (u, min, max) => [-0.2, 1.2],
-      },
-    },
-    axes: [
-      { }, // x time axis
-      {
-        splits: (u) => [0, 1],
-        values: (u, splits) => splits.map(v => (v === 1 ? "ON" : "OFF")),
-      },
-    ],
-    series: [
-      {}, // x
-      {
-        label: "Estado",
-        width: 2,
-        paths: stepped || undefined,
-        value: (u, v) => (v === 1 ? "ON" : "OFF"),
-      }
-    ],
-  };
-
-  if (!historyPlot) {
-    historyChart.innerHTML = "";
-    historyPlot = new uPlot(opts, data, historyChart);
-  } else {
-    // Ajuste de tamaño si cambió el layout
-    const w = historyChart.clientWidth || opts.width;
-    historyPlot.setSize({ width: w, height: 160 });
-    historyPlot.setData(data);
-  }
-}
-
-
-  <div class="tooltip" id="timelineTooltip" style="display:none;"></div>
-</div>
-
-
+      <!-- Footer -->
       <div class="footer">
-        <span class="muted">v1.3.2</span> • <span class="muted">IoT Dashboard</span>
+        <span class="muted">v1.4.0</span> • <span class="muted">IoT Dashboard</span>
       </div>
     </div>
   </div>
 
+  <!-- Scripts (external libraries and modules) -->
   <script src="/config.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
-  <script>
-    if (!window.APP_CONFIG) {
-      alert("APP_CONFIG no está definido. ¿Incluiste config.js?");
-      throw new Error("APP_CONFIG no definido");
-    }
-
-    const { MQTT_WSS_URL, TOPIC_CMD, TOPIC_STATE, HIVEMQ_HOST, DEVICE_ID } = window.APP_CONFIG;
-    if (!MQTT_WSS_URL || !TOPIC_CMD || !TOPIC_STATE) {
-      alert("APP_CONFIG incompleto: falta MQTT_WSS_URL, TOPIC_CMD o TOPIC_STATE");
-      throw new Error("APP_CONFIG incompleto");
-    }
-
-    const ledDot = document.getElementById("led-dot");
-    const ledStatus = document.getElementById("led-status");
-    const connText = document.getElementById("conn-text");
-    const btnOn = document.getElementById("btn-on");
-    const btnOff = document.getElementById("btn-off");
-    const logBox = document.getElementById("log-box");
-    const userInput = document.getElementById("mqtt-user");
-    const passInput = document.getElementById("mqtt-pass");
-    const btnConnect = document.getElementById("btn-connect");
-    const loginCard = document.getElementById("login-card");
-    const btnLogClear = document.getElementById("btn-log-clear");
-    const axisEl = document.getElementById("timelineAxis");
-    const timelineEl = document.getElementById("timeline");
-    const segEl = document.getElementById("timelineSegments");
-    const evtEl = document.getElementById("timelineEvents");
-    const hintEl = document.getElementById("historyHint");
-    const tipEl = document.getElementById("timelineTooltip");
-
-
-    let client = null;
-    let historyEvents = [];
-    let historyTimer = null; // Interval ID for auto-refreshing history
-    let lastState = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
-
-    function log(msg) {
-      const time = new Date().toLocaleTimeString();
-      logBox.textContent = `[${time}] ${msg}\n` + logBox.textContent;
-    }
-
-    function setConnUi(stateText) {
-      connText.textContent = stateText;
-    }
-
-    function updateButtons() {
-      const connected = !!(client && client.connected);
-
-      if (!connected) {
-        btnOn.disabled = true;
-        btnOff.disabled = true;
-        return;
-      }
-
-      if (lastState === "ON") {
-        btnOn.disabled = true;
-        btnOff.disabled = false;
-      } else if (lastState === "OFF") {
-        btnOn.disabled = false;
-        btnOff.disabled = true;
-      } else {
-        btnOn.disabled = false;
-        btnOff.disabled = false;
-      }
-    }
-
-    function setLedState(state) {
-      lastState = state;
-
-      if (state === "ON") {
-        ledDot.className = "dot on";
-        ledStatus.textContent = "ENCENDIDO";
-      } else if (state === "OFF") {
-        ledDot.className = "dot off";
-        ledStatus.textContent = "APAGADO";
-      } else {
-        ledDot.className = "dot";
-        ledStatus.textContent = "DESCONOCIDO";
-      }
-
-      updateButtons();
-    }
-
-    function disconnectUi() {
-      setConnUi("Desconectado");
-      updateButtons();
-      if (loginCard) loginCard.style.display = '';
-      // Stop any running history auto-refresh when disconnected
-      if (historyTimer) {
-        clearInterval(historyTimer);
-        historyTimer = null;
-      }
-    }
-
-    function connectUi() {
-      setConnUi("Conectado");
-      updateButtons();
-      if (loginCard) loginCard.style.display = 'none';
-      // Load history immediately on connect and start periodic refresh (every 300s)
-      if (historyBox) loadHistory("24h");
-      if (historyTimer) clearInterval(historyTimer);
-      historyTimer = setInterval(() => loadHistory("24h"), 300000);
-      // Also clear any scheduled debounce when starting periodic refresh
-      if (historyDebounceTimer) {
-        clearTimeout(historyDebounceTimer);
-        historyDebounceTimer = null;
-      }
-    }
-
-    function connectMqtt(username, password) {
-      if (client) {
-        try { client.end(true); } catch (_) {}
-        client = null;
-      }
-
-      const clientId = "dashboard-" + Math.random().toString(16).slice(2, 10);
-      setConnUi("Conectando…");
-      updateButtons();
-
-      log(`Broker: ${(HIVEMQ_HOST || "(host)")}${DEVICE_ID ? " | " + DEVICE_ID : ""}`);
-      log(`WSS: ${MQTT_WSS_URL}`);
-      log(`Topics: set=${TOPIC_CMD} | state=${TOPIC_STATE}`);
-
-      client = mqtt.connect(MQTT_WSS_URL, {
-        clientId,
-        username,
-        password,
-        clean: true,
-        reconnectPeriod: 2000,
-        connectTimeout: 8000,
-      });
-
-      client.on("connect", () => {
-        log("Conectado al broker como " + clientId);
-        connectUi();
-
-        client.subscribe(TOPIC_STATE, { qos: 0 }, (err) => {
-          if (!err) log("Suscripto a " + TOPIC_STATE);
-          else log("Error al suscribirse: " + err.message);
-        });
-      });
-
-      client.on("reconnect", () => {
-        setConnUi("Reconectando…");
-        log("Intentando reconectar...");
-        updateButtons();
-      });
-
-      client.on("close", () => {
-        disconnectUi();
-        log("Conexión cerrada");
-      });
-
-      client.on("offline", () => {
-        setConnUi("Offline");
-        updateButtons();
-        log("Cliente offline");
-      });
-
-      client.on("error", (err) => {
-        setConnUi("Error");
-        updateButtons();
-        log("Error MQTT: " + err.message);
-      });
-
-      client.on("message", (topic, payload) => {
-        const msg = payload.toString().trim().toUpperCase();
-        if (topic === TOPIC_STATE) {
-          log("Estado recibido: " + msg);
-          if (msg === "ON" || msg === "OFF") {
-            setLedState(msg);
-            // Source-of-truth = D1 (server). Schedule a debounced refresh
-            scheduleHistoryRefresh(1200);
-          }
-        }
-      });
-    }
-
-    function sendCommand(command) {
-      if (!client || !client.connected) {
-        log("No conectado al broker, no se envía comando");
-        return;
-      }
-      client.publish(TOPIC_CMD, command, { qos: 0 }, (err) => {
-        if (err) log("Error al publicar comando: " + err.message);
-        else log("Comando enviado: " + command);
-      });
-    }
-
-    btnOn.addEventListener("click", () => sendCommand("ON"));
-    btnOff.addEventListener("click", () => sendCommand("OFF"));
-
-    btnLogClear.addEventListener("click", () => {
-      logBox.textContent = "";
-      log("Log limpiado");
-    });
-
-    const historyBox = document.getElementById("history-box");
-    const btnHistoryClear = document.getElementById("btn-history-clear");
-    const btnHistoryRefresh = document.getElementById("btn-history-refresh");
-    const historyLast = document.getElementById("history-last");
-
-    // Debounce timer to avoid hammering the backend on rapid state updates
-let historyDebounceTimer = null;
-let historyInFlight = false;
-
-function parseRangeToMs(r){
-  if (r === "1h") return 1*60*60*1000;
-  if (r === "6h") return 6*60*60*1000;
-  if (r === "24h") return 24*60*60*1000;
-  if (r === "7d") return 7*24*60*60*1000;
-  return 24*60*60*1000;
-}
-
-function xOf(ts, startMs, endMs, width){
-  const p = (ts - startMs) / (endMs - startMs);
-  return Math.max(0, Math.min(width, p * width));
-}
-
-function stateClass(s){ return (s === "ON") ? "on" : "off"; }
-
-function renderAxis(startMs, endMs){
-  if (!axisEl) return;
-  axisEl.innerHTML = "";
-  const labels = 5;
-  for (let i=0;i<labels;i++){
-    const t = startMs + (endMs-startMs)*(i/(labels-1));
-    const span = document.createElement("span");
-    span.textContent = new Date(t).toLocaleString();
-    axisEl.appendChild(span);
-  }
-}
-
-function renderTimeline(range = "24h"){
-  if (!timelineEl || !segEl || !evtEl) return;
-
-  const rangeMs = parseRangeToMs(range);
-  const endMs = Date.now();
-  const startMs = endMs - rangeMs;
-
-  renderAxis(startMs, endMs);
-
-  const w = timelineEl.clientWidth;
-  segEl.innerHTML = "";
-  evtEl.innerHTML = "";
-
-  const ev = historyEvents.filter(e => e.ts >= startMs && e.ts <= endMs);
-
-  if (ev.length === 0) return;
-
-  const fragSeg = document.createDocumentFragment();
-  const fragDot = document.createDocumentFragment();
-
-  for (let i=0;i<ev.length;i++){
-    const a = ev[i];
-    const bTs = (i < ev.length-1) ? ev[i+1].ts : endMs;
-
-    const x1 = xOf(a.ts, startMs, endMs, w);
-    const x2 = xOf(bTs, startMs, endMs, w);
-
-    const seg = document.createElement("div");
-    seg.className = `seg ${stateClass(a.state)}`;
-    seg.style.left = `${x1}px`;
-    seg.style.width = `${Math.max(2, x2 - x1)}px`;
-    fragSeg.appendChild(seg);
-
-    const dot = document.createElement("div");
-    dot.className = `dot ${stateClass(a.state)}`;
-    dot.style.left = `${x1}px`;
-
-    dot.addEventListener("mouseenter", () => {
-      if (!tipEl) return;
-      tipEl.style.display = "block";
-      tipEl.textContent = `${new Date(a.ts).toLocaleString()} — ${a.state}`;
-    });
-    dot.addEventListener("mousemove", (e) => {
-      if (!tipEl) return;
-      tipEl.style.left = `${e.clientX + 12}px`;
-      tipEl.style.top  = `${e.clientY + 12}px`;
-    });
-    dot.addEventListener("mouseleave", () => {
-      if (!tipEl) return;
-      tipEl.style.display = "none";
-    });
-
-    fragDot.appendChild(dot);
-  }
-
-  segEl.appendChild(fragSeg);
-  evtEl.appendChild(fragDot);
-}
-
-
-function scheduleHistoryRefresh(range = "24h", delay = 1200) {
-  if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
-
-  historyDebounceTimer = setTimeout(async () => {
-    historyDebounceTimer = null;
-    if (!historyBox) return;
-    if (historyInFlight) return;
-
-    historyInFlight = true;
-    try {
-      await loadHistory(range);
-    } finally {
-      historyInFlight = false;
-    }
-  }, delay);
-}
-
-btnHistoryClear.addEventListener("click", () => {
-  historyEvents = [];
-  renderHistoryPlot(lastRange);
-  log("Histórico limpiado");
-});
-
-
-
-async function loadHistory(range = "24h") {
-  try {
-    const deviceId = (window.APP_CONFIG && APP_CONFIG.DEVICE_ID) ? APP_CONFIG.DEVICE_ID : "esp32-01";
-    const url = `/api/history?deviceId=${encodeURIComponent(deviceId)}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
-
-    if (hintEl) hintEl.textContent = "Cargando histórico...";
-    const historyRes = await fetch(url, { cache: "no-store" });
-    const data = await historyRes.json();
-
-    if (!data.ok) {
-      if (hintEl) hintEl.textContent = "Error cargando histórico";
-      return;
-    }
-
-    const items = Array.isArray(data.items) ? data.items : [];
-    historyEvents = items
-      .map(ev => ({ ts: Number(ev.ts), state: ev.state }))
-      .filter(e => Number.isFinite(e.ts) && (e.state === "ON" || e.state === "OFF"))
-      .sort((a, b) => a.ts - b.ts);
-
-    if (historyLast) historyLast.textContent = "Última actualización: " + new Date().toLocaleTimeString();
-
-    // Render del chart (en el próximo frame para asegurar layout)
-    requestAnimationFrame(() => renderHistoryPlot(range));
-  } catch (e) {
-    if (hintEl) hintEl.textContent = "Error cargando histórico";
-  }
-}
-
-
-
-
-
-
-    if (btnHistoryRefresh) btnHistoryRefresh.addEventListener("click", () => loadHistory("24h"));
-
-
-    // Clean up on page unload
-    window.addEventListener('beforeunload', () => {
-      if (historyTimer) {
-        clearInterval(historyTimer);
-        historyTimer = null;
-      }
-      if (historyDebounceTimer) {
-        clearTimeout(historyDebounceTimer);
-        historyDebounceTimer = null;
-      }
-    });
-
-    const LS_USER = "mqtt_user";
-    const LS_PASS = "mqtt_pass";
-
-    function loadCreds() {
-      userInput.value = localStorage.getItem(LS_USER) || "";
-      passInput.value = localStorage.getItem(LS_PASS) || "";
-    }
-
-    function saveCreds(u, p) {
-      localStorage.setItem(LS_USER, u);
-      localStorage.setItem(LS_PASS, p);
-    }
-
-    btnConnect.addEventListener("click", () => {
-      const u = userInput.value.trim();
-      const p = passInput.value;
-      if (!u || !p) {
-        log("Completá username y password");
-        return;
-      }
-      saveCreds(u, p);
-      connectMqtt(u, p);
-    });
-
-    setLedState("UNKNOWN");
-    disconnectUi();
-    loadCreds();
-
-    if (userInput.value && passInput.value) {
-      connectMqtt(userInput.value.trim(), passInput.value);
-    } else {
-      log("Ingresá credenciales MQTT y presioná Conectar");
-    }
-
-    // Cargar histórico una vez al inicio (opcional, recomendado)
-    if (historyBox) loadHistory("24h");
-  </script>
-<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
-
-
+  <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
+
+  <!-- Application modules -->
+  <script src="/js/log.js"></script>
+  <script src="/js/mqtt.js"></script>
+  <script src="/js/history.js"></script>
+  <script src="/js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,261 @@
+/**
+ * History Module
+ * Manages fetching history from the API and rendering with uPlot.
+ * Requires uPlot library (global uPlot object)
+ */
+
+const HistoryModule = (() => {
+  let historyEvents = []; // Array of { ts: ms, state: "ON"|"OFF" }
+  let historyPlot = null;
+  let historyChart = null;
+  let hintEl = null;
+  let lastRange = "24h";
+  let historyTimer = null;
+  let historyDebounceTimer = null;
+  let historyInFlight = false;
+
+  /**
+   * Initialize history module with DOM elements
+   * @param {HTMLElement} chartEl - Container for the uPlot chart
+   * @param {HTMLElement} hintElem - Element for status messages
+   * @param {HTMLElement} refreshBtn - Button to refresh history
+   * @param {HTMLElement} clearBtn - Button to clear history
+   * @param {HTMLElement} lastUpdateEl - Element to show last update time
+   */
+  function init(chartEl, hintElem, refreshBtn, clearBtn, lastUpdateEl) {
+    historyChart = chartEl;
+    hintEl = hintElem;
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", () => load("24h"));
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => clear());
+    }
+
+    // Auto-resize on window resize
+    window.addEventListener("resize", () => {
+      if (historyPlot) {
+        const w = historyChart.clientWidth || 600;
+        historyPlot.setSize({ width: w, height: 160 });
+      }
+    });
+  }
+
+  /**
+   * Start auto-refresh timer (called on MQTT connect)
+   * Auto-refreshes every 300 seconds (5 minutes)
+   */
+  function startAutoRefresh() {
+    if (historyTimer) clearInterval(historyTimer);
+    historyTimer = setInterval(() => load("24h"), 300000);
+  }
+
+  /**
+   * Stop auto-refresh timer (called on MQTT disconnect)
+   */
+  function stopAutoRefresh() {
+    if (historyTimer) {
+      clearInterval(historyTimer);
+      historyTimer = null;
+    }
+  }
+
+  /**
+   * Schedule a debounced history refresh
+   * Used to avoid hammering the API on rapid state changes
+   * @param {number} delay - Delay in ms (default 1200)
+   */
+  function scheduleRefresh(delay = 1200) {
+    if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
+
+    historyDebounceTimer = setTimeout(async () => {
+      historyDebounceTimer = null;
+      if (!historyChart) return;
+      if (historyInFlight) return;
+
+      historyInFlight = true;
+      try {
+        await load(lastRange);
+      } finally {
+        historyInFlight = false;
+      }
+    }, delay);
+  }
+
+  /**
+   * Convert ms timestamps to seconds for uPlot
+   * @param {Array} eventsMs - Array of { ts: ms, state: string }
+   * @returns {Array} [xArray, yArray] for uPlot
+   */
+  function buildAlignedData(eventsMs) {
+    const x = [];
+    const y = [];
+
+    for (const e of eventsMs) {
+      const tSec = Math.floor(Number(e.ts) / 1000);
+      if (!Number.isFinite(tSec)) continue;
+      x.push(tSec);
+      y.push(e.state === "ON" ? 1 : 0);
+    }
+    return [x, y];
+  }
+
+  /**
+   * Render the uPlot chart
+   * @param {string} range - Time range ("24h", "1h", "6h", "7d")
+   */
+  function renderPlot(range = "24h") {
+    lastRange = range;
+
+    if (!historyChart) return;
+
+    // Update hint text
+    if (hintEl) {
+      hintEl.textContent = historyEvents.length
+        ? `${historyEvents.length} evento(s)`
+        : "(sin eventos en el rango)";
+    }
+
+    const data = buildAlignedData(historyEvents);
+
+    // No data: destroy chart and show empty state
+    if (!data[0].length) {
+      if (historyPlot) {
+        historyPlot.destroy();
+        historyPlot = null;
+      }
+      historyChart.innerHTML = "";
+      return;
+    }
+
+    // Configure uPlot options
+    const stepped = uPlot.paths && uPlot.paths.stepped
+      ? uPlot.paths.stepped({ align: 1 })
+      : null;
+
+    const opts = {
+      width: historyChart.clientWidth || 600,
+      height: 160,
+      scales: {
+        x: { time: true },
+        y: {
+          auto: false,
+          range: (u, min, max) => [-0.2, 1.2],
+        },
+      },
+      axes: [
+        {}, // x time axis (default)
+        {
+          splits: (u) => [0, 1],
+          values: (u, splits) => splits.map((v) => (v === 1 ? "ON" : "OFF")),
+        },
+      ],
+      series: [
+        {}, // x series
+        {
+          label: "Estado",
+          width: 2,
+          paths: stepped || undefined,
+          value: (u, v) => (v === 1 ? "ON" : "OFF"),
+        },
+      ],
+    };
+
+    // Create or update chart
+    if (!historyPlot) {
+      historyChart.innerHTML = "";
+      historyPlot = new uPlot(opts, data, historyChart);
+    } else {
+      const w = historyChart.clientWidth || opts.width;
+      historyPlot.setSize({ width: w, height: 160 });
+      historyPlot.setData(data);
+    }
+  }
+
+  /**
+   * Fetch history from API and render chart
+   * @param {string} range - Time range ("24h", "1h", "6h", "7d")
+   * @param {string} deviceId - Device ID
+   * @param {Function} logFn - Function to call for logging
+   */
+  async function load(range = "24h", deviceId = "esp32-01", logFn = () => {}) {
+    try {
+      if (hintEl) hintEl.textContent = "Cargando histórico...";
+
+      const url = `/api/history?deviceId=${encodeURIComponent(
+        deviceId
+      )}&range=${encodeURIComponent(range)}&limit=200&_=${Date.now()}`;
+
+      const historyRes = await fetch(url, { cache: "no-store" });
+      const data = await historyRes.json();
+
+      if (!data.ok) {
+        if (hintEl) hintEl.textContent = "Error cargando histórico";
+        logFn("Error cargando histórico del API");
+        return;
+      }
+
+      const items = Array.isArray(data.items) ? data.items : [];
+      historyEvents = items
+        .map((ev) => ({ ts: Number(ev.ts), state: ev.state }))
+        .filter(
+          (e) =>
+            Number.isFinite(e.ts) && (e.state === "ON" || e.state === "OFF")
+        )
+        .sort((a, b) => a.ts - b.ts);
+
+      logFn(`Histórico cargado: ${historyEvents.length} eventos`);
+
+      // Render chart in next frame to ensure layout is ready
+      requestAnimationFrame(() => renderPlot(range));
+    } catch (e) {
+      if (hintEl) hintEl.textContent = "Error cargando histórico";
+      logFn("Error: " + e.message);
+    }
+  }
+
+  /**
+   * Clear history data and UI
+   */
+  function clear() {
+    historyEvents = [];
+    renderPlot(lastRange);
+  }
+
+  /**
+   * Get current history events
+   * @returns {Array}
+   */
+  function getEvents() {
+    return [...historyEvents];
+  }
+
+  /**
+   * Cleanup before page unload
+   */
+  function cleanup() {
+    stopAutoRefresh();
+    if (historyDebounceTimer) {
+      clearTimeout(historyDebounceTimer);
+      historyDebounceTimer = null;
+    }
+    if (historyPlot) {
+      historyPlot.destroy();
+      historyPlot = null;
+    }
+  }
+
+  return {
+    init,
+    load,
+    clear,
+    renderPlot,
+    scheduleRefresh,
+    startAutoRefresh,
+    stopAutoRefresh,
+    getEvents,
+    cleanup,
+  };
+})();
