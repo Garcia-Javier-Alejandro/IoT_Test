@@ -454,7 +454,7 @@ function buildAlignedData(eventsMs) {
 
 function renderHistoryPlot(range = "24h") {
   lastRange = range;
-  if (!historyChart) return;
+if (!historyChart) return;
 
 // Re-render del gráfico si cambia el tamaño de la ventana
 window.addEventListener("resize", () => renderHistoryPlot(lastRange));
