@@ -98,15 +98,10 @@ const HistoryModule = (() => {
     for (const e of eventsMs) {
       const tSec = Math.floor(Number(e.ts) / 1000);
       if (!Number.isFinite(tSec)) {
-        console.warn('Invalid timestamp:', e.ts);
         continue;
       }
       x.push(tSec);
       y.push(e.state === "ON" ? 1 : 0);
-    }
-    
-    if (x.length > 0) {
-      console.log('Data time range:', new Date(x[0] * 1000).toLocaleString(), 'to', new Date(x[x.length - 1] * 1000).toLocaleString());
     }
     
     return [x, y];
@@ -176,8 +171,6 @@ const HistoryModule = (() => {
       ? uPlot.paths.stepped({ align: 1 })
       : null;
 
-    console.log('Creating uPlot with stepped:', stepped);
-
     const opts = {
       width: historyChart.clientWidth || 600,
       height: 160,
@@ -217,16 +210,12 @@ const HistoryModule = (() => {
 
     // Create or update chart
     if (!historyPlot) {
-      console.log('Creating new uPlot chart with data:', data);
       historyChart.innerHTML = "";
       historyPlot = new uPlot(opts, data, historyChart);
-      console.log('uPlot created:', historyPlot);
     } else {
-      console.log('Updating existing uPlot chart');
       const w = historyChart.clientWidth || opts.width;
       historyPlot.setSize({ width: w, height: 160 });
       historyPlot.setData(data);
-      console.log('uPlot updated');
     }
   }
 
@@ -261,11 +250,6 @@ const HistoryModule = (() => {
             Number.isFinite(e.ts) && (e.state === "ON" || e.state === "OFF")
         )
         .sort((a, b) => a.ts - b.ts);
-
-      console.log('History loaded:', historyEvents.length, 'events');
-      console.log('First event:', historyEvents[0]);
-      console.log('Last event:', historyEvents[historyEvents.length - 1]);
-      console.log('lastUpdateEl:', lastUpdateEl);
       
       logFn(`Histórico cargado: ${historyEvents.length} eventos`);
 
@@ -273,9 +257,6 @@ const HistoryModule = (() => {
       if (lastUpdateEl) {
         const timestamp = new Date().toLocaleTimeString();
         lastUpdateEl.textContent = "Última actualización: " + timestamp;
-        console.log('Updated timestamp to:', timestamp);
-      } else {
-        console.warn('lastUpdateEl is null!');
       }
 
       // Render chart in next frame to ensure layout is ready

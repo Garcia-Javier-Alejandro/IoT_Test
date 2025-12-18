@@ -6,8 +6,14 @@ function json(data, status = 200) {
 }
 
 function parseRangeToMs(rangeStr) {
-  // Acepta: "24h", "7d", "60m"
+  // Acepta: "24h", "7d", "60m", "all"
   const raw = (rangeStr || "24h").toString().trim().toLowerCase();
+  
+  // Special case: "all" means all time (use a very old timestamp)
+  if (raw === "all") {
+    return 365 * 24 * 60 * 60 * 1000; // 1 year back
+  }
+  
   const m = raw.match(/^(\d+)\s*([mhd])$/);
   if (!m) return 24 * 60 * 60 * 1000;
 
