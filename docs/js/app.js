@@ -121,6 +121,9 @@ const AppModule = (() => {
       elements[key] = el;
     }
 
+    // Cache range buttons (NodeList)
+    elements.rangeButtons = document.querySelectorAll(".range-btn");
+
     if (missing.length > 0) {
       console.warn("Missing DOM elements:", missing);
     }

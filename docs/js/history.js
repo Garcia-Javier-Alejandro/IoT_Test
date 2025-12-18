@@ -115,30 +115,10 @@ const HistoryModule = (() => {
     lastRange = range;
 
     if (!historyChart) {
-      console.warn('historyChart element is null');
       return;
     }
 
-    console.log('renderPlot called with', historyEvents.length, 'events');
-
-    // Update hint text with time range
-    if (hintEl) {
-      const rangeText = {
-        "1h": "en la última hora",
-        "12h": "en las últimas 12 horas",
-        "24h": "en las últimas 24 horas",
-        "7d": "en los últimos 7 días",
-        "all": "desde el inicio"
-      }[range] || "en el rango";
-      
-      hintEl.textContent = historyEvents.length
-        ? `${historyEvents.length} evento(s) ${rangeText}`
-        : "(sin eventos en el rango)";
-    }
-
     const data = buildAlignedData(historyEvents);
-    console.log('Built data:', data);
-    console.log('X data points:', data[0].length, 'Y data points:', data[1].length);
 
     // Update hint text with time range
     if (hintEl) {
@@ -157,7 +137,6 @@ const HistoryModule = (() => {
 
     // No data: destroy chart and show empty state
     if (!data[0].length) {
-      console.log('No data to render, clearing chart');
       if (historyPlot) {
         historyPlot.destroy();
         historyPlot = null;
