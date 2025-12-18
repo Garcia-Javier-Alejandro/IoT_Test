@@ -4,6 +4,8 @@
 #include <WiFiClientSecure.h>  // Cliente TLS (HTTPS/MQTTS)
 #include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
 #include <time.h>              // Para NTP (hora del sistema)
+#include <HTTPClient.h>        // Cliente HTTP 
+
 
 // Tus headers (definidos por vos)
 #include "config.h"    // host/puertos/topics/device_id (NO secretos)
@@ -49,6 +51,55 @@ void publishState() {
   Serial.print(" (retain) -> ");
   Serial.println(ok ? "OK" : "FAIL");
 }
+bool postEventToCloudflare(const char* state) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[CF] Skip: no WiFi");
+    return false;
+  }
+
+  // Si no hay hora válida, evitamos registrar timestamps basura
+  time_t now = time(nullptr);
+  if (now < 1700000000) {
+    Serial.println("[CF] Skip: time not synced");
+    return false;
+  }
+
+  WiFiClientSecure client;
+  client.setInsecure(); // PROTOTIPO. Luego lo endurecemos con CA/pinning.
+
+  HTTPClient https;
+  String url = String(CF_API_BASE_URL) + "/api/event";
+
+  if (!https.begin(client, url)) {
+    Serial.println("[CF] https.begin failed");
+    return false;
+  }
+
+  https.addHeader("Content-Type", "application/json");
+  https.addHeader("x-api-key", CF_API_KEY);
+
+  uint64_t tsMs = (uint64_t)now * 1000ULL;
+
+  String body = String("{\"deviceId\":\"") + DEVICE_ID +
+                "\",\"state\":\"" + state +
+                "\",\"ts\":" + String((unsigned long long)tsMs) +
+                "}";
+
+  int code = https.POST(body);
+  String resp = https.getString();
+  https.end();
+
+  Serial.print("[CF] POST /api/event code=");
+  Serial.println(code);
+  if (code < 200 || code >= 300) {
+    Serial.print("[CF] Response: ");
+    Serial.println(resp);
+    return false;
+  }
+
+  return true;
+}
+
 
 // Esta función se llama cada vez que llega un mensaje MQTT
 void onMqttMessage(char* topic, byte* payload, unsigned int length) {
@@ -63,18 +114,31 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 
   // Solo reaccionamos a nuestro topic de comando
   if (t == TOPIC_LED_SET) {
+    bool newState;
+
     if (msg == "ON" || msg == "1") {
-      ledState = true;
+      newState = true;
     } else if (msg == "OFF" || msg == "0") {
-      ledState = false;
+      newState = false;
     } else {
       Serial.println("[MQTT] Comando desconocido. Usá ON/OFF/1/0");
       return;
     }
 
-    applyLed();       // cambia el pin
-    publishState();   // refleja el estado hacia el dashboard
+    // Solo actuamos si cambió
+    if (newState == ledState) {
+      Serial.println("[STATE] No change; skipping.");
+      return;
+    }
+
+    ledState = newState;
+    applyLed();
+    publishState();
+
+    // Registrar evento en Cloudflare
+    postEventToCloudflare(ledState ? "ON" : "OFF");
   }
+
 }
 
 // -------------------- WiFi --------------------
