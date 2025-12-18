@@ -153,6 +153,9 @@ const HistoryModule = (() => {
     const opts = {
       width: historyChart.clientWidth || 600,
       height: 160,
+      legend: {
+        show: false, // Hide legend to avoid overlap with range buttons
+      },
       scales: {
         x: { time: true },
         y: {

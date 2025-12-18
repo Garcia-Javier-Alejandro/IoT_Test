@@ -42,11 +42,24 @@ export async function onRequest({ request, env }) {
   if (!Number.isFinite(ts) || ts <= 0) return json({ ok: false, error: "ts must be a positive number (epoch ms)" }, 400);
 
   try {
+    // Insert new event
     const stmt = env.DB
       .prepare("INSERT INTO events (device_id, ts, state) VALUES (?, ?, ?)")
       .bind(deviceId, ts, state);
 
     const result = await stmt.run();
+
+    // Clean up old events (retain only past 60 days)
+    // Run cleanup periodically (10% chance) to avoid overhead on every insert
+    if (Math.random() < 0.1) {
+      const retentionMs = 60 * 24 * 60 * 60 * 1000; // 60 days in milliseconds
+      const cutoffTs = Date.now() - retentionMs;
+      
+      await env.DB
+        .prepare("DELETE FROM events WHERE ts < ?")
+        .bind(cutoffTs)
+        .run();
+    }
 
     return json({
       ok: true,
