@@ -1,19 +1,62 @@
-export async function onRequest({ request }) {
-  const url = new URL(request.url);
-
-  const deviceId = url.searchParams.get("deviceId") || "esp32-01";
-  const range = url.searchParams.get("range") || "24h";
-
-  const body = {
-    ok: true,
-    endpoint: "GET /api/history",
-    deviceId,
-    range,
-    items: [],
-    note: "stub (next step: read from D1)"
-  };
-
-  return new Response(JSON.stringify(body, null, 2), {
-    headers: { "content-type": "application/json; charset=utf-8" }
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+function parseRangeToMs(rangeStr) {
+  // Acepta: "24h", "7d", "60m"
+  const raw = (rangeStr || "24h").toString().trim().toLowerCase();
+  const m = raw.match(/^(\d+)\s*([mhd])$/);
+  if (!m) return 24 * 60 * 60 * 1000;
+
+  const n = parseInt(m[1], 10);
+  const unit = m[2];
+
+  const mult =
+    unit === "m" ? 60 * 1000 :
+    unit === "h" ? 60 * 60 * 1000 :
+    24 * 60 * 60 * 1000;
+
+  // límites razonables para evitar abusos: 1m a 30d
+  const ms = n * mult;
+  const min = 60 * 1000;
+  const max = 30 * 24 * 60 * 60 * 1000;
+  return Math.max(min, Math.min(max, ms));
+}
+
+export async function onRequest({ request, env }) {
+  if (request.method !== "GET") {
+    return json({ ok: false, error: "Method Not Allowed. Use GET." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const deviceId = (url.searchParams.get("deviceId") || "esp32-01").toString().trim();
+  const range = (url.searchParams.get("range") || "24h").toString().trim();
+  const limit = Math.max(1, Math.min(500, parseInt(url.searchParams.get("limit") || "200", 10)));
+
+  const rangeMs = parseRangeToMs(range);
+  const sinceTs = Date.now() - rangeMs;
+
+  try {
+    const stmt = env.DB
+      .prepare(
+        "SELECT ts, state FROM events WHERE device_id = ? AND ts >= ? ORDER BY ts ASC LIMIT ?"
+      )
+      .bind(deviceId, sinceTs, limit);
+
+    const rows = await stmt.all();
+
+    return json({
+      ok: true,
+      deviceId,
+      range,
+      sinceTs,
+      count: rows.results?.length || 0,
+      items: (rows.results || []).map(r => ({ ts: r.ts, state: r.state })),
+    });
+  } catch (e) {
+    return json({ ok: false, error: "DB query failed", detail: String(e) }, 500);
+  }
 }
