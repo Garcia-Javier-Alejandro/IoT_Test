@@ -271,14 +271,16 @@ const AppModule = (() => {
       }
     }
 
-    // Update button color based on state
+    // Update button color and text based on state
     if (elements.btnValve1) {
       if (state === "ON") {
         elements.btnValve1.classList.remove("btn-on");
         elements.btnValve1.classList.add("btn-off");
+        elements.btnValve1.textContent = "Cerrar válvula 1";
       } else {
         elements.btnValve1.classList.remove("btn-off");
         elements.btnValve1.classList.add("btn-on");
+        elements.btnValve1.textContent = "Abrir válvula 1";
       }
     }
 
@@ -311,14 +313,16 @@ const AppModule = (() => {
       }
     }
 
-    // Update button color based on state
+    // Update button color and text based on state
     if (elements.btnValve2) {
       if (state === "ON") {
         elements.btnValve2.classList.remove("btn-on");
         elements.btnValve2.classList.add("btn-off");
+        elements.btnValve2.textContent = "Cerrar válvula 2";
       } else {
         elements.btnValve2.classList.remove("btn-off");
         elements.btnValve2.classList.add("btn-on");
+        elements.btnValve2.textContent = "Abrir válvula 2";
       }
     }
 
