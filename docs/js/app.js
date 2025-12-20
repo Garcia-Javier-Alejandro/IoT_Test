@@ -75,7 +75,6 @@ const AppModule = (() => {
         elements.userInput.value.trim(),
         elements.passInput.value,
         MQTT_WSS_URL,
-        TOPIC_STATE,
         { HIVEMQ_HOST, DEVICE_ID }
       );
     } else {
