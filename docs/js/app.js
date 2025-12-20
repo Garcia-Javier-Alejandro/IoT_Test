@@ -268,6 +268,17 @@ const AppModule = (() => {
       }
     }
 
+    // Update button color based on state
+    if (elements.btnValve1) {
+      if (state === "ON") {
+        elements.btnValve1.classList.remove("btn-on");
+        elements.btnValve1.classList.add("btn-off");
+      } else {
+        elements.btnValve1.classList.remove("btn-off");
+        elements.btnValve1.classList.add("btn-on");
+      }
+    }
+
     updateButtonStates();
   }
 
@@ -294,6 +305,17 @@ const AppModule = (() => {
         elements.valve2Status.textContent = "CERRADA";
       } else {
         elements.valve2Status.textContent = "DESCONOCIDO";
+      }
+    }
+
+    // Update button color based on state
+    if (elements.btnValve2) {
+      if (state === "ON") {
+        elements.btnValve2.classList.remove("btn-on");
+        elements.btnValve2.classList.add("btn-off");
+      } else {
+        elements.btnValve2.classList.remove("btn-off");
+        elements.btnValve2.classList.add("btn-on");
       }
     }
 

@@ -57,8 +57,9 @@ const MQTTModule = (() => {
       username,
       password,
       clean: true,
-      reconnectPeriod: 2000,
-      connectTimeout: 8000,
+      reconnectPeriod: 5000, // Increased from 2s to 5s
+      connectTimeout: 30000, // Increased from 8s to 30s
+      keepalive: 60,
     });
 
     // Connect event
