@@ -138,7 +138,7 @@ const AppModule = (() => {
       (state) => {
         setValveState(state);
         // Schedule debounced history refresh on state change
-        HistoryModule.scheduleRefresh(1200);
+        HistoryModule.scheduleRefresh(800);
       },
       // onConnected callback
       () => {

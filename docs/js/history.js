@@ -67,9 +67,9 @@ const HistoryModule = (() => {
   /**
    * Schedule a debounced history refresh
    * Used to avoid hammering the API on rapid state changes
-   * @param {number} delay - Delay in ms (default 1200)
+   * @param {number} delay - Delay in ms (default 800)
    */
-  function scheduleRefresh(delay = 1200) {
+  function scheduleRefresh(delay = 800) {
     if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
 
     historyDebounceTimer = setTimeout(async () => {
@@ -206,19 +206,13 @@ const HistoryModule = (() => {
       ],
     };
 
-    // Create or update chart
-    if (!historyPlot) {
-      historyChart.innerHTML = "";
-      historyPlot = new uPlot(opts, data, historyChart);
-    } else {
-      const w = historyChart.clientWidth || opts.width;
-      historyPlot.setSize({ width: w, height: 160 });
-      // Update scale range before setting data
-      if (minTime) {
-        historyPlot.setScale('x', { min: minTime, max: maxTime });
-      }
-      historyPlot.setData(data);
+    // Destroy and recreate chart to ensure proper scale rendering
+    if (historyPlot) {
+      historyPlot.destroy();
+      historyPlot = null;
     }
+    historyChart.innerHTML = "";
+    historyPlot = new uPlot(opts, data, historyChart);
   }
 
   /**
@@ -229,6 +223,9 @@ const HistoryModule = (() => {
    */
   async function load(range = "24h", deviceId = "esp32-01", logFn = () => {}) {
     try {
+      // Update lastRange immediately to prevent cache issues
+      lastRange = range;
+      
       if (hintEl) hintEl.textContent = "Cargando histórico...";
 
       const url = `/api/history?deviceId=${encodeURIComponent(
@@ -261,8 +258,8 @@ const HistoryModule = (() => {
         lastUpdateEl.textContent = "Última actualización: " + timestamp;
       }
 
-      // Render chart in next frame to ensure layout is ready
-      requestAnimationFrame(() => renderPlot(range));
+      // Render chart directly (not in next frame to avoid timing issues)
+      renderPlot(range);
     } catch (e) {
       if (hintEl) hintEl.textContent = "Error cargando histórico";
       logFn("Error: " + e.message);
