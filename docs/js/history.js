@@ -109,7 +109,7 @@ const HistoryModule = (() => {
 
   /**
    * Render the uPlot chart
-   * @param {string} range - Time range ("24h", "1h", "6h", "7d")
+   * @param {string} range - Time range ("1h", "12h", "24h", "all")
    */
   function renderPlot(range = "24h") {
     lastRange = range;
@@ -126,7 +126,6 @@ const HistoryModule = (() => {
         "1h": "en la última hora",
         "12h": "en las últimas 12 horas",
         "24h": "en las últimas 24 horas",
-        "7d": "en los últimos 7 días",
         "all": "desde el inicio"
       }[range] || "en el rango";
       
@@ -151,25 +150,27 @@ const HistoryModule = (() => {
       "1h": 60 * 60,
       "12h": 12 * 60 * 60,
       "24h": 24 * 60 * 60,
-      "7d": 7 * 24 * 60 * 60,
       "all": null
     };
     const rangeSec = rangeMap[range];
     
     let minTime, maxTime;
-    if (range === "all" && data[0].length > 0) {
+    if (range === "all") {
       // For "all", use actual data range with padding
-      const firstTs = data[0][0];
-      const lastTs = data[0][data[0].length - 1];
-      const padding = (lastTs - firstTs) * 0.05 || 3600; // 5% padding or 1 hour
-      minTime = Math.floor(firstTs - padding);
-      maxTime = Math.ceil(Math.max(lastTs + padding, nowSec));
-    } else if (rangeSec) {
-      minTime = nowSec - rangeSec;
-      maxTime = nowSec;
+      if (data[0].length > 0) {
+        const firstTs = data[0][0];
+        const lastTs = data[0][data[0].length - 1];
+        const padding = Math.max((lastTs - firstTs) * 0.05, 3600); // 5% padding or 1 hour min
+        minTime = Math.floor(firstTs - padding);
+        maxTime = Math.ceil(Math.max(lastTs + padding, nowSec));
+      } else {
+        // Fallback for "all" with no data - show last 30 days
+        minTime = nowSec - 30 * 24 * 60 * 60;
+        maxTime = nowSec;
+      }
     } else {
-      // Fallback for "all" with no data
-      minTime = nowSec - 7 * 24 * 60 * 60; // Show last 7 days
+      // For fixed ranges (1h, 12h, 24h), use exact time windows
+      minTime = nowSec - rangeSec;
       maxTime = nowSec;
     }
 
@@ -216,7 +217,7 @@ const HistoryModule = (() => {
             if (range === "1h" || range === "12h") {
               return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             }
-            // For longer ranges (24h, 7d, all), show date
+            // For longer ranges (24h, all), show date
             return fmtDate(v);
           }),
         },
@@ -256,7 +257,7 @@ const HistoryModule = (() => {
 
   /**
    * Fetch history from API and render chart
-   * @param {string} range - Time range ("24h", "1h", "6h", "7d")
+   * @param {string} range - Time range ("1h", "12h", "24h", "all")
    * @param {string} deviceId - Device ID
    * @param {Function} logFn - Function to call for logging
    */
