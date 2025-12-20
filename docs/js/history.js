@@ -155,8 +155,35 @@ const HistoryModule = (() => {
       "all": null
     };
     const rangeSec = rangeMap[range];
-    const minTime = rangeSec ? nowSec - rangeSec : null;
-    const maxTime = nowSec;
+    
+    let minTime, maxTime;
+    if (range === "all" && data[0].length > 0) {
+      // For "all", use actual data range with padding
+      const firstTs = data[0][0];
+      const lastTs = data[0][data[0].length - 1];
+      const padding = (lastTs - firstTs) * 0.05 || 3600; // 5% padding or 1 hour
+      minTime = Math.floor(firstTs - padding);
+      maxTime = Math.ceil(Math.max(lastTs + padding, nowSec));
+    } else if (rangeSec) {
+      minTime = nowSec - rangeSec;
+      maxTime = nowSec;
+    } else {
+      // Fallback for "all" with no data
+      minTime = nowSec - 7 * 24 * 60 * 60; // Show last 7 days
+      maxTime = nowSec;
+    }
+
+    // Date formatter for dd/mm or dd/mm/yyyy
+    function fmtDate(ts) {
+      const d = new Date(ts * 1000);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      
+      // Show year if not current year
+      const currentYear = new Date().getFullYear();
+      return year !== currentYear ? `${day}/${month}/${year}` : `${day}/${month}`;
+    }
 
     // Configure uPlot options
     const stepped = uPlot.paths && uPlot.paths.stepped
@@ -172,7 +199,7 @@ const HistoryModule = (() => {
       scales: {
         x: { 
           time: true,
-          range: minTime ? [minTime, maxTime] : undefined,
+          range: [minTime, maxTime],
         },
         y: {
           auto: false,
@@ -180,7 +207,20 @@ const HistoryModule = (() => {
         },
       },
       axes: [
-        {}, // x time axis (default)
+        {
+          space: 50,
+          values: (u, vals, space) => vals.map(v => {
+            const d = new Date(v * 1000);
+            const rangeDuration = maxTime - minTime;
+            
+            // For ranges < 24h, show time
+            if (rangeDuration < 24 * 60 * 60) {
+              return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            }
+            // For ranges >= 24h, show date
+            return fmtDate(v);
+          }),
+        },
         {
           splits: (u) => [0, 1],
           values: (u, splits) => splits.map((v) => (v === 1 ? "ON" : "OFF")),
