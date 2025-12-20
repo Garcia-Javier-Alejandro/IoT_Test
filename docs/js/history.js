@@ -211,13 +211,12 @@ const HistoryModule = (() => {
           space: 50,
           values: (u, vals, space) => vals.map(v => {
             const d = new Date(v * 1000);
-            const rangeDuration = maxTime - minTime;
             
-            // For ranges < 24h, show time
-            if (rangeDuration < 24 * 60 * 60) {
+            // For short ranges (1h, 12h), show time
+            if (range === "1h" || range === "12h") {
               return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             }
-            // For ranges >= 24h, show date
+            // For longer ranges (24h, 7d, all), show date
             return fmtDate(v);
           }),
         },
