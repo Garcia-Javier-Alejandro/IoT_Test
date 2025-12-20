@@ -4,7 +4,7 @@
 #define MQTT_PORT 8883
 
 // Identidad del dispositivo (te ayuda a ordenar topics)
-#define DEVICE_ID "esp32-01"
+#define DEVICE_ID "esp32-valve-01"
 
 // Topics:
 // TOPIC_VALVE_SET   = dashboard publica comandos (ON/OFF) -> ESP32 se suscribe
