@@ -145,6 +145,19 @@ const HistoryModule = (() => {
       return;
     }
 
+    // Calculate time range in seconds for uPlot
+    const nowSec = Math.floor(Date.now() / 1000);
+    const rangeMap = {
+      "1h": 60 * 60,
+      "12h": 12 * 60 * 60,
+      "24h": 24 * 60 * 60,
+      "7d": 7 * 24 * 60 * 60,
+      "all": null
+    };
+    const rangeSec = rangeMap[range];
+    const minTime = rangeSec ? nowSec - rangeSec : null;
+    const maxTime = nowSec;
+
     // Configure uPlot options
     const stepped = uPlot.paths && uPlot.paths.stepped
       ? uPlot.paths.stepped({ align: 1 })
@@ -157,7 +170,10 @@ const HistoryModule = (() => {
         show: false, // Hide legend to avoid overlap with range buttons
       },
       scales: {
-        x: { time: true },
+        x: { 
+          time: true,
+          range: minTime ? [minTime, maxTime] : undefined,
+        },
         y: {
           auto: false,
           range: (u, min, max) => [-0.2, 1.2],
