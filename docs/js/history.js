@@ -157,30 +157,14 @@ const HistoryModule = (() => {
         show: false, // Hide legend to avoid overlap with range buttons
       },
       scales: {
-        x: { 
-          time: true,
-          auto: true,
-        },
+        x: { time: true },
         y: {
           auto: false,
           range: (u, min, max) => [-0.2, 1.2],
         },
       },
       axes: [
-        {
-          incrs: [
-            // second increments
-            1, 2, 5, 10, 15, 30,
-            // minute increments
-            60, 120, 300, 600, 900, 1800, 3600,
-            // hour increments
-            7200, 14400, 21600, 43200, 86400,
-            // day increments
-            172800, 259200, 345600, 432000, 518400, 604800,
-            // week increments
-            1209600, 2419200, 2592000, 5184000, 7776000, 15552000, 31536000
-          ],
-        },
+        {}, // x time axis (default)
         {
           splits: (u) => [0, 1],
           values: (u, splits) => splits.map((v) => (v === 1 ? "ON" : "OFF")),
