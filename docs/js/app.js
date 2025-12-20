@@ -203,6 +203,8 @@ const AppModule = (() => {
     if (elements.btnValve1) {
       elements.btnValve1.addEventListener("click", () => {
         const newState = valve1State === "ON" ? "OFF" : "ON";
+        const action = newState === "ON" ? "Abriendo" : "Cerrando";
+        LogModule.append(`${action} Válvula 1...`);
         MQTTModule.publish(
           newState,
           window.APP_CONFIG.TOPIC_VALVE1_CMD,
@@ -215,6 +217,8 @@ const AppModule = (() => {
     if (elements.btnValve2) {
       elements.btnValve2.addEventListener("click", () => {
         const newState = valve2State === "ON" ? "OFF" : "ON";
+        const action = newState === "ON" ? "Abriendo" : "Cerrando";
+        LogModule.append(`${action} Válvula 2...`);
         MQTTModule.publish(
           newState,
           window.APP_CONFIG.TOPIC_VALVE2_CMD,
