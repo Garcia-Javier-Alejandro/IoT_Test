@@ -44,7 +44,6 @@ const AppModule = (() => {
       elements.historyChart,
       elements.historyHint,
       elements.btnHistoryRefresh,
-      elements.btnHistoryClear,
       elements.historyLast
     );
 
@@ -107,7 +106,6 @@ const AppModule = (() => {
       "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
       "history-box": "historyBox",
-      "btn-history-clear": "btnHistoryClear",
       "btn-history-refresh": "btnHistoryRefresh",
       "history-last": "historyLast",
       "historyChart": "historyChart",

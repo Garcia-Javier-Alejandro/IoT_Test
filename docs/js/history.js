@@ -20,20 +20,18 @@ const HistoryModule = (() => {
    * @param {HTMLElement} chartEl - Container for the uPlot chart
    * @param {HTMLElement} hintElem - Element for status messages
    * @param {HTMLElement} refreshBtn - Button to refresh history
-   * @param {HTMLElement} clearBtn - Button to clear history
    * @param {HTMLElement} lastUpdateEl - Element to show last update time
    */
-  function init(chartEl, hintElem, refreshBtn, clearBtn, lastUpdate) {
+  function init(chartEl, hintElem, refreshBtn, lastUpdate) {
     historyChart = chartEl;
     hintEl = hintElem;
     lastUpdateEl = lastUpdate;
 
     if (refreshBtn) {
-      refreshBtn.addEventListener("click", () => load("24h"));
-    }
-
-    if (clearBtn) {
-      clearBtn.addEventListener("click", () => clear());
+      refreshBtn.addEventListener("click", () => {
+        // Refresh using the current selected range
+        load(lastRange, window.APP_CONFIG?.DEVICE_ID || "esp32-01", () => {});
+      });
     }
 
     // Auto-resize on window resize
@@ -307,14 +305,6 @@ const HistoryModule = (() => {
   }
 
   /**
-   * Clear history data and UI
-   */
-  function clear() {
-    historyEvents = [];
-    renderPlot(lastRange);
-  }
-
-  /**
    * Get current history events
    * @returns {Array}
    */
@@ -340,7 +330,6 @@ const HistoryModule = (() => {
   return {
     init,
     load,
-    clear,
     renderPlot,
     scheduleRefresh,
     startAutoRefresh,
