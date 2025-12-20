@@ -213,6 +213,10 @@ const HistoryModule = (() => {
     } else {
       const w = historyChart.clientWidth || opts.width;
       historyPlot.setSize({ width: w, height: 160 });
+      // Update scale range before setting data
+      if (minTime) {
+        historyPlot.setScale('x', { min: minTime, max: maxTime });
+      }
       historyPlot.setData(data);
     }
   }
