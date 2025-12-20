@@ -13,6 +13,6 @@ window.APP_CONFIG = {
   DEVICE_ID: "esp32-01",
 
   // Topics (deben coincidir con tu firmware)
-  TOPIC_CMD: "devices/esp32-01/led/gpio4/set",    // dashboard -> ESP32
-  TOPIC_STATE: "devices/esp32-01/led/gpio4/state" // ESP32 -> dashboard
+  TOPIC_CMD: "devices/esp32-01/valve/gpio19/set",    // dashboard -> ESP32
+  TOPIC_STATE: "devices/esp32-01/valve/gpio19/state" // ESP32 -> dashboard
 };

@@ -12,8 +12,8 @@
 #include "ca_cert.h"   // certificado Root CA (público)
 
 // -------------------- Hardware --------------------
-static const int LED_PIN = 4;     // GPIO4 -> resistencia -> LED -> GND
-static bool ledState = false;     // Estado "lógico" del LED
+static const int VALVE_PIN = 19;  // GPIO19 -> MOSFET gate -> 24V electrovalve
+static bool valveState = false;   // Estado "lógico" de la electroválvula
 
 // -------------------- MQTT/TLS --------------------
 // Cliente TLS (se usa para conectar a un servidor con certificado)
@@ -22,9 +22,9 @@ WiFiClientSecure tlsClient;
 // Cliente MQTT que viaja por el tlsClient
 PubSubClient mqtt(tlsClient);
 
-// Aplica ledState al pin real
-void applyLed() {
-  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+// Aplica valveState al pin real (MOSFET gate control)
+void applyValve() {
+  digitalWrite(VALVE_PIN, valveState ? HIGH : LOW);
 }
 
 // Convierte payload MQTT (bytes) a String
@@ -36,20 +36,21 @@ String payloadToString(const byte* payload, unsigned int length) {
   return s;
 }
 
-// Publica el estado actual del LED en el topic de "state"
+// Publica el estado actual de la electroválvula en el topic de "state"
 // retain=true: el broker guarda el último valor y se lo entrega a quien se suscriba después.
 void publishState() {
-  const char* msg = ledState ? "ON" : "OFF";
+  const char* msg = valveState ? "ON" : "OFF";
 
-  bool ok = mqtt.publish(TOPIC_LED_STATE, msg, true /*retain*/);
+  bool ok = mqtt.publish(TOPIC_VALVE_STATE, msg, true /*retain*/);
 
   Serial.print("[MQTT] publish ");
-  Serial.print(TOPIC_LED_STATE);
+  Serial.print(TOPIC_VALVE_STATE);
   Serial.print(" = ");
   Serial.print(msg);
   Serial.print(" (retain) -> ");
   Serial.println(ok ? "OK" : "FAIL");
 }
+
 bool postEventToCloudflare(const char* state) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[CF] Skip: no WiFi");
@@ -114,7 +115,7 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   Serial.println(msg);
 
   // Solo reaccionamos a nuestro topic de comando
-  if (t == TOPIC_LED_SET) {
+  if (t == TOPIC_VALVE_SET) {
     bool newState;
 
     if (msg == "ON" || msg == "1") {
@@ -127,17 +128,17 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     }
 
     // Solo actuamos si cambió
-    if (newState == ledState) {
+    if (newState == valveState) {
       Serial.println("[STATE] No change; skipping.");
       return;
     }
 
-    ledState = newState;
-    applyLed();
+    valveState = newState;
+    applyValve();
     publishState();
 
     // Registrar evento en Cloudflare
-    postEventToCloudflare(ledState ? "ON" : "OFF");
+    postEventToCloudflare(valveState ? "ON" : "OFF");
   }
 
 }
@@ -145,25 +146,46 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 // -------------------- WiFi --------------------
 bool connectWiFi() {
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-
+  
+  // Try primary WiFi credentials
   Serial.println();
   Serial.print("[WiFi] Conectando a ");
   Serial.println(WIFI_SSID);
-
-  const uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && (millis() - start) < 20000) {
+  
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  uint32_t start = millis();
+  
+  while (WiFi.status() != WL_CONNECTED && (millis() - start) < 15000) {
     Serial.print(".");
     delay(500);
   }
   Serial.println();
 
+  // If primary failed, try secondary WiFi
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] ERROR: timeout conectando.");
+    Serial.println("[WiFi] ERROR: timeout con WiFi primaria. Intentando WiFi secundaria...");
+    
+    Serial.print("[WiFi] Conectando a ");
+    Serial.println(WIFI_SSID_2);
+    
+    WiFi.begin(WIFI_SSID_2, WIFI_PASS_2);
+    start = millis();
+    
+    while (WiFi.status() != WL_CONNECTED && (millis() - start) < 15000) {
+      Serial.print(".");
+      delay(500);
+    }
+    Serial.println();
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] ERROR: timeout conectando a ambas redes WiFi.");
     return false;
   }
 
   Serial.println("[WiFi] OK conectado.");
+  Serial.print("[WiFi] SSID: ");
+  Serial.println(WiFi.SSID());
   Serial.print("[WiFi] IP: ");
   Serial.println(WiFi.localIP());
   return true;
@@ -231,9 +253,9 @@ bool connectMqtt() {
   Serial.println("[MQTT] OK conectado.");
 
   // Nos suscribimos al topic de comando
-  mqtt.subscribe(TOPIC_LED_SET);
+  mqtt.subscribe(TOPIC_VALVE_SET);
   Serial.print("[MQTT] Subscribed: ");
-  Serial.println(TOPIC_LED_SET);
+  Serial.println(TOPIC_VALVE_SET);
 
   // Publicamos estado inicial (y queda retenido)
   publishState();
@@ -245,9 +267,9 @@ void setup() {
   Serial.begin(115200);
   delay(500);
 
-  pinMode(LED_PIN, OUTPUT);
-  ledState = false;
-  applyLed();
+  pinMode(VALVE_PIN, OUTPUT);
+  valveState = false;
+  applyValve();
 
   // 1) WiFi
   connectWiFi();

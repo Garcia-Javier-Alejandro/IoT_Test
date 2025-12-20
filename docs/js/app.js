@@ -58,7 +58,7 @@ const AppModule = (() => {
     loadStoredCredentials();
 
     // Initialize UI state
-    setLedState("UNKNOWN");
+    setValveState("UNKNOWN");
     disconnectUI();
 
     // Load initial history
@@ -136,7 +136,7 @@ const AppModule = (() => {
     MQTTModule.onEvents(
       // onStateChange callback
       (state) => {
-        setLedState(state);
+        setValveState(state);
         // Schedule debounced history refresh on state change
         HistoryModule.scheduleRefresh(1200);
       },
@@ -234,9 +234,9 @@ const AppModule = (() => {
   }
 
   /**
-   * Update LED state display and button states
+   * Update valve state display and button states
    */
-  function setLedState(state) {
+  function setValveState(state) {
     lastState = state;
 
     if (elements.ledDot) {
@@ -251,9 +251,9 @@ const AppModule = (() => {
 
     if (elements.ledStatus) {
       if (state === "ON") {
-        elements.ledStatus.textContent = "ENCENDIDO";
+        elements.ledStatus.textContent = "ABIERTA";
       } else if (state === "OFF") {
-        elements.ledStatus.textContent = "APAGADO";
+        elements.ledStatus.textContent = "CERRADA";
       } else {
         elements.ledStatus.textContent = "DESCONOCIDO";
       }

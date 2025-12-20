@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="/css/styles.css" />
 
   <meta charset="UTF-8" />
-  <title>Panel de Control LED</title>
+  <title>Panel de Control Electroválvula</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
 
@@ -15,7 +15,7 @@
     <div class="shell">
       <!-- Header -->
       <div class="header">
-        <h1>Panel de Control LED</h1>
+        <h1>Panel de Control Electroválvula</h1>
       </div>
       <div class="divider"></div>
 
@@ -52,9 +52,9 @@
           </button>
         </div>
 
-        <!-- LED Status -->
+        <!-- Valve Status -->
         <div class="row-card">
-          <div class="row-label">Estado del LED</div>
+          <div class="row-label">Estado de la Válvula</div>
           <div class="pill">
             <span id="led-dot" class="dot"></span>
             <span id="led-status">DESCONOCIDO</span>
@@ -81,7 +81,7 @@
               <path d="M12 2v10"/>
               <path d="M6.38 6.38a9 9 0 1 0 11.24 0"/>
             </svg>
-            Encender
+            Abrir Válvula
           </button>
 
           <button id="btn-off" class="action-btn btn-off" disabled>
@@ -91,7 +91,7 @@
               <path d="M6 6h12"/>
               <path d="M4 4l16 16"/>
             </svg>
-            Apagar
+            Cerrar Válvula
           </button>
         </div>
 
@@ -142,7 +142,7 @@
 
       <!-- Footer -->
       <div class="footer">
-        <span class="muted">v1.4.0</span> • <span class="muted">IoT Dashboard</span>
+        <span class="muted">v2.0.0</span> • <span class="muted">IoT Valve Control</span>
       </div>
     </div>
   </div>

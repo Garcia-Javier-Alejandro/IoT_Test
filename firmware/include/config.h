@@ -7,7 +7,7 @@
 #define DEVICE_ID "esp32-01"
 
 // Topics:
-// TOPIC_LED_SET   = dashboard publica comandos (ON/OFF) -> ESP32 se suscribe
-// TOPIC_LED_STATE = ESP32 publica estado (ON/OFF) -> dashboard se suscribe
-#define TOPIC_LED_SET    "devices/" DEVICE_ID"/led/gpio4/set"
-#define TOPIC_LED_STATE  "devices/" DEVICE_ID "/led/gpio4/state"
+// TOPIC_VALVE_SET   = dashboard publica comandos (ON/OFF) -> ESP32 se suscribe
+// TOPIC_VALVE_STATE = ESP32 publica estado (ON/OFF) -> dashboard se suscribe
+#define TOPIC_VALVE_SET    "devices/" DEVICE_ID"/valve/gpio19/set"
+#define TOPIC_VALVE_STATE  "devices/" DEVICE_ID "/valve/gpio19/state"
