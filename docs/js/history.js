@@ -90,9 +90,16 @@ const HistoryModule = (() => {
    * @returns {Array} [xArray, y1Array, y2Array] for uPlot
    */
   function buildAlignedData(eventsMs) {
-    // Build separate arrays for valve1 and valve2
-    const valve1Events = eventsMs.filter(e => e.valveId === 1);
-    const valve2Events = eventsMs.filter(e => e.valveId === 2);
+    // Build separate arrays for valve1 and valve2, sorted by timestamp
+    const valve1Events = eventsMs
+      .filter(e => e.valveId === 1)
+      .map(e => ({ tSec: Math.floor(Number(e.ts) / 1000), state: e.state }))
+      .sort((a, b) => a.tSec - b.tSec);
+    
+    const valve2Events = eventsMs
+      .filter(e => e.valveId === 2)
+      .map(e => ({ tSec: Math.floor(Number(e.ts) / 1000), state: e.state }))
+      .sort((a, b) => a.tSec - b.tSec);
     
     // Get all unique timestamps
     const allTimestamps = new Set();
@@ -105,25 +112,33 @@ const HistoryModule = (() => {
     
     const x = Array.from(allTimestamps).sort((a, b) => a - b);
     
-    // Build y arrays with nulls where there's no data
-    const y1 = new Array(x.length).fill(null);
-    const y2 = new Array(x.length).fill(null);
+    // Build y arrays, carrying forward last known state for stepped chart
+    const y1 = new Array(x.length);
+    const y2 = new Array(x.length);
     
-    valve1Events.forEach(e => {
-      const tSec = Math.floor(Number(e.ts) / 1000);
-      const idx = x.indexOf(tSec);
-      if (idx !== -1) {
-        y1[idx] = e.state === "ON" ? 1 : 0;
-      }
-    });
+    let lastValve1State = null;
+    let valve1Idx = 0;
     
-    valve2Events.forEach(e => {
-      const tSec = Math.floor(Number(e.ts) / 1000);
-      const idx = x.indexOf(tSec);
-      if (idx !== -1) {
-        y2[idx] = e.state === "ON" ? 1 : 0;
+    let lastValve2State = null;
+    let valve2Idx = 0;
+    
+    for (let i = 0; i < x.length; i++) {
+      const timestamp = x[i];
+      
+      // Update valve1 state if there's an event at this timestamp
+      while (valve1Idx < valve1Events.length && valve1Events[valve1Idx].tSec <= timestamp) {
+        lastValve1State = valve1Events[valve1Idx].state === "ON" ? 1 : 0;
+        valve1Idx++;
       }
-    });
+      y1[i] = lastValve1State;
+      
+      // Update valve2 state if there's an event at this timestamp
+      while (valve2Idx < valve2Events.length && valve2Events[valve2Idx].tSec <= timestamp) {
+        lastValve2State = valve2Events[valve2Idx].state === "ON" ? 1 : 0;
+        valve2Idx++;
+      }
+      y2[i] = lastValve2State;
+    }
     
     return [x, y1, y2];
   }
