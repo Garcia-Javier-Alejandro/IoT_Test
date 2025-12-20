@@ -12,7 +12,11 @@ window.APP_CONFIG = {
   // Identidad (solo para armar topics y mostrar en UI si querés)
   DEVICE_ID: "esp32-valve-01",
 
-  // Topics (deben coincidir con tu firmware)
-  TOPIC_CMD: "devices/esp32-valve-01/valve/gpio19/set",    // dashboard -> ESP32
-  TOPIC_STATE: "devices/esp32-valve-01/valve/gpio19/state" // ESP32 -> dashboard
+  // Topics para Válvula 1 (deben coincidir con tu firmware)
+  TOPIC_VALVE1_CMD: "devices/esp32-valve-01/valve1/set",    // dashboard -> ESP32
+  TOPIC_VALVE1_STATE: "devices/esp32-valve-01/valve1/state", // ESP32 -> dashboard
+
+  // Topics para Válvula 2
+  TOPIC_VALVE2_CMD: "devices/esp32-valve-01/valve2/set",
+  TOPIC_VALVE2_STATE: "devices/esp32-valve-01/valve2/state"
 };

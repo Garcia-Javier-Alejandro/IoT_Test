@@ -48,7 +48,7 @@ export async function onRequest({ request, env }) {
   try {
     const stmt = env.DB
       .prepare(
-        "SELECT ts, state FROM events WHERE device_id = ? AND ts >= ? ORDER BY ts ASC LIMIT ?"
+        "SELECT ts, state, valve_id FROM events WHERE device_id = ? AND ts >= ? ORDER BY ts ASC LIMIT ?"
       )
       .bind(deviceId, sinceTs, limit);
 
@@ -60,7 +60,11 @@ export async function onRequest({ request, env }) {
       range,
       sinceTs,
       count: rows.results?.length || 0,
-      items: (rows.results || []).map(r => ({ ts: r.ts, state: r.state })),
+      items: (rows.results || []).map(r => ({ 
+        ts: r.ts, 
+        state: r.state,
+        valve_id: r.valve_id || 1 // Default to 1 for old records
+      })),
     });
   } catch (e) {
     return json({ ok: false, error: "DB query failed", detail: String(e) }, 500);

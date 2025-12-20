@@ -54,10 +54,18 @@
 
         <!-- Valve Status -->
         <div class="row-card">
-          <div class="row-label">Estado de la Válvula</div>
+          <div class="row-label">Estado Válvula 1</div>
           <div class="pill">
-            <span id="led-dot" class="dot"></span>
-            <span id="led-status">DESCONOCIDO</span>
+            <span id="valve1-dot" class="dot"></span>
+            <span id="valve1-status">DESCONOCIDO</span>
+          </div>
+        </div>
+
+        <div class="row-card">
+          <div class="row-label">Estado Válvula 2</div>
+          <div class="pill">
+            <span id="valve2-dot" class="dot"></span>
+            <span id="valve2-status">DESCONOCIDO</span>
           </div>
         </div>
 
@@ -74,24 +82,22 @@
           </div>
         </div>
 
-        <!-- ON/OFF Buttons -->
+        <!-- Valve Toggle Buttons -->
         <div class="actions">
-          <button id="btn-on" class="action-btn btn-on" disabled>
+          <button id="btn-valve1" class="action-btn btn-on" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2v10"/>
               <path d="M6.38 6.38a9 9 0 1 0 11.24 0"/>
             </svg>
-            Abrir Válvula
+            Válvula 1
           </button>
 
-          <button id="btn-off" class="action-btn btn-off" disabled>
+          <button id="btn-valve2" class="action-btn btn-on" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10 2h4"/>
-              <path d="M12 14a4 4 0 0 0 4-4V6H8v4a4 4 0 0 0 4 4Z"/>
-              <path d="M6 6h12"/>
-              <path d="M4 4l16 16"/>
+              <path d="M12 2v10"/>
+              <path d="M6.38 6.38a9 9 0 1 0 11.24 0"/>
             </svg>
-            Cerrar Válvula
+            Válvula 2
           </button>
         </div>
 

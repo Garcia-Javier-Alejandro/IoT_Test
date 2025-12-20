@@ -85,24 +85,47 @@ const HistoryModule = (() => {
   }
 
   /**
-   * Convert ms timestamps to seconds for uPlot
-   * @param {Array} eventsMs - Array of { ts: ms, state: string }
-   * @returns {Array} [xArray, yArray] for uPlot
+   * Convert ms timestamps to seconds for uPlot, separating by valve
+   * @param {Array} eventsMs - Array of { ts: ms, state: string, valveId: number }
+   * @returns {Array} [xArray, y1Array, y2Array] for uPlot
    */
   function buildAlignedData(eventsMs) {
-    const x = [];
-    const y = [];
-
-    for (const e of eventsMs) {
-      const tSec = Math.floor(Number(e.ts) / 1000);
-      if (!Number.isFinite(tSec)) {
-        continue;
-      }
-      x.push(tSec);
-      y.push(e.state === "ON" ? 1 : 0);
-    }
+    // Build separate arrays for valve1 and valve2
+    const valve1Events = eventsMs.filter(e => e.valveId === 1);
+    const valve2Events = eventsMs.filter(e => e.valveId === 2);
     
-    return [x, y];
+    // Get all unique timestamps
+    const allTimestamps = new Set();
+    eventsMs.forEach(e => {
+      const tSec = Math.floor(Number(e.ts) / 1000);
+      if (Number.isFinite(tSec)) {
+        allTimestamps.add(tSec);
+      }
+    });
+    
+    const x = Array.from(allTimestamps).sort((a, b) => a - b);
+    
+    // Build y arrays with nulls where there's no data
+    const y1 = new Array(x.length).fill(null);
+    const y2 = new Array(x.length).fill(null);
+    
+    valve1Events.forEach(e => {
+      const tSec = Math.floor(Number(e.ts) / 1000);
+      const idx = x.indexOf(tSec);
+      if (idx !== -1) {
+        y1[idx] = e.state === "ON" ? 1 : 0;
+      }
+    });
+    
+    valve2Events.forEach(e => {
+      const tSec = Math.floor(Number(e.ts) / 1000);
+      const idx = x.indexOf(tSec);
+      if (idx !== -1) {
+        y2[idx] = e.state === "ON" ? 1 : 0;
+      }
+    });
+    
+    return [x, y1, y2];
   }
 
   /**
@@ -227,17 +250,32 @@ const HistoryModule = (() => {
       series: [
         {}, // x series
         {
-          label: "Estado",
+          label: "Válvula 1",
           width: 3,
           stroke: "#3b82f6", // Blue color
           fill: "rgba(59, 130, 246, 0.1)", // Light blue fill
           paths: stepped || undefined,
-          value: (u, v) => (v === 1 ? "ON" : "OFF"),
+          value: (u, v) => (v === 1 ? "ON" : v === 0 ? "OFF" : "-"),
           points: {
             show: true,
             size: 5,
             width: 2,
             stroke: "#3b82f6",
+            fill: "#ffffff",
+          },
+        },
+        {
+          label: "Válvula 2",
+          width: 3,
+          stroke: "#10b981", // Green color
+          fill: "rgba(16, 185, 129, 0.1)", // Light green fill
+          paths: stepped || undefined,
+          value: (u, v) => (v === 1 ? "ON" : v === 0 ? "OFF" : "-"),
+          points: {
+            show: true,
+            size: 5,
+            width: 2,
+            stroke: "#10b981",
             fill: "#ffffff",
           },
         },
@@ -281,10 +319,16 @@ const HistoryModule = (() => {
 
       const items = Array.isArray(data.items) ? data.items : [];
       historyEvents = items
-        .map((ev) => ({ ts: Number(ev.ts), state: ev.state }))
+        .map((ev) => ({ 
+          ts: Number(ev.ts), 
+          state: ev.state,
+          valveId: Number(ev.valve_id) || 1 // Default to valve 1 for old events
+        }))
         .filter(
           (e) =>
-            Number.isFinite(e.ts) && (e.state === "ON" || e.state === "OFF")
+            Number.isFinite(e.ts) && 
+            (e.state === "ON" || e.state === "OFF") &&
+            (e.valveId === 1 || e.valveId === 2)
         )
         .sort((a, b) => a.ts - b.ts);
       

@@ -12,8 +12,8 @@
 #include "ca_cert.h"   // certificado Root CA (público)
 
 // -------------------- Hardware --------------------
-static const int VALVE_PIN = 19;  // GPIO19 -> MOSFET gate -> 24V electrovalve
-static bool valveState = false;   // Estado "lógico" de la electroválvula
+static bool valve1State = false;   // Estado lógico de la electroválvula 1 (GPIO19)
+static bool valve2State = false;   // Estado lógico de la electroválvula 2 (GPIO16)
 
 // -------------------- MQTT/TLS --------------------
 // Cliente TLS (se usa para conectar a un servidor con certificado)
@@ -22,9 +22,10 @@ WiFiClientSecure tlsClient;
 // Cliente MQTT que viaja por el tlsClient
 PubSubClient mqtt(tlsClient);
 
-// Aplica valveState al pin real (MOSFET gate control)
-void applyValve() {
-  digitalWrite(VALVE_PIN, valveState ? HIGH : LOW);
+// Aplica estados de ambas válvulas a los pines reales (MOSFET gate control)
+void applyValves() {
+  digitalWrite(VALVE1_PIN, valve1State ? HIGH : LOW);
+  digitalWrite(VALVE2_PIN, valve2State ? HIGH : LOW);
 }
 
 // Convierte payload MQTT (bytes) a String
@@ -36,22 +37,27 @@ String payloadToString(const byte* payload, unsigned int length) {
   return s;
 }
 
-// Publica el estado actual de la electroválvula en el topic de "state"
+// Publica el estado actual de ambas electroválvulas en sus topics de "state"
 // retain=true: el broker guarda el último valor y se lo entrega a quien se suscriba después.
-void publishState() {
-  const char* msg = valveState ? "ON" : "OFF";
-
-  bool ok = mqtt.publish(TOPIC_VALVE_STATE, msg, true /*retain*/);
-
+void publishStates() {
+  const char* msg1 = valve1State ? "ON" : "OFF";
+  bool ok1 = mqtt.publish(TOPIC_VALVE1_STATE, msg1, true /*retain*/);
   Serial.print("[MQTT] publish ");
-  Serial.print(TOPIC_VALVE_STATE);
+  Serial.print(TOPIC_VALVE1_STATE);
   Serial.print(" = ");
-  Serial.print(msg);
-  Serial.print(" (retain) -> ");
-  Serial.println(ok ? "OK" : "FAIL");
+  Serial.print(msg1);
+  Serial.println(ok1 ? " OK" : " FAIL");
+
+  const char* msg2 = valve2State ? "ON" : "OFF";
+  bool ok2 = mqtt.publish(TOPIC_VALVE2_STATE, msg2, true /*retain*/);
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_VALVE2_STATE);
+  Serial.print(" = ");
+  Serial.print(msg2);
+  Serial.println(ok2 ? " OK" : " FAIL");
 }
 
-bool postEventToCloudflare(const char* state) {
+bool postEventToCloudflare(const char* state, int valveId) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[CF] Skip: no WiFi");
     return false;
@@ -84,7 +90,8 @@ bool postEventToCloudflare(const char* state) {
 
   String body = String("{\"deviceId\":\"") + DEVICE_ID +
                 "\",\"state\":\"" + state +
-                "\",\"ts\":" + String((unsigned long long)tsMs) +
+                "\",\"valveId\":" + String(valveId) +
+                ",\"ts\":" + String((unsigned long long)tsMs) +
                 "}";
 
   int code = https.POST(body);
@@ -114,33 +121,44 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   Serial.print(" : ");
   Serial.println(msg);
 
-  // Solo reaccionamos a nuestro topic de comando
-  if (t == TOPIC_VALVE_SET) {
-    bool newState;
+  // Determinar qué válvula se controla
+  bool isValve1 = (t == TOPIC_VALVE1_SET);
+  bool isValve2 = (t == TOPIC_VALVE2_SET);
 
-    if (msg == "ON" || msg == "1") {
-      newState = true;
-    } else if (msg == "OFF" || msg == "0") {
-      newState = false;
-    } else {
-      Serial.println("[MQTT] Comando desconocido. Usá ON/OFF/1/0");
-      return;
-    }
-
-    // Solo actuamos si cambió
-    if (newState == valveState) {
-      Serial.println("[STATE] No change; skipping.");
-      return;
-    }
-
-    valveState = newState;
-    applyValve();
-    publishState();
-
-    // Registrar evento en Cloudflare
-    postEventToCloudflare(valveState ? "ON" : "OFF");
+  if (!isValve1 && !isValve2) {
+    return; // Mensaje no es para nosotros
   }
 
+  bool newState;
+  if (msg == "ON" || msg == "1") {
+    newState = true;
+  } else if (msg == "OFF" || msg == "0") {
+    newState = false;
+  } else {
+    Serial.println("[MQTT] Comando desconocido. Usá ON/OFF/1/0");
+    return;
+  }
+
+  // Actualizar la válvula correspondiente
+  if (isValve1) {
+    if (newState == valve1State) {
+      Serial.println("[STATE] Valve1 no change; skipping.");
+      return;
+    }
+    valve1State = newState;
+    applyValves();
+    publishStates();
+    postEventToCloudflare(valve1State ? "ON" : "OFF", 1);
+  } else if (isValve2) {
+    if (newState == valve2State) {
+      Serial.println("[STATE] Valve2 no change; skipping.");
+      return;
+    }
+    valve2State = newState;
+    applyValves();
+    publishStates();
+    postEventToCloudflare(valve2State ? "ON" : "OFF", 2);
+  }
 }
 
 // -------------------- WiFi --------------------
@@ -252,13 +270,17 @@ bool connectMqtt() {
 
   Serial.println("[MQTT] OK conectado.");
 
-  // Nos suscribimos al topic de comando
-  mqtt.subscribe(TOPIC_VALVE_SET);
+  // Nos suscribimos a ambos topics de comando
+  mqtt.subscribe(TOPIC_VALVE1_SET);
   Serial.print("[MQTT] Subscribed: ");
-  Serial.println(TOPIC_VALVE_SET);
+  Serial.println(TOPIC_VALVE1_SET);
+  
+  mqtt.subscribe(TOPIC_VALVE2_SET);
+  Serial.print("[MQTT] Subscribed: ");
+  Serial.println(TOPIC_VALVE2_SET);
 
   // Publicamos estado inicial (y queda retenido)
-  publishState();
+  publishStates();
   return true;
 }
 
@@ -267,9 +289,11 @@ void setup() {
   Serial.begin(115200);
   delay(500);
 
-  pinMode(VALVE_PIN, OUTPUT);
-  valveState = false;
-  applyValve();
+  pinMode(VALVE1_PIN, OUTPUT);
+  pinMode(VALVE2_PIN, OUTPUT);
+  valve1State = false;
+  valve2State = false;
+  applyValves();
 
   // 1) WiFi
   connectWiFi();

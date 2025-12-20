@@ -6,19 +6,23 @@
 
 const MQTTModule = (() => {
   let client = null;
-  let lastState = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
-  let onStateChange = null; // Callback when state changes
+  let valve1State = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
+  let valve2State = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
+  let onValve1StateChange = null; // Callback when valve1 state changes
+  let onValve2StateChange = null; // Callback when valve2 state changes
   let onConnected = null; // Callback when connected
   let onDisconnected = null; // Callback when disconnected
 
   /**
    * Register callbacks for MQTT events
-   * @param {Function} stateChangeCb - Callback(state) when LED state changes
+   * @param {Function} valve1ChangeCb - Callback(state) when valve1 state changes
+   * @param {Function} valve2ChangeCb - Callback(state) when valve2 state changes
    * @param {Function} connectedCb - Callback() when connected
    * @param {Function} disconnectedCb - Callback() when disconnected
    */
-  function onEvents(stateChangeCb, connectedCb, disconnectedCb) {
-    onStateChange = stateChangeCb;
+  function onEvents(valve1ChangeCb, valve2ChangeCb, connectedCb, disconnectedCb) {
+    onValve1StateChange = valve1ChangeCb;
+    onValve2StateChange = valve2ChangeCb;
     onConnected = connectedCb;
     onDisconnected = disconnectedCb;
   }
@@ -45,7 +49,7 @@ const MQTTModule = (() => {
 
     logFn(`Broker: ${config.HIVEMQ_HOST || "(host)"}${deviceId ? " | " + deviceId : ""}`);
     logFn(`WSS: ${brokerUrl}`);
-    logFn(`Topics: set=${topics.cmd} | state=${topics.state}`);
+    logFn(`Topics: valve1=${topics.valve1State} | valve2=${topics.valve2State}`);
     logFn("Conectando…");
 
     client = mqtt.connect(brokerUrl, {
@@ -61,9 +65,17 @@ const MQTTModule = (() => {
     client.on("connect", () => {
       logFn("Conectado al broker como " + clientId);
 
-      client.subscribe(topics.state, { qos: 0 }, (err) => {
+      client.subscribe(topics.valve1State, { qos: 0 }, (err) => {
         if (!err) {
-          logFn("Suscripto a " + topics.state);
+          logFn("Suscripto a " + topics.valve1State);
+        } else {
+          logFn("Error al suscribirse: " + err.message);
+        }
+      });
+
+      client.subscribe(topics.valve2State, { qos: 0 }, (err) => {
+        if (!err) {
+          logFn("Suscripto a " + topics.valve2State);
         } else {
           logFn("Error al suscribirse: " + err.message);
         }
@@ -97,11 +109,18 @@ const MQTTModule = (() => {
     // Message received
     client.on("message", (topic, payload) => {
       const msg = payload.toString().trim().toUpperCase();
-      if (topic === topics.state) {
-        logFn("Estado recibido: " + msg);
+      
+      if (topic === topics.valve1State) {
+        logFn("Válvula 1 estado: " + msg);
         if (msg === "ON" || msg === "OFF") {
-          lastState = msg;
-          if (onStateChange) onStateChange(msg);
+          valve1State = msg;
+          if (onValve1StateChange) onValve1StateChange(msg);
+        }
+      } else if (topic === topics.valve2State) {
+        logFn("Válvula 2 estado: " + msg);
+        if (msg === "ON" || msg === "OFF") {
+          valve2State = msg;
+          if (onValve2StateChange) onValve2StateChange(msg);
         }
       }
     });
@@ -149,11 +168,11 @@ const MQTTModule = (() => {
   }
 
   /**
-   * Get last known LED state
-   * @returns {string} "ON" | "OFF" | "UNKNOWN"
+   * Get last known valve states
+   * @returns {Object} { valve1: "ON"|"OFF"|"UNKNOWN", valve2: "ON"|"OFF"|"UNKNOWN" }
    */
-  function getLastState() {
-    return lastState;
+  function getLastStates() {
+    return { valve1: valve1State, valve2: valve2State };
   }
 
   return {
@@ -162,6 +181,6 @@ const MQTTModule = (() => {
     disconnect,
     publish,
     isConnected,
-    getLastState,
+    getLastStates,
   };
 })();

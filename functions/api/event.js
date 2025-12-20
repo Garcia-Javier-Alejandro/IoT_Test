@@ -36,16 +36,18 @@ export async function onRequest({ request, env }) {
   const deviceId = (payload.deviceId || "esp32-01").toString().trim();
   const state = normalizeState(payload.state);
   const ts = Number.isFinite(payload.ts) ? Number(payload.ts) : Date.now();
+  const valveId = Number.isFinite(payload.valveId) ? Number(payload.valveId) : 1; // Default to valve 1
 
   if (!deviceId) return json({ ok: false, error: "deviceId is required" }, 400);
   if (!state) return json({ ok: false, error: 'state must be "ON" or "OFF"' }, 400);
   if (!Number.isFinite(ts) || ts <= 0) return json({ ok: false, error: "ts must be a positive number (epoch ms)" }, 400);
+  if (valveId !== 1 && valveId !== 2) return json({ ok: false, error: "valveId must be 1 or 2" }, 400);
 
   try {
-    // Insert new event
+    // Insert new event with valve_id
     const stmt = env.DB
-      .prepare("INSERT INTO events (device_id, ts, state) VALUES (?, ?, ?)")
-      .bind(deviceId, ts, state);
+      .prepare("INSERT INTO events (device_id, ts, state, valve_id) VALUES (?, ?, ?, ?)")
+      .bind(deviceId, ts, state, valveId);
 
     const result = await stmt.run();
 
@@ -67,6 +69,7 @@ export async function onRequest({ request, env }) {
         deviceId,
         ts,
         state,
+        valveId,
       },
       meta: {
         success: result.success,
