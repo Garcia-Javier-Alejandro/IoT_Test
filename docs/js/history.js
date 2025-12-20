@@ -130,7 +130,7 @@ const HistoryModule = (() => {
 
   /**
    * Render the uPlot chart
-   * @param {string} range - Time range ("1h", "12h", "24h", "all")
+   * @param {string} range - Time range ("1h", "24h", "all")
    */
   function renderPlot(range = "24h") {
     lastRange = range;
@@ -145,7 +145,6 @@ const HistoryModule = (() => {
     if (hintEl) {
       const rangeText = {
         "1h": "en la última hora",
-        "12h": "en las últimas 12 horas",
         "24h": "en las últimas 24 horas",
         "all": "desde el inicio"
       }[range] || "en el rango";
@@ -169,7 +168,6 @@ const HistoryModule = (() => {
     const nowSec = Math.floor(Date.now() / 1000);
     const rangeMap = {
       "1h": 60 * 60,
-      "12h": 12 * 60 * 60,
       "24h": 24 * 60 * 60,
       "all": null
     };
@@ -190,7 +188,7 @@ const HistoryModule = (() => {
         maxTime = nowSec;
       }
     } else {
-      // For fixed ranges (1h, 12h, 24h), use exact time windows
+      // For fixed ranges (1h, 24h), use exact time windows
       minTime = nowSec - rangeSec;
       maxTime = nowSec;
     }
@@ -234,8 +232,8 @@ const HistoryModule = (() => {
           values: (u, vals, space) => vals.map(v => {
             const d = new Date(v * 1000);
             
-            // For short ranges (1h, 12h), show time
-            if (range === "1h" || range === "12h") {
+            // For short ranges (1h), show time
+            if (range === "1h") {
               return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             }
             // For longer ranges (24h, all), show date
@@ -293,7 +291,7 @@ const HistoryModule = (() => {
 
   /**
    * Fetch history from API and render chart
-   * @param {string} range - Time range ("1h", "12h", "24h", "all")
+   * @param {string} range - Time range ("1h", "24h", "all")
    * @param {string} deviceId - Device ID
    * @param {Function} logFn - Function to call for logging
    */
