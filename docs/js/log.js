@@ -60,7 +60,7 @@ const LogModule = (() => {
                         entry.level === "warn" ? "text-amber-600" : 
                         "text-slate-600";
       
-      return `<div class="${colorClass} hover:bg-slate-50 px-2 py-1 rounded transition-colors">
+      return `<div class="${colorClass} hover:bg-slate-50 px-2 py-0.5 rounded transition-colors">
         <span class="text-slate-400">[${entry.time}]</span> ${entry.msg}
       </div>`;
     }).join("");
