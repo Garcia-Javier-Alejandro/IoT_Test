@@ -10,9 +10,13 @@ window.APP_CONFIG = {
   MQTT_WSS_URL: "wss://1f1fff2e23204fa08aef0663add440bc.s1.eu.hivemq.cloud:8884/mqtt",
 
   // Identidad (solo para armar topics y mostrar en UI si querés)
-  DEVICE_ID: "esp32-01",
+  DEVICE_ID: "esp32-pool-01",
 
-  // Topics (deben coincidir con tu firmware)
-  TOPIC_CMD: "devices/esp32-01/led/gpio4/set",    // dashboard -> ESP32
-  TOPIC_STATE: "devices/esp32-01/led/gpio4/state" // ESP32 -> dashboard
+  // Topics para Bomba (deben coincidir con tu firmware)
+  TOPIC_PUMP_CMD: "devices/esp32-pool-01/pump/set",      // dashboard -> ESP32
+  TOPIC_PUMP_STATE: "devices/esp32-pool-01/pump/state",  // ESP32 -> dashboard
+
+  // Topics para Válvulas (modo unificado: 1 o 2)
+  TOPIC_VALVE_CMD: "devices/esp32-pool-01/valve/set",    // dashboard -> ESP32 (valores: "1" o "2")
+  TOPIC_VALVE_STATE: "devices/esp32-pool-01/valve/state" // ESP32 -> dashboard (valores: "1" o "2")
 };

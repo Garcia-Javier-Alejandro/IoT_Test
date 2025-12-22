@@ -1,0 +1,172 @@
+/**
+ * MQTT Module for Pool Control
+ * Handles MQTT connection, subscription, publishing, and event management.
+ * Requires mqtt.js library (global mqtt object)
+ */
+
+const MQTTModule = (() => {
+  let client = null;
+  let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
+  let valveMode = "UNKNOWN";   // "1" | "2" | "UNKNOWN"
+  
+  let onPumpStateChange = null;   // Callback when pump state changes
+  let onValveStateChange = null;  // Callback when valve mode changes
+  let onConnected = null;         // Callback when connected
+  let onDisconnected = null;      // Callback when disconnected
+  let onWiFiEvent = null;         // Callback for WiFi connection events
+
+  /**
+   * Register callbacks for MQTT events
+   */
+  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb) {
+    onPumpStateChange = pumpChangeCb;
+    onValveStateChange = valveChangeCb;
+    onConnected = connectedCb;
+    onDisconnected = disconnectedCb;
+    onWiFiEvent = wifiEventCb || null;
+  }
+
+  /**
+   * Connect to MQTT broker
+   */
+  function connect(brokerUrl, username, password, topics, deviceId, logFn) {
+    if (client) {
+      try {
+        client.end(true);
+      } catch (_) {}
+      client = null;
+    }
+
+    const clientId = "dashboard-" + Math.random().toString(16).slice(2, 10);
+
+    logFn(`Device: ${deviceId}`);
+    logFn(`WSS: ${brokerUrl}`);
+    logFn(`Topics: pump=${topics.pumpState} | valve=${topics.valveState}`);
+    logFn("Conectando…");
+
+    client = mqtt.connect(brokerUrl, {
+      clientId,
+      username,
+      password,
+      clean: true,
+      reconnectPeriod: 5000,
+      connectTimeout: 30000,
+      keepalive: 60,
+    });
+
+    // Connect event
+    client.on("connect", () => {
+      logFn("✓ Conectado al broker como " + clientId);
+
+      client.subscribe(topics.pumpState, { qos: 0 }, (err) => {
+        if (!err) {
+          logFn("✓ Suscripto a pump/state");
+        } else {
+          logFn("✗ Error suscripción pump: " + err.message);
+        }
+      });
+
+      client.subscribe(topics.valveState, { qos: 0 }, (err) => {
+        if (!err) {
+          logFn("✓ Suscripto a valve/state");
+        } else {
+          logFn("✗ Error suscripción valve: " + err.message);
+        }
+      });
+
+      if (onConnected) onConnected();
+    });
+
+    // Reconnect event
+    client.on("reconnect", () => {
+      logFn("⟳ Intentando reconectar...");
+    });
+
+    // Close event
+    client.on("close", () => {
+      logFn("⚠ Conexión cerrada");
+      if (onDisconnected) onDisconnected();
+    });
+
+    // Offline event
+    client.on("offline", () => {
+      logFn("⚠ Cliente offline");
+      if (onDisconnected) onDisconnected();
+    });
+
+    // Error event
+    client.on("error", (err) => {
+      logFn("✗ Error MQTT: " + err.message);
+    });
+
+    // Message received
+    client.on("message", (topic, payload) => {
+      const msg = payload.toString().trim();
+      const msgUpper = msg.toUpperCase();
+      
+      if (topic === topics.pumpState) {
+        logFn(`Pump estado: ${msgUpper}`);
+        if (msgUpper === "ON" || msgUpper === "OFF") {
+          pumpState = msgUpper;
+          if (onPumpStateChange) onPumpStateChange(msgUpper);
+        }
+      } else if (topic === topics.valveState) {
+        logFn(`Valve modo: ${msg}`);
+        if (msg === "1" || msg === "2") {
+          valveMode = msg;
+          if (onValveStateChange) onValveStateChange(msg);
+        }
+      }
+      // Check for WiFi events in log messages (optional future feature)
+      // You could subscribe to a log topic from ESP32 if you want
+    });
+  }
+
+  /**
+   * Disconnect from MQTT broker
+   */
+  function disconnect() {
+    if (client) {
+      try {
+        client.end(true);
+      } catch (_) {}
+      client = null;
+    }
+  }
+
+  /**
+   * Publish a command to MQTT
+   * @param {string} command - "ON"/"OFF" for pump, "1"/"2" for valve
+   * @param {string} topic - Topic to publish to
+   * @param {Function} logFn - Function to call for logging
+   */
+  function publish(command, topic, logFn) {
+    if (!client || !client.connected) {
+      logFn("✗ No conectado al broker");
+      return;
+    }
+
+    client.publish(topic, command, { qos: 0 }, (err) => {
+      if (err) {
+        logFn(`✗ Publish error: ${err.message}`);
+      } else {
+        logFn(`✓ Comando enviado: ${command}`);
+      }
+    });
+  }
+
+  /**
+   * Check if connected to broker
+   */
+  function isConnected() {
+    return client && client.connected;
+  }
+
+  return {
+    onEvents,
+    connect,
+    disconnect,
+    publish,
+    isConnected,
+  };
+})();
