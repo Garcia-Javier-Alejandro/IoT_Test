@@ -21,7 +21,6 @@ This system allows remote control of:
 - ✅ **MQTT over TLS** - Secure communication via HiveMQ Cloud
 - ✅ **Simplified dashboard** - Click-to-control cards for pump and valves
 - ✅ **WiFi status logging** - Real-time connection events in log panel
-- ✅ **Cloudflare Workers** - Optional event logging to serverless backend
 
 ---
 
@@ -45,10 +44,6 @@ IoT/
 │   │   ├── mqtt-pool.js        # MQTT client for pool system
 │   │   └── log.js              # Event logging module
 │   └── css/styles.css          # Styling with clickable cards
-│
-├── functions/api/               # Cloudflare Workers (optional)
-│   ├── event.js                # Event logging endpoint
-│   └── history.js              # Historical data retrieval
 │
 ├── WIRING_DIAGRAM.md           # Complete hardware wiring guide
 └── README_POOL.md              # This file
@@ -135,7 +130,6 @@ IoT/
    #define WIFI_PASS "YourPassword"
    #define MQTT_USER "dashboard-user"
    #define MQTT_PASS "your-mqtt-password"
-   #define CF_API_KEY "your-cloudflare-key" // Optional
    ```
 
 3. **Adjust `config.h`** if needed:
@@ -174,19 +168,14 @@ pio device monitor  # View serial output
 
 ### 4. Deploy Dashboard
 
-#### Option A: Cloudflare Pages (Recommended)
-```bash
-cd docs
-# Connect to your Cloudflare account
-wrangler pages deploy . --project-name pool-control
-```
-
-#### Option B: Local Development
+#### Local Development
 ```bash
 cd docs
 python -m http.server 8000
 # Open http://localhost:8000/index-pool.html
 ```
+
+**Or deploy to any static hosting** (GitHub Pages, Netlify, Vercel, etc.)
 
 ### 5. Configure Dashboard
 
@@ -349,26 +338,7 @@ python -m http.server 8000
 
 ## 📊 Advanced Features
 
-### Event Logging to Cloudflare
-
-The firmware includes optional Cloudflare Workers integration:
-
-**Event schema**:
-```json
-{
-  "deviceId": "esp32-pool-01",
-  "device": "pump",
-  "state": "ON",
-  "ts": 1735678900000
-}
-```
-
-**Setup**:
-1. Deploy `functions/api/event.js` to Cloudflare Workers
-2. Set `CF_API_BASE_URL` and `CF_API_KEY` in `secrets.h`
-3. Uncomment `postEventToCloudflare()` calls in main.cpp
-
-### Custom Sensor Thresholds
+### Custom Sensor Calibration
 
 If ADC readings are inconsistent, calibrate in `config.h`:
 
@@ -467,7 +437,6 @@ This project is provided as-is for personal use. No warranty. Use at your own ri
 - **MQTT.js**: Client library for browser-based MQTT
 - **PubSubClient**: Arduino MQTT library
 - **HiveMQ Cloud**: Free tier MQTT broker with TLS
-- **Cloudflare Workers**: Serverless event logging
 - **PlatformIO**: ESP32 development environment
 
 ---

@@ -3,8 +3,7 @@
 #include <WiFi.h>              // WiFi del ESP32
 #include <WiFiClientSecure.h>  // Cliente TLS (HTTPS/MQTTS)
 #include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
-#include <time.h>              // Para NTP (hora del sistema)
-#include <HTTPClient.h>        // Cliente HTTP 
+#include <time.h>              // Para NTP (hora del sistema) 
 
 // Tus headers (definidos por vos)
 #include "config.h"    // host/puertos/topics/device_id (NO secretos)
@@ -126,58 +125,6 @@ void publishValveState() {
   Serial.println(ok ? " OK" : " FAIL");
 }
 
-// ==================== Cloudflare Event Logging ====================
-
-bool postEventToCloudflare(const char* device, const char* state) {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[CF] Skip: no WiFi");
-    return false;
-  }
-
-  // Si no hay hora válida, evitamos registrar timestamps basura
-  time_t now = time(nullptr);
-  if (now < 1700000000) {
-    Serial.println("[CF] Skip: time not synced");
-    return false;
-  }
-
-  WiFiClientSecure client;
-  client.setInsecure();
-
-  HTTPClient https;
-  String url = String(CF_API_BASE_URL) + "/api/event";
-
-  if (!https.begin(client, url)) {
-    Serial.println("[CF] https.begin failed");
-    return false;
-  }
-
-  https.addHeader("Content-Type", "application/json");
-  https.addHeader("x-api-key", CF_API_KEY);
-
-  uint64_t tsMs = (uint64_t)now * 1000ULL;
-
-  String body = String("{\"deviceId\":\"") + DEVICE_ID +
-                "\",\"device\":\"" + device +
-                "\",\"state\":\"" + state +
-                "\",\"ts\":" + String((unsigned long long)tsMs) +
-                "}";
-
-  int code = https.POST(body);
-  String resp = https.getString();
-  https.end();
-
-  Serial.print("[CF] POST /api/event code=");
-  Serial.println(code);
-  if (code < 200 || code >= 300) {
-    Serial.print("[CF] Response: ");
-    Serial.println(resp);
-    return false;
-  }
-
-  return true;
-}
-
 // ==================== Control Logic ====================
 
 // Controla la bomba: intenta cambiar al estado targetState
@@ -214,7 +161,6 @@ void setPumpState(bool targetState) {
   }
   
   publishPumpState();
-  postEventToCloudflare("pump", pumpState ? "ON" : "OFF");
 }
 
 // Controla las válvulas: cambia al modo targetMode (1 o 2)
@@ -240,9 +186,6 @@ void setValveMode(int targetMode) {
   valveMode = targetMode;
   
   publishValveState();
-  
-  char modeStr[2] = {'0' + targetMode, '\0'};
-  postEventToCloudflare("valve", modeStr);
 }
 
 // ==================== MQTT Message Handler ====================
