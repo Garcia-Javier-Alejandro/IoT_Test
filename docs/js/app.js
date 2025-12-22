@@ -82,7 +82,6 @@ const AppModule = (() => {
       "conn-indicator": "connIndicator",
       "wifi-icon": "wifiIcon",
       "wifi-ssid": "wifiSsid",
-      "wifi-ip": "wifiIp",
       "wifi-quality": "wifiQuality",
       "btn-pump": "btnPump",
       "btn-valve": "btnValve",
@@ -323,7 +322,6 @@ const AppModule = (() => {
       if (elements.wifiIcon) elements.wifiIcon.textContent = "wifi_off";
       if (elements.wifiIcon) elements.wifiIcon.className = "material-icons-round text-slate-400 text-lg";
       if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
-      if (elements.wifiIp) elements.wifiIp.textContent = "---.---.---.---";
       if (elements.wifiQuality) elements.wifiQuality.textContent = "---";
       return;
     }
@@ -355,7 +353,6 @@ const AppModule = (() => {
     }
     
     if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
-    if (elements.wifiIp) elements.wifiIp.textContent = ip || "0.0.0.0";
     if (elements.wifiQuality) {
       const qualityText = quality === "excellent" ? "Excelente" : 
                          quality === "good" ? "Buena" : 
