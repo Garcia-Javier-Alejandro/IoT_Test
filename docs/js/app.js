@@ -80,6 +80,10 @@ const AppModule = (() => {
       "valve-mode-label": "valveModeLabel",
       "conn-text": "connText",
       "conn-indicator": "connIndicator",
+      "wifi-icon": "wifiIcon",
+      "wifi-ssid": "wifiSsid",
+      "wifi-ip": "wifiIp",
+      "wifi-quality": "wifiQuality",
       "btn-pump": "btnPump",
       "btn-valve": "btnValve",
       "log-box": "logBox",
@@ -126,6 +130,10 @@ const AppModule = (() => {
       // onWiFiEvent callback (NEW!)
       (event) => {
         LogModule.append(`[WiFi] ${event}`);
+      },
+      // onWiFiStateChange callback
+      (wifiState) => {
+        updateWiFiStatus(wifiState);
       }
     );
   }
@@ -186,7 +194,8 @@ const AppModule = (() => {
       password,
       {
         pumpState: window.APP_CONFIG.TOPIC_PUMP_STATE,
-        valveState: window.APP_CONFIG.TOPIC_VALVE_STATE
+        valveState: window.APP_CONFIG.TOPIC_VALVE_STATE,
+        wifiState: window.APP_CONFIG.TOPIC_WIFI_STATE
       },
       window.APP_CONFIG.DEVICE_ID,
       (msg) => LogModule.append(msg)
@@ -198,6 +207,20 @@ const AppModule = (() => {
    */
   function setPumpState(state) {
     pumpState = state;
+
+    // Update button colors based on state
+    if (elements.btnPump) {
+      if (state === "ON") {
+        // Blue when ON
+        elements.btnPump.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xl py-5 px-6 rounded-2xl shadow-xl shadow-blue-700/20 transition-all active:scale-[0.98] flex items-center justify-between group border border-blue-800/10";
+      } else if (state === "OFF") {
+        // Dull grey-blue when OFF
+        elements.btnPump.className = "w-full bg-slate-400 hover:bg-slate-500 text-white font-extrabold text-xl py-5 px-6 rounded-2xl shadow-xl shadow-slate-400/20 transition-all active:scale-[0.98] flex items-center justify-between group border border-slate-500/10";
+      } else {
+        // Default primary blue for unknown state
+        elements.btnPump.className = "w-full bg-primary hover:bg-primary-hover text-white font-extrabold text-xl py-5 px-6 rounded-2xl shadow-xl shadow-blue-700/20 transition-all active:scale-[0.98] flex items-center justify-between group border border-blue-800/10 disabled:opacity-50 disabled:cursor-not-allowed";
+      }
+    }
 
     if (elements.pumpLabel) {
       if (state === "ON") {
@@ -261,11 +284,11 @@ const AppModule = (() => {
   function connectUI() {
     if (elements.connText) elements.connText.textContent = "Conectado";
     
-    // Update connection indicator with animated ping
+    // Update connection indicator with animated ping (blue instead of green)
     if (elements.connIndicator) {
       elements.connIndicator.innerHTML = `
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
       `;
     }
     
@@ -283,12 +306,67 @@ const AppModule = (() => {
     // Update connection indicator to gray
     if (elements.connIndicator) {
       elements.connIndicator.innerHTML = `
-        <span class="relative inline-flex rounded-full h-3 w-3 bg-slate-400"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
       `;
     }
     
     updateButtonStates();
     if (elements.loginCard) elements.loginCard.style.display = "";
+  }
+
+  /**
+   * Update WiFi status display
+   */
+  function updateWiFiStatus(wifiState) {
+    if (!wifiState || wifiState.status !== "connected") {
+      // Disconnected state
+      if (elements.wifiIcon) elements.wifiIcon.textContent = "wifi_off";
+      if (elements.wifiIcon) elements.wifiIcon.className = "material-icons-round text-slate-400 text-lg";
+      if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
+      if (elements.wifiIp) elements.wifiIp.textContent = "---.---.---.---";
+      if (elements.wifiQuality) elements.wifiQuality.textContent = "---";
+      return;
+    }
+
+    // Connected state
+    const { ssid, ip, rssi, quality } = wifiState;
+    
+    // Update icon based on signal quality
+    let icon = "wifi";
+    let iconColor = "text-slate-400";
+    
+    if (quality === "excellent") {
+      icon = "wifi";
+      iconColor = "text-green-600";
+    } else if (quality === "good") {
+      icon = "wifi";
+      iconColor = "text-blue-600";
+    } else if (quality === "fair") {
+      icon = "network_wifi_3_bar";
+      iconColor = "text-yellow-600";
+    } else {
+      icon = "network_wifi_1_bar";
+      iconColor = "text-orange-600";
+    }
+    
+    if (elements.wifiIcon) {
+      elements.wifiIcon.textContent = icon;
+      elements.wifiIcon.className = `material-icons-round ${iconColor} text-lg`;
+    }
+    
+    if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
+    if (elements.wifiIp) elements.wifiIp.textContent = ip || "0.0.0.0";
+    if (elements.wifiQuality) {
+      const qualityText = quality === "excellent" ? "Excelente" : 
+                         quality === "good" ? "Buena" : 
+                         quality === "fair" ? "Regular" : "Débil";
+      elements.wifiQuality.textContent = `${rssi} dBm`;
+      elements.wifiQuality.className = `px-2 py-0.5 rounded-md bg-white border border-slate-300 text-[10px] font-bold ${
+        quality === "excellent" ? "text-green-600" : 
+        quality === "good" ? "text-blue-600" : 
+        quality === "fair" ? "text-yellow-600" : "text-orange-600"
+      }`;
+    }
   }
 
   /**

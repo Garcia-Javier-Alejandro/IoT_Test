@@ -125,6 +125,40 @@ void publishValveState() {
   Serial.println(ok ? " OK" : " FAIL");
 }
 
+// Publica el estado WiFi (JSON con SSID, IP, RSSI, quality)
+void publishWiFiState() {
+  if (WiFi.status() != WL_CONNECTED) {
+    mqtt.publish(TOPIC_WIFI_STATE, "{\"status\":\"disconnected\"}", true);
+    return;
+  }
+  
+  int rssi = WiFi.RSSI();
+  String quality;
+  
+  // Determinar calidad de señal basado en RSSI
+  if (rssi >= -50) quality = "excellent";
+  else if (rssi >= -60) quality = "good";
+  else if (rssi >= -70) quality = "fair";
+  else quality = "weak";
+  
+  // Construir JSON
+  String json = "{";
+  json += "\"status\":\"connected\",";
+  json += "\"ssid\":\"" + WiFi.SSID() + "\",";
+  json += "\"ip\":\"" + WiFi.localIP().toString() + "\",";
+  json += "\"rssi\":" + String(rssi) + ",";
+  json += "\"quality\":\"" + quality + "\"";
+  json += "}";
+  
+  bool ok = mqtt.publish(TOPIC_WIFI_STATE, json.c_str(), true /*retain*/);
+  
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_WIFI_STATE);
+  Serial.print(" = ");
+  Serial.print(json);
+  Serial.println(ok ? " OK" : " FAIL");
+}
+
 // ==================== Control Logic ====================
 
 // Controla la bomba: intenta cambiar al estado targetState
@@ -358,6 +392,7 @@ bool connectMqtt() {
   pumpState = readPumpSensor();
   publishPumpState();
   publishValveState();
+  publishWiFiState();
   
   return true;
 }
@@ -407,10 +442,20 @@ void setup() {
 }
 
 void loop() {
+  // Publicar estado WiFi cada 30 segundos
+  static uint32_t lastWiFiUpdate = 0;
+  if (millis() - lastWiFiUpdate > 30000) {
+    lastWiFiUpdate = millis();
+    if (mqtt.connected()) {
+      publishWiFiState();
+    }
+  }
+  
   // Si se cae WiFi, intentamos recuperar
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Conexión perdida, reconectando...");
     connectWiFi();
+    if (mqtt.connected()) publishWiFiState();
   }
 
   // Si se cae MQTT, reconectamos

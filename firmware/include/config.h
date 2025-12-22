@@ -39,3 +39,7 @@
 // TOPIC_VALVE_STATE = ESP32 publica modo actual (1/2) -> dashboard se suscribe
 #define TOPIC_VALVE_SET     "devices/" DEVICE_ID "/valve/set"
 #define TOPIC_VALVE_STATE   "devices/" DEVICE_ID "/valve/state"
+
+// WiFi Status:
+// TOPIC_WIFI_STATE = ESP32 publica estado WiFi (JSON: ssid, ip, rssi, quality) -> dashboard se suscribe
+#define TOPIC_WIFI_STATE    "devices/" DEVICE_ID "/wifi/state"
