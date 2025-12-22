@@ -1,20 +1,18 @@
 /**
- * Main Application Module
- * Orchestrates all components: UI state, MQTT, history, and logging.
- * This is the entry point for the dashboard.
+ * Pool Control Application Module
+ * Simplified dashboard for pump + valve control (no timeline feature)
  */
 
 const AppModule = (() => {
   // UI state
-  let valve1State = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
-  let valve2State = "UNKNOWN"; // "ON" | "OFF" | "UNKNOWN"
+  let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
+  let valveMode = "UNKNOWN";   // "1" | "2" | "UNKNOWN"
 
   // Cached DOM elements
   let elements = {};
 
   /**
    * Initialize the entire application
-   * Requires APP_CONFIG to be available from config.js
    */
   async function init() {
     // Validate APP_CONFIG
@@ -23,9 +21,9 @@ const AppModule = (() => {
       throw new Error("APP_CONFIG no definido");
     }
 
-    const { MQTT_WSS_URL, TOPIC_VALVE1_CMD, TOPIC_VALVE1_STATE, TOPIC_VALVE2_CMD, TOPIC_VALVE2_STATE, HIVEMQ_HOST, DEVICE_ID } =
+    const { MQTT_WSS_URL, TOPIC_PUMP_CMD, TOPIC_PUMP_STATE, TOPIC_VALVE_CMD, TOPIC_VALVE_STATE } =
       window.APP_CONFIG;
-    if (!MQTT_WSS_URL || !TOPIC_VALVE1_CMD || !TOPIC_VALVE1_STATE || !TOPIC_VALVE2_CMD || !TOPIC_VALVE2_STATE) {
+    if (!MQTT_WSS_URL || !TOPIC_PUMP_CMD || !TOPIC_PUMP_STATE || !TOPIC_VALVE_CMD || !TOPIC_VALVE_STATE) {
       alert("APP_CONFIG incompleto: falta configuración de topics");
       throw new Error("APP_CONFIG incompleto");
     }
@@ -40,14 +38,6 @@ const AppModule = (() => {
       elements.btnLogClear
     );
 
-    // Initialize history module
-    HistoryModule.init(
-      elements.historyChart,
-      elements.historyHint,
-      elements.btnHistoryRefresh,
-      elements.historyLast
-    );
-
     // Setup MQTT event callbacks
     setupMQTTEvents();
 
@@ -58,24 +48,16 @@ const AppModule = (() => {
     loadStoredCredentials();
 
     // Initialize UI state
-    setValve1State("UNKNOWN");
-    setValve2State("UNKNOWN");
+    setPumpState("UNKNOWN");
+    setValveMode("UNKNOWN");
     disconnectUI();
-
-    // Load initial history
-    await HistoryModule.load(
-      "24h",
-      DEVICE_ID || "esp32-01",
-      (msg) => LogModule.append(msg)
-    );
 
     // Auto-connect if credentials are available
     if (elements.userInput.value && elements.passInput.value) {
       connectMQTT(
         elements.userInput.value.trim(),
         elements.passInput.value,
-        MQTT_WSS_URL,
-        { HIVEMQ_HOST, DEVICE_ID }
+        MQTT_WSS_URL
       );
     } else {
       LogModule.append("Ingresá credenciales MQTT y presioná Conectar");
@@ -83,24 +65,22 @@ const AppModule = (() => {
 
     // Cleanup on page unload
     window.addEventListener("beforeunload", () => {
-      HistoryModule.cleanup();
       MQTTModule.disconnect();
     });
   }
 
   /**
    * Cache all required DOM elements at startup
-   * Maps HTML IDs to camelCase properties
    */
   function cacheElements() {
     const mapping = {
-      "valve1-dot": "valve1Dot",
-      "valve1-status": "valve1Status",
-      "valve2-dot": "valve2Dot",
-      "valve2-status": "valve2Status",
+      "pump-dot": "pumpDot",
+      "pump-status": "pumpStatus",
+      "valve-dot": "valveDot",
+      "valve-status": "valveStatus",
       "conn-text": "connText",
-      "btn-valve1": "btnValve1",
-      "btn-valve2": "btnValve2",
+      "btn-pump": "btnPump",
+      "btn-valve": "btnValve",
       "log-box": "logBox",
       "mqtt-user": "userInput",
       "mqtt-pass": "passInput",
@@ -108,11 +88,6 @@ const AppModule = (() => {
       "login-card": "loginCard",
       "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
-      "history-box": "historyBox",
-      "btn-history-refresh": "btnHistoryRefresh",
-      "history-last": "historyLast",
-      "historyChart": "historyChart",
-      "historyHint": "historyHint",
     };
 
     const missing = [];
@@ -121,9 +96,6 @@ const AppModule = (() => {
       if (!el) missing.push(id);
       elements[key] = el;
     }
-
-    // Cache range buttons (NodeList)
-    elements.rangeButtons = document.querySelectorAll(".range-btn");
 
     if (missing.length > 0) {
       console.warn("Missing DOM elements:", missing);
@@ -135,15 +107,13 @@ const AppModule = (() => {
    */
   function setupMQTTEvents() {
     MQTTModule.onEvents(
-      // onValve1StateChange callback
+      // onPumpStateChange callback
       (state) => {
-        setValve1State(state);
-        HistoryModule.scheduleRefresh(800);
+        setPumpState(state);
       },
-      // onValve2StateChange callback
-      (state) => {
-        setValve2State(state);
-        HistoryModule.scheduleRefresh(800);
+      // onValveStateChange callback
+      (mode) => {
+        setValveMode(mode);
       },
       // onConnected callback
       () => {
@@ -152,6 +122,10 @@ const AppModule = (() => {
       // onDisconnected callback
       () => {
         disconnectUI();
+      },
+      // onWiFiEvent callback (NEW!)
+      (event) => {
+        LogModule.append(`[WiFi] ${event}`);
       }
     );
   }
@@ -160,22 +134,6 @@ const AppModule = (() => {
    * Wire up UI event listeners
    */
   function wireUIEvents() {
-    // Time range selector buttons
-    if (elements.rangeButtons) {
-      elements.rangeButtons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const range = btn.getAttribute("data-range");
-          elements.rangeButtons.forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          HistoryModule.load(
-            range,
-            window.APP_CONFIG.DEVICE_ID || "esp32-01",
-            LogModule.append
-          );
-        });
-      });
-    }
-
     // Connect button
     if (elements.btnConnect) {
       elements.btnConnect.addEventListener("click", () => {
@@ -186,41 +144,32 @@ const AppModule = (() => {
           return;
         }
         saveStoredCredentials(u, p);
-        connectMQTT(
-          u,
-          p,
-          window.APP_CONFIG.MQTT_WSS_URL,
-          {
-            HIVEMQ_HOST: window.APP_CONFIG.HIVEMQ_HOST,
-            DEVICE_ID: window.APP_CONFIG.DEVICE_ID,
-          }
-        );
+        connectMQTT(u, p, window.APP_CONFIG.MQTT_WSS_URL);
       });
     }
 
-    // Valve 1 toggle button
-    if (elements.btnValve1) {
-      elements.btnValve1.addEventListener("click", () => {
-        const newState = valve1State === "ON" ? "OFF" : "ON";
-        const action = newState === "ON" ? "Abriendo" : "Cerrando";
-        LogModule.append(`${action} Válvula 1...`);
+    // Pump toggle button
+    if (elements.btnPump) {
+      elements.btnPump.addEventListener("click", () => {
+        const newState = pumpState === "ON" ? "OFF" : "ON";
+        const action = newState === "ON" ? "Encendiendo" : "Apagando";
+        LogModule.append(`${action} bomba...`);
         MQTTModule.publish(
           newState,
-          window.APP_CONFIG.TOPIC_VALVE1_CMD,
+          window.APP_CONFIG.TOPIC_PUMP_CMD,
           (msg) => LogModule.append(msg)
         );
       });
     }
 
-    // Valve 2 toggle button
-    if (elements.btnValve2) {
-      elements.btnValve2.addEventListener("click", () => {
-        const newState = valve2State === "ON" ? "OFF" : "ON";
-        const action = newState === "ON" ? "Abriendo" : "Cerrando";
-        LogModule.append(`${action} Válvula 2...`);
+    // Valve toggle button (switches between mode 1 and mode 2)
+    if (elements.btnValve) {
+      elements.btnValve.addEventListener("click", () => {
+        const newMode = valveMode === "1" ? "2" : "1";
+        LogModule.append(`Cambiando válvulas a modo ${newMode}...`);
         MQTTModule.publish(
-          newState,
-          window.APP_CONFIG.TOPIC_VALVE2_CMD,
+          newMode,
+          window.APP_CONFIG.TOPIC_VALVE_CMD,
           (msg) => LogModule.append(msg)
         );
       });
@@ -230,57 +179,56 @@ const AppModule = (() => {
   /**
    * Connect to MQTT broker
    */
-  function connectMQTT(username, password, brokerUrl, config) {
+  function connectMQTT(username, password, brokerUrl) {
     MQTTModule.connect(
       brokerUrl,
       username,
       password,
-      { 
-        valve1State: window.APP_CONFIG.TOPIC_VALVE1_STATE,
-        valve2State: window.APP_CONFIG.TOPIC_VALVE2_STATE
+      {
+        pumpState: window.APP_CONFIG.TOPIC_PUMP_STATE,
+        valveState: window.APP_CONFIG.TOPIC_VALVE_STATE
       },
-      config.DEVICE_ID,
-      config,
+      window.APP_CONFIG.DEVICE_ID,
       (msg) => LogModule.append(msg)
     );
   }
 
   /**
-   * Update valve 1 state display
+   * Update pump state display
    */
-  function setValve1State(state) {
-    valve1State = state;
+  function setPumpState(state) {
+    pumpState = state;
 
-    if (elements.valve1Dot) {
+    if (elements.pumpDot) {
       if (state === "ON") {
-        elements.valve1Dot.className = "dot on";
+        elements.pumpDot.className = "dot on";
       } else if (state === "OFF") {
-        elements.valve1Dot.className = "dot off";
+        elements.pumpDot.className = "dot off";
       } else {
-        elements.valve1Dot.className = "dot";
+        elements.pumpDot.className = "dot";
       }
     }
 
-    if (elements.valve1Status) {
+    if (elements.pumpStatus) {
       if (state === "ON") {
-        elements.valve1Status.textContent = "ABIERTA";
+        elements.pumpStatus.textContent = "ON";
       } else if (state === "OFF") {
-        elements.valve1Status.textContent = "CERRADA";
+        elements.pumpStatus.textContent = "OFF";
       } else {
-        elements.valve1Status.textContent = "DESCONOCIDO";
+        elements.pumpStatus.textContent = "?";
       }
     }
 
-    // Update button color and text based on state
-    if (elements.btnValve1) {
+    // Update button text based on state
+    if (elements.btnPump) {
       if (state === "ON") {
-        elements.btnValve1.classList.remove("btn-on");
-        elements.btnValve1.classList.add("btn-off");
-        elements.btnValve1.textContent = "Cerrar válvula 1";
+        elements.btnPump.classList.remove("btn-on");
+        elements.btnPump.classList.add("btn-off");
+        elements.btnPump.textContent = "Apagar bomba";
       } else {
-        elements.btnValve1.classList.remove("btn-off");
-        elements.btnValve1.classList.add("btn-on");
-        elements.btnValve1.textContent = "Abrir válvula 1";
+        elements.btnPump.classList.remove("btn-off");
+        elements.btnPump.classList.add("btn-on");
+        elements.btnPump.textContent = "Encender bomba";
       }
     }
 
@@ -288,41 +236,37 @@ const AppModule = (() => {
   }
 
   /**
-   * Update valve 2 state display
+   * Update valve mode display
    */
-  function setValve2State(state) {
-    valve2State = state;
+  function setValveMode(mode) {
+    valveMode = mode;
 
-    if (elements.valve2Dot) {
-      if (state === "ON") {
-        elements.valve2Dot.className = "dot on";
-      } else if (state === "OFF") {
-        elements.valve2Dot.className = "dot off";
+    if (elements.valveDot) {
+      if (mode === "1" || mode === "2") {
+        elements.valveDot.className = "dot on";
       } else {
-        elements.valve2Dot.className = "dot";
+        elements.valveDot.className = "dot";
       }
     }
 
-    if (elements.valve2Status) {
-      if (state === "ON") {
-        elements.valve2Status.textContent = "ABIERTA";
-      } else if (state === "OFF") {
-        elements.valve2Status.textContent = "CERRADA";
+    if (elements.valveStatus) {
+      if (mode === "1") {
+        elements.valveStatus.textContent = "1";
+      } else if (mode === "2") {
+        elements.valveStatus.textContent = "2";
       } else {
-        elements.valve2Status.textContent = "DESCONOCIDO";
+        elements.valveStatus.textContent = "?";
       }
     }
 
-    // Update button color and text based on state
-    if (elements.btnValve2) {
-      if (state === "ON") {
-        elements.btnValve2.classList.remove("btn-on");
-        elements.btnValve2.classList.add("btn-off");
-        elements.btnValve2.textContent = "Cerrar válvula 2";
+    // Update button text based on mode
+    if (elements.btnValve) {
+      if (mode === "1") {
+        elements.btnValve.textContent = "Cambiar a modo 2";
+      } else if (mode === "2") {
+        elements.btnValve.textContent = "Cambiar a modo 1";
       } else {
-        elements.btnValve2.classList.remove("btn-off");
-        elements.btnValve2.classList.add("btn-on");
-        elements.btnValve2.textContent = "Abrir válvula 2";
+        elements.btnValve.textContent = "Cambiar modo";
       }
     }
 
@@ -335,11 +279,11 @@ const AppModule = (() => {
   function updateButtonStates() {
     const connected = MQTTModule.isConnected();
 
-    if (elements.btnValve1) {
-      elements.btnValve1.disabled = !connected;
+    if (elements.btnPump) {
+      elements.btnPump.disabled = !connected;
     }
-    if (elements.btnValve2) {
-      elements.btnValve2.disabled = !connected;
+    if (elements.btnValve) {
+      elements.btnValve.disabled = !connected;
     }
   }
 
@@ -350,17 +294,7 @@ const AppModule = (() => {
     if (elements.connText) elements.connText.textContent = "Conectado";
     updateButtonStates();
     if (elements.loginCard) elements.loginCard.style.display = "none";
-
-    // Start auto-refresh and load history
-    HistoryModule.startAutoRefresh();
-    const deviceId = window.APP_CONFIG && window.APP_CONFIG.DEVICE_ID
-      ? window.APP_CONFIG.DEVICE_ID
-      : "esp32-01";
-    HistoryModule.load(
-      "24h",
-      deviceId,
-      (msg) => LogModule.append(msg)
-    );
+    LogModule.append("✓ Conectado al broker MQTT");
   }
 
   /**
@@ -370,9 +304,6 @@ const AppModule = (() => {
     if (elements.connText) elements.connText.textContent = "Desconectado";
     updateButtonStates();
     if (elements.loginCard) elements.loginCard.style.display = "";
-
-    // Stop auto-refresh
-    HistoryModule.stopAutoRefresh();
   }
 
   /**
