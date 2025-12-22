@@ -11,22 +11,18 @@
 #include "secrets.h"   // wifi y mqtt user/pass (SECRETO, no va a GitHub)
 #include "ca_cert.h"   // certificado Root CA (público)
 
-// -------------------- Hardware --------------------
-static bool valve1State = false;   // Estado lógico de la electroválvula 1 (GPIO19)
-static bool valve2State = false;   // Estado lógico de la electroválvula 2 (GPIO16)
+// ==================== Hardware State ====================
+static bool pumpState = false;     // Estado lógico de la bomba (ON/OFF)
+static int valveMode = 1;          // Modo de válvulas: 1 o 2
 
-// -------------------- MQTT/TLS --------------------
+// ==================== MQTT/TLS ====================
 // Cliente TLS (se usa para conectar a un servidor con certificado)
 WiFiClientSecure tlsClient;
 
 // Cliente MQTT que viaja por el tlsClient
 PubSubClient mqtt(tlsClient);
 
-// Aplica estados de ambas válvulas a los pines reales (MOSFET gate control)
-void applyValves() {
-  digitalWrite(VALVE1_PIN, valve1State ? HIGH : LOW);
-  digitalWrite(VALVE2_PIN, valve2State ? HIGH : LOW);
-}
+// ==================== Helper Functions ====================
 
 // Convierte payload MQTT (bytes) a String
 String payloadToString(const byte* payload, unsigned int length) {
@@ -37,27 +33,102 @@ String payloadToString(const byte* payload, unsigned int length) {
   return s;
 }
 
-// Publica el estado actual de ambas electroválvulas en sus topics de "state"
-// retain=true: el broker guarda el último valor y se lo entrega a quien se suscriba después.
-void publishStates() {
-  const char* msg1 = valve1State ? "ON" : "OFF";
-  bool ok1 = mqtt.publish(TOPIC_VALVE1_STATE, msg1, true /*retain*/);
-  Serial.print("[MQTT] publish ");
-  Serial.print(TOPIC_VALVE1_STATE);
-  Serial.print(" = ");
-  Serial.print(msg1);
-  Serial.println(ok1 ? " OK" : " FAIL");
+// ==================== State Sensing ====================
 
-  const char* msg2 = valve2State ? "ON" : "OFF";
-  bool ok2 = mqtt.publish(TOPIC_VALVE2_STATE, msg2, true /*retain*/);
-  Serial.print("[MQTT] publish ");
-  Serial.print(TOPIC_VALVE2_STATE);
-  Serial.print(" = ");
-  Serial.print(msg2);
-  Serial.println(ok2 ? " OK" : " FAIL");
+// Lee el sensor de voltaje de la bomba (220V AC via ZMPT101B)
+// Retorna true si detecta voltaje (bomba ON)
+bool readPumpSensor() {
+  int adcValue = analogRead(PUMP_SENSE_PIN);
+  bool detected = (adcValue > VOLTAGE_THRESHOLD);
+  
+  Serial.print("[SENSOR] Pump ADC=");
+  Serial.print(adcValue);
+  Serial.print(" -> ");
+  Serial.println(detected ? "ON" : "OFF");
+  
+  return detected;
 }
 
-bool postEventToCloudflare(const char* state, int valveId) {
+// Lee el sensor de voltaje de las válvulas (24V DC)
+// Retorna true si detecta voltaje (válvulas energizadas)
+bool readValveSensor() {
+  int adcValue = analogRead(VALVE_SENSE_PIN);
+  bool detected = (adcValue > VOLTAGE_THRESHOLD);
+  
+  Serial.print("[SENSOR] Valve ADC=");
+  Serial.print(adcValue);
+  Serial.print(" -> ");
+  Serial.println(detected ? "POWERED" : "OFF");
+  
+  return detected;
+}
+
+// ==================== Relay Control (Latching Pulses) ====================
+
+// Envía un pulso de 100ms al relay para alternar (toggle) el contactor de la bomba
+void sendPumpPulse() {
+  Serial.println("[RELAY] Sending pump pulse...");
+  digitalWrite(PUMP_RELAY_PIN, HIGH);
+  delay(PULSE_DURATION_MS);
+  digitalWrite(PUMP_RELAY_PIN, LOW);
+  Serial.println("[RELAY] Pump pulse sent");
+}
+
+// Envía pulsos a las válvulas para cambiar al modo especificado
+// mode: 1 o 2
+void sendValvePulse(int mode) {
+  Serial.print("[RELAY] Switching to valve mode ");
+  Serial.println(mode);
+  
+  if (mode == 1) {
+    // Modo 1: Activar válvula 1 (NO)
+    digitalWrite(VALVE1_RELAY_PIN, HIGH);
+    digitalWrite(VALVE2_RELAY_PIN, LOW);
+    delay(PULSE_DURATION_MS);
+    digitalWrite(VALVE1_RELAY_PIN, LOW);
+  } else if (mode == 2) {
+    // Modo 2: Activar válvula 2 (NC)
+    digitalWrite(VALVE1_RELAY_PIN, LOW);
+    digitalWrite(VALVE2_RELAY_PIN, HIGH);
+    delay(PULSE_DURATION_MS);
+    digitalWrite(VALVE2_RELAY_PIN, LOW);
+  }
+  
+  Serial.println("[RELAY] Valve pulse sent");
+}
+
+// ==================== MQTT State Publishing ====================
+
+// Publica el estado actual de la bomba
+void publishPumpState() {
+  const char* msg = pumpState ? "ON" : "OFF";
+  bool ok = mqtt.publish(TOPIC_PUMP_STATE, msg, true /*retain*/);
+  
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_PUMP_STATE);
+  Serial.print(" = ");
+  Serial.print(msg);
+  Serial.println(ok ? " OK" : " FAIL");
+}
+
+// Publica el estado actual de las válvulas
+void publishValveState() {
+  char msg[2];
+  msg[0] = '0' + valveMode;  // Convierte 1 o 2 a "1" o "2"
+  msg[1] = '\0';
+  
+  bool ok = mqtt.publish(TOPIC_VALVE_STATE, msg, true /*retain*/);
+  
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_VALVE_STATE);
+  Serial.print(" = ");
+  Serial.print(msg);
+  Serial.println(ok ? " OK" : " FAIL");
+}
+
+// ==================== Cloudflare Event Logging ====================
+
+bool postEventToCloudflare(const char* device, const char* state) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[CF] Skip: no WiFi");
     return false;
@@ -71,8 +142,6 @@ bool postEventToCloudflare(const char* state, int valveId) {
   }
 
   WiFiClientSecure client;
-  // Cloudflare uses different certificates - skip verification for now
-  // TODO: Add proper Cloudflare CA certificate for production
   client.setInsecure();
 
   HTTPClient https;
@@ -89,9 +158,9 @@ bool postEventToCloudflare(const char* state, int valveId) {
   uint64_t tsMs = (uint64_t)now * 1000ULL;
 
   String body = String("{\"deviceId\":\"") + DEVICE_ID +
+                "\",\"device\":\"" + device +
                 "\",\"state\":\"" + state +
-                "\",\"valveId\":" + String(valveId) +
-                ",\"ts\":" + String((unsigned long long)tsMs) +
+                "\",\"ts\":" + String((unsigned long long)tsMs) +
                 "}";
 
   int code = https.POST(body);
@@ -109,6 +178,74 @@ bool postEventToCloudflare(const char* state, int valveId) {
   return true;
 }
 
+// ==================== Control Logic ====================
+
+// Controla la bomba: intenta cambiar al estado targetState
+// Usa sensor de feedback para evitar cambios innecesarios
+void setPumpState(bool targetState) {
+  Serial.print("[CONTROL] Pump target state: ");
+  Serial.println(targetState ? "ON" : "OFF");
+  
+  // Leer estado actual del sensor
+  bool actualState = readPumpSensor();
+  
+  if (actualState == targetState) {
+    Serial.println("[CONTROL] Pump already in target state, skipping pulse");
+    // Actualizamos la variable interna por si estaba desincronizada
+    pumpState = actualState;
+    publishPumpState();
+    return;
+  }
+  
+  // Enviar pulso de toggle al contactor
+  sendPumpPulse();
+  
+  // Esperar un momento para que el contactor cambie
+  delay(200);
+  
+  // Verificar el cambio
+  actualState = readPumpSensor();
+  pumpState = actualState;
+  
+  if (actualState == targetState) {
+    Serial.println("[CONTROL] Pump state changed successfully");
+  } else {
+    Serial.println("[CONTROL] WARNING: Pump state did not change as expected!");
+  }
+  
+  publishPumpState();
+  postEventToCloudflare("pump", pumpState ? "ON" : "OFF");
+}
+
+// Controla las válvulas: cambia al modo targetMode (1 o 2)
+void setValveMode(int targetMode) {
+  if (targetMode != 1 && targetMode != 2) {
+    Serial.println("[CONTROL] ERROR: Invalid valve mode. Use 1 or 2");
+    return;
+  }
+  
+  Serial.print("[CONTROL] Valve target mode: ");
+  Serial.println(targetMode);
+  
+  if (valveMode == targetMode) {
+    Serial.println("[CONTROL] Valves already in target mode, skipping pulse");
+    publishValveState();
+    return;
+  }
+  
+  // Enviar pulso para cambiar modo
+  sendValvePulse(targetMode);
+  
+  // Actualizar estado interno
+  valveMode = targetMode;
+  
+  publishValveState();
+  
+  char modeStr[2] = {'0' + targetMode, '\0'};
+  postEventToCloudflare("valve", modeStr);
+}
+
+// ==================== MQTT Message Handler ====================
 
 // Esta función se llama cada vez que llega un mensaje MQTT
 void onMqttMessage(char* topic, byte* payload, unsigned int length) {
@@ -121,43 +258,34 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   Serial.print(" : ");
   Serial.println(msg);
 
-  // Determinar qué válvula se controla
-  bool isValve1 = (t == TOPIC_VALVE1_SET);
-  bool isValve2 = (t == TOPIC_VALVE2_SET);
-
-  if (!isValve1 && !isValve2) {
-    return; // Mensaje no es para nosotros
-  }
-
-  bool newState;
-  if (msg == "ON" || msg == "1") {
-    newState = true;
-  } else if (msg == "OFF" || msg == "0") {
-    newState = false;
-  } else {
-    Serial.println("[MQTT] Comando desconocido. Usá ON/OFF/1/0");
+  // ===== Control de Bomba =====
+  if (t == TOPIC_PUMP_SET) {
+    if (msg == "ON" || msg == "1") {
+      setPumpState(true);
+    } else if (msg == "OFF" || msg == "0") {
+      setPumpState(false);
+    } else if (msg == "TOGGLE") {
+      // Toggle: invertir el estado actual
+      setPumpState(!pumpState);
+    } else {
+      Serial.println("[MQTT] Unknown pump command. Use: ON/OFF/TOGGLE");
+    }
     return;
   }
 
-  // Actualizar la válvula correspondiente
-  if (isValve1) {
-    if (newState == valve1State) {
-      Serial.println("[STATE] Valve1 no change; skipping.");
-      return;
+  // ===== Control de Válvulas =====
+  if (t == TOPIC_VALVE_SET) {
+    if (msg == "1") {
+      setValveMode(1);
+    } else if (msg == "2") {
+      setValveMode(2);
+    } else if (msg == "TOGGLE") {
+      // Toggle: alternar entre modo 1 y 2
+      setValveMode(valveMode == 1 ? 2 : 1);
+    } else {
+      Serial.println("[MQTT] Unknown valve command. Use: 1/2/TOGGLE");
     }
-    valve1State = newState;
-    applyValves();
-    publishStates();
-    postEventToCloudflare(valve1State ? "ON" : "OFF", 1);
-  } else if (isValve2) {
-    if (newState == valve2State) {
-      Serial.println("[STATE] Valve2 no change; skipping.");
-      return;
-    }
-    valve2State = newState;
-    applyValves();
-    publishStates();
-    postEventToCloudflare(valve2State ? "ON" : "OFF", 2);
+    return;
   }
 }
 
@@ -201,11 +329,15 @@ bool connectWiFi() {
     return false;
   }
 
-  Serial.println("[WiFi] OK conectado.");
+  Serial.println("[WiFi] ✓ CONECTADO");
   Serial.print("[WiFi] SSID: ");
   Serial.println(WiFi.SSID());
   Serial.print("[WiFi] IP: ");
   Serial.println(WiFi.localIP());
+  Serial.print("[WiFi] RSSI: ");
+  Serial.print(WiFi.RSSI());
+  Serial.println(" dBm");
+  
   return true;
 }
 
@@ -232,12 +364,12 @@ bool syncTimeNTP() {
     return false;
   }
 
-  Serial.print("[NTP] OK epoch: ");
+  Serial.print("[NTP] ✓ OK epoch: ");
   Serial.println((long)now);
   return true;
 }
 
-// -------------------- MQTT TLS --------------------
+// ==================== MQTT TLS ====================
 void setupMqtt() {
   // Endpoint MQTT TLS (8883) del broker
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
@@ -268,52 +400,79 @@ bool connectMqtt() {
     return false;
   }
 
-  Serial.println("[MQTT] OK conectado.");
+  Serial.println("[MQTT] ✓ CONECTADO");
 
-  // Nos suscribimos a ambos topics de comando
-  mqtt.subscribe(TOPIC_VALVE1_SET);
+  // Suscribirse a topics de comando
+  mqtt.subscribe(TOPIC_PUMP_SET);
   Serial.print("[MQTT] Subscribed: ");
-  Serial.println(TOPIC_VALVE1_SET);
+  Serial.println(TOPIC_PUMP_SET);
   
-  mqtt.subscribe(TOPIC_VALVE2_SET);
+  mqtt.subscribe(TOPIC_VALVE_SET);
   Serial.print("[MQTT] Subscribed: ");
-  Serial.println(TOPIC_VALVE2_SET);
+  Serial.println(TOPIC_VALVE_SET);
 
-  // Publicamos estado inicial (y queda retenido)
-  publishStates();
+  // Leer sensores y publicar estado inicial
+  pumpState = readPumpSensor();
+  publishPumpState();
+  publishValveState();
+  
   return true;
 }
 
-// -------------------- Arduino entrypoints --------------------
+// ==================== Arduino Setup & Loop ====================
+
 void setup() {
   Serial.begin(115200);
   delay(500);
+  
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("   ESP32 Pool Control System v2.0");
+  Serial.println("========================================");
 
-  pinMode(VALVE1_PIN, OUTPUT);
-  pinMode(VALVE2_PIN, OUTPUT);
-  valve1State = false;
-  valve2State = false;
-  applyValves();
+  // Configurar pines de salida (relays)
+  pinMode(PUMP_RELAY_PIN, OUTPUT);
+  pinMode(VALVE1_RELAY_PIN, OUTPUT);
+  pinMode(VALVE2_RELAY_PIN, OUTPUT);
+  
+  // Estado inicial: todos los relays apagados
+  digitalWrite(PUMP_RELAY_PIN, LOW);
+  digitalWrite(VALVE1_RELAY_PIN, LOW);
+  digitalWrite(VALVE2_RELAY_PIN, LOW);
+  
+  // Configurar pines de entrada (sensores analógicos)
+  pinMode(PUMP_SENSE_PIN, INPUT);
+  pinMode(VALVE_SENSE_PIN, INPUT);
 
-  // 1) WiFi
+  // Estado inicial
+  pumpState = false;
+  valveMode = 1;
+
+  // 1) Conectar WiFi
   connectWiFi();
 
-  // 2) Hora para TLS
+  // 2) Sincronizar hora para TLS
   syncTimeNTP();
 
-  // 3) MQTT
+  // 3) Configurar y conectar MQTT
   setupMqtt();
   connectMqtt();
+  
+  Serial.println("========================================");
+  Serial.println("   Sistema listo");
+  Serial.println("========================================");
 }
 
 void loop() {
   // Si se cae WiFi, intentamos recuperar
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] Conexión perdida, reconectando...");
     connectWiFi();
   }
 
   // Si se cae MQTT, reconectamos
   if (!mqtt.connected()) {
+    Serial.println("[MQTT] Conexión perdida, reconectando...");
     connectMqtt();
   }
 
