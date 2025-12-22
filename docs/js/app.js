@@ -82,7 +82,6 @@ const AppModule = (() => {
       "conn-indicator": "connIndicator",
       "wifi-icon": "wifiIcon",
       "wifi-ssid": "wifiSsid",
-      "wifi-quality": "wifiQuality",
       "btn-pump": "btnPump",
       "btn-valve": "btnValve",
       "log-box": "logBox",
@@ -322,7 +321,6 @@ const AppModule = (() => {
       if (elements.wifiIcon) elements.wifiIcon.textContent = "wifi_off";
       if (elements.wifiIcon) elements.wifiIcon.className = "material-icons-round text-slate-400 text-lg";
       if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
-      if (elements.wifiQuality) elements.wifiQuality.textContent = "---";
       return;
     }
 
@@ -353,17 +351,6 @@ const AppModule = (() => {
     }
     
     if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
-    if (elements.wifiQuality) {
-      const qualityText = quality === "excellent" ? "Excelente" : 
-                         quality === "good" ? "Buena" : 
-                         quality === "fair" ? "Regular" : "Débil";
-      elements.wifiQuality.textContent = `${rssi} dBm`;
-      elements.wifiQuality.className = `px-2 py-0.5 rounded-md bg-white border border-slate-300 text-[10px] font-bold ${
-        quality === "excellent" ? "text-green-600" : 
-        quality === "good" ? "text-blue-600" : 
-        quality === "fair" ? "text-yellow-600" : "text-orange-600"
-      }`;
-    }
   }
 
   /**

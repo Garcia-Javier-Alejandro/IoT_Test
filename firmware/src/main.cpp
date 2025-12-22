@@ -301,8 +301,25 @@ bool connectWiFi() {
     Serial.println();
   }
 
+  // If secondary failed, try 3rd WiFi
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] ERROR: timeout conectando a ambas redes WiFi.");
+    Serial.println("[WiFi] ERROR: timeout con WiFi secundaria. Intentando WiFi terciaria...");
+    
+    Serial.print("[WiFi] Conectando a ");
+    Serial.println(WIFI_SSID_3);
+    
+    WiFi.begin(WIFI_SSID_3, WIFI_PASS_3);
+    start = millis();
+    
+    while (WiFi.status() != WL_CONNECTED && (millis() - start) < 15000) {
+      Serial.print(".");
+      delay(500);
+    }
+    Serial.println();
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] ERROR: timeout conectando a todas las redes WiFi.");
     return false;
   }
 
