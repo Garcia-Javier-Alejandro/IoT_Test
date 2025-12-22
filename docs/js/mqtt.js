@@ -8,22 +8,25 @@ const MQTTModule = (() => {
   let client = null;
   let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
   let valveMode = "UNKNOWN";   // "1" | "2" | "UNKNOWN"
+  let wifiState = null;        // WiFi status object
   
   let onPumpStateChange = null;   // Callback when pump state changes
   let onValveStateChange = null;  // Callback when valve mode changes
   let onConnected = null;         // Callback when connected
   let onDisconnected = null;      // Callback when disconnected
   let onWiFiEvent = null;         // Callback for WiFi connection events
+  let onWiFiStateChange = null;   // Callback for WiFi status updates
 
   /**
    * Register callbacks for MQTT events
    */
-  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb) {
+  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb, wifiStateCb) {
     onPumpStateChange = pumpChangeCb;
     onValveStateChange = valveChangeCb;
     onConnected = connectedCb;
     onDisconnected = disconnectedCb;
     onWiFiEvent = wifiEventCb || null;
+    onWiFiStateChange = wifiStateCb || null;
   }
 
   /**
@@ -41,7 +44,7 @@ const MQTTModule = (() => {
 
     logFn(`Device: ${deviceId}`);
     logFn(`WSS: ${brokerUrl}`);
-    logFn(`Topics: pump=${topics.pumpState} | valve=${topics.valveState}`);
+    logFn(`Topics: pump=${topics.pumpState} | valve=${topics.valveState} | wifi=${topics.wifiState}`);
     logFn("Conectando…");
 
     client = mqtt.connect(brokerUrl, {
@@ -71,6 +74,14 @@ const MQTTModule = (() => {
           logFn("✓ Suscripto a valve/state");
         } else {
           logFn("✗ Error suscripción valve: " + err.message);
+        }
+      });
+
+      client.subscribe(topics.wifiState, { qos: 0 }, (err) => {
+        if (!err) {
+          logFn("✓ Suscripto a wifi/state");
+        } else {
+          logFn("✗ Error suscripción wifi: " + err.message);
         }
       });
 
@@ -116,9 +127,15 @@ const MQTTModule = (() => {
           valveMode = msg;
           if (onValveStateChange) onValveStateChange(msg);
         }
+      } else if (topic === topics.wifiState) {
+        try {
+          wifiState = JSON.parse(msg);
+          logFn(`WiFi: ${wifiState.status} ${wifiState.ssid || ''} (${wifiState.rssi || 0} dBm)`);
+          if (onWiFiStateChange) onWiFiStateChange(wifiState);
+        } catch (e) {
+          logFn(`✗ Error parseando WiFi status: ${e.message}`);
+        }
       }
-      // Check for WiFi events in log messages (optional future feature)
-      // You could subscribe to a log topic from ESP32 if you want
     });
   }
 

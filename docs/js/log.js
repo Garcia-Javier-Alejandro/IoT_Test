@@ -35,19 +35,35 @@ const LogModule = (() => {
    */
   function append(msg, level = "info") {
     const time = new Date().toLocaleTimeString();
-    const entry = `[${time}] ${msg}`;
-
-    logBuffer.unshift(entry);
+    
+    logBuffer.unshift({ msg, time, level });
 
     // Maintain max buffer size
     if (logBuffer.length > MAX_LINES) {
       logBuffer = logBuffer.slice(0, MAX_LINES);
     }
 
-    // Update UI if log box exists and is visible
+    // Update UI if log box exists
     if (logBox) {
-      logBox.textContent = logBuffer.join("\n");
+      renderLog();
     }
+  }
+
+  /**
+   * Render the log entries in the UI
+   */
+  function renderLog() {
+    if (!logBox) return;
+
+    logBox.innerHTML = logBuffer.map(entry => {
+      const colorClass = entry.level === "error" ? "text-red-600" : 
+                        entry.level === "warn" ? "text-amber-600" : 
+                        "text-slate-600";
+      
+      return `<div class="${colorClass} hover:bg-slate-50 px-2 py-0.5 rounded transition-colors">
+        <span class="text-slate-400">[${entry.time}]</span> ${entry.msg}
+      </div>`;
+    }).join("");
   }
 
   /**
@@ -71,7 +87,7 @@ const LogModule = (() => {
   function clear() {
     logBuffer = [];
     if (logBox) {
-      logBox.textContent = "";
+      logBox.innerHTML = "";
     }
     append("Log limpiado");
   }

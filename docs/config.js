@@ -18,5 +18,8 @@ window.APP_CONFIG = {
 
   // Topics para Válvulas (modo unificado: 1 o 2)
   TOPIC_VALVE_CMD: "devices/esp32-pool-01/valve/set",    // dashboard -> ESP32 (valores: "1" o "2")
-  TOPIC_VALVE_STATE: "devices/esp32-pool-01/valve/state" // ESP32 -> dashboard (valores: "1" o "2")
+  TOPIC_VALVE_STATE: "devices/esp32-pool-01/valve/state", // ESP32 -> dashboard (valores: "1" o "2")
+
+  // Topic para estado WiFi
+  TOPIC_WIFI_STATE: "devices/esp32-pool-01/wifi/state"   // ESP32 -> dashboard (JSON con ssid, ip, rssi, quality)
 };
