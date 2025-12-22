@@ -2,7 +2,7 @@
 
 IoT-based swimming pool control system using ESP32, MQTT, and voltage feedback sensors. Controls a 220V pump and dual 24V electrovalves with manual override priority.
 
---- test
+--- test deployment trigger!
 
 ## 🏊 Project Overview
 
