@@ -34,7 +34,7 @@ const AppModule = (() => {
     // Initialize logging module
     LogModule.init(
       elements.logBox,
-      elements.btnLogToggle,
+      null, // No toggle button in new design
       elements.btnLogClear
     );
 
@@ -74,11 +74,12 @@ const AppModule = (() => {
    */
   function cacheElements() {
     const mapping = {
-      "pump-dot": "pumpDot",
-      "pump-status": "pumpStatus",
-      "valve-dot": "valveDot",
-      "valve-status": "valveStatus",
+      "pump-label": "pumpLabel",
+      "pump-status-badge": "pumpStatusBadge",
+      "pump-icon": "pumpIcon",
+      "valve-mode-label": "valveModeLabel",
       "conn-text": "connText",
+      "conn-indicator": "connIndicator",
       "btn-pump": "btnPump",
       "btn-valve": "btnValve",
       "log-box": "logBox",
@@ -86,7 +87,6 @@ const AppModule = (() => {
       "mqtt-pass": "passInput",
       "btn-connect": "btnConnect",
       "login-card": "loginCard",
-      "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
     };
 
@@ -199,36 +199,23 @@ const AppModule = (() => {
   function setPumpState(state) {
     pumpState = state;
 
-    if (elements.pumpDot) {
+    if (elements.pumpLabel) {
       if (state === "ON") {
-        elements.pumpDot.className = "dot on";
+        elements.pumpLabel.textContent = "Apagar bomba";
       } else if (state === "OFF") {
-        elements.pumpDot.className = "dot off";
+        elements.pumpLabel.textContent = "Encender bomba";
       } else {
-        elements.pumpDot.className = "dot";
+        elements.pumpLabel.textContent = "Estado desconocido";
       }
     }
 
-    if (elements.pumpStatus) {
+    if (elements.pumpStatusBadge) {
       if (state === "ON") {
-        elements.pumpStatus.textContent = "ON";
+        elements.pumpStatusBadge.textContent = "ON";
       } else if (state === "OFF") {
-        elements.pumpStatus.textContent = "OFF";
+        elements.pumpStatusBadge.textContent = "OFF";
       } else {
-        elements.pumpStatus.textContent = "?";
-      }
-    }
-
-    // Update button text based on state
-    if (elements.btnPump) {
-      if (state === "ON") {
-        elements.btnPump.classList.remove("btn-on");
-        elements.btnPump.classList.add("btn-off");
-        elements.btnPump.textContent = "Apagar bomba";
-      } else {
-        elements.btnPump.classList.remove("btn-off");
-        elements.btnPump.classList.add("btn-on");
-        elements.btnPump.textContent = "Encender bomba";
+        elements.pumpStatusBadge.textContent = "?";
       }
     }
 
@@ -241,32 +228,13 @@ const AppModule = (() => {
   function setValveMode(mode) {
     valveMode = mode;
 
-    if (elements.valveDot) {
-      if (mode === "1" || mode === "2") {
-        elements.valveDot.className = "dot on";
-      } else {
-        elements.valveDot.className = "dot";
-      }
-    }
-
-    if (elements.valveStatus) {
+    if (elements.valveModeLabel) {
       if (mode === "1") {
-        elements.valveStatus.textContent = "1";
+        elements.valveModeLabel.textContent = "Modo 1: Cascada";
       } else if (mode === "2") {
-        elements.valveStatus.textContent = "2";
+        elements.valveModeLabel.textContent = "Modo 2: Eyectores";
       } else {
-        elements.valveStatus.textContent = "?";
-      }
-    }
-
-    // Update button text based on mode
-    if (elements.btnValve) {
-      if (mode === "1") {
-        elements.btnValve.textContent = "Cambiar a modo 2";
-      } else if (mode === "2") {
-        elements.btnValve.textContent = "Cambiar a modo 1";
-      } else {
-        elements.btnValve.textContent = "Cambiar modo";
+        elements.valveModeLabel.textContent = "Modo ?";
       }
     }
 
@@ -292,6 +260,15 @@ const AppModule = (() => {
    */
   function connectUI() {
     if (elements.connText) elements.connText.textContent = "Conectado";
+    
+    // Update connection indicator with animated ping
+    if (elements.connIndicator) {
+      elements.connIndicator.innerHTML = `
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+      `;
+    }
+    
     updateButtonStates();
     if (elements.loginCard) elements.loginCard.style.display = "none";
     LogModule.append("✓ Conectado al broker MQTT");
@@ -302,6 +279,14 @@ const AppModule = (() => {
    */
   function disconnectUI() {
     if (elements.connText) elements.connText.textContent = "Desconectado";
+    
+    // Update connection indicator to gray
+    if (elements.connIndicator) {
+      elements.connIndicator.innerHTML = `
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-slate-400"></span>
+      `;
+    }
+    
     updateButtonStates();
     if (elements.loginCard) elements.loginCard.style.display = "";
   }
