@@ -76,6 +76,20 @@
       opacity: 1;
       height: 40px;
     }
+    /* Active day toggle button */
+    .day-toggle.active {
+      background-color: #001A72 !important;
+      border-color: #001A72 !important;
+      color: white !important;
+    }
+    /* Active mode button */
+    .mode-btn.active {
+      background-color: #001A72 !important;
+      border-color: #001A72 !important;
+    }
+    .mode-btn.active span {
+      color: white !important;
+    }
   </style>
 </head>
 
@@ -476,12 +490,9 @@
     <!-- Create Program Screen -->
     <div id="create-program-screen" class="absolute inset-0 bg-white pt-32 px-6 pb-6 space-y-6 overflow-y-auto transition-transform duration-300 translate-x-full">
       
-      <!-- Program Editor Card -->
-      <div class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-5 space-y-5">
-
-        <!-- Schedule Table -->
-        <div class="bg-white rounded-xl border-2 border-slate-300 overflow-hidden">
-          <table class="w-full text-sm">
+      <!-- Schedule Table -->
+      <div class="bg-white rounded-xl border-2 border-slate-300 overflow-hidden">
+        <table class="w-full text-sm">
             <thead>
               <tr class="bg-slate-100 border-b-2 border-slate-300">
                 <th class="py-2 px-2 text-center text-xs font-bold text-slate-600">Día</th>
@@ -648,8 +659,6 @@
             </tbody>
           </table>
         </div>
-
-      </div>
 
       <!-- Action Buttons -->
       <div class="grid grid-cols-2 gap-3">

@@ -157,11 +157,11 @@ const ProgramasModule = (() => {
           
           // Remove active state from all mode buttons in this row
           modeBtns.forEach(b => {
-            b.classList.remove('bg-primary', 'text-white', 'border-primary');
+            b.classList.remove('bg-primary', 'text-white', 'border-primary', 'active');
           });
           
           // Activate selected button
-          btn.classList.add('bg-primary', 'text-white', 'border-primary');
+          btn.classList.add('bg-primary', 'text-white', 'border-primary', 'active');
           
           // Update schedule data
           if (scheduleData[day]) {
@@ -442,7 +442,7 @@ const ProgramasModule = (() => {
         // Set mode
         modeBtns.forEach(btn => {
           if (parseInt(btn.getAttribute('data-mode')) === dayData.mode) {
-            btn.classList.add('bg-primary', 'text-white', 'border-primary');
+            btn.classList.add('bg-primary', 'text-white', 'border-primary', 'active');
           }
         });
         
