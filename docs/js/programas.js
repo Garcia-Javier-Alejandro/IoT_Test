@@ -58,22 +58,32 @@ const ProgramasModule = (() => {
   function setupEventListeners() {
     // Create program buttons
     for (let i = 1; i <= 3; i++) {
-      elements[`btnCreateProgram${i}`].addEventListener('click', () => {
-        openCreateProgram(i - 1); // 0-indexed
-      });
+      if (elements[`btnCreateProgram${i}`]) {
+        elements[`btnCreateProgram${i}`].addEventListener('click', () => {
+          openCreateProgram(i - 1); // 0-indexed
+        });
+      }
       
-      elements[`btnToggleProgram${i}`].addEventListener('click', () => {
-        toggleProgram(i - 1);
-      });
+      if (elements[`btnToggleProgram${i}`]) {
+        elements[`btnToggleProgram${i}`].addEventListener('click', () => {
+          toggleProgram(i - 1);
+        });
+      }
       
-      elements[`btnDeleteProgram${i}`].addEventListener('click', () => {
-        deleteProgram(i - 1);
-      });
+      if (elements[`btnDeleteProgram${i}`]) {
+        elements[`btnDeleteProgram${i}`].addEventListener('click', () => {
+          deleteProgram(i - 1);
+        });
+      }
     }
     
     // Create program screen
-    elements.btnCreateCancel.addEventListener('click', hideCreateScreen);
-    elements.btnCreateSave.addEventListener('click', saveProgram);
+    if (elements.btnCreateCancel) {
+      elements.btnCreateCancel.addEventListener('click', hideCreateScreen);
+    }
+    if (elements.btnCreateSave) {
+      elements.btnCreateSave.addEventListener('click', saveProgram);
+    }
     
     // Schedule table interactions
     setupScheduleTable();

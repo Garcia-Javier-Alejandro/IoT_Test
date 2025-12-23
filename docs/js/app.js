@@ -301,8 +301,13 @@ const AppModule = (() => {
     // Programas button
     if (elements.btnProgramas) {
       elements.btnProgramas.addEventListener("click", () => {
+        console.log('Programas button clicked');
+        console.log('ProgramasModule exists:', !!window.ProgramasModule);
         if (window.ProgramasModule) {
+          console.log('Calling ProgramasModule.showScreen()');
           ProgramasModule.showScreen();
+        } else {
+          console.error('ProgramasModule not found');
         }
       });
     }
@@ -311,7 +316,7 @@ const AppModule = (() => {
     if (elements.btnBack) {
       elements.btnBack.addEventListener("click", () => {
         // Check which screen is active
-        const timerActive = elements.timerScreen.classList.contains('translate-x-0');
+        const timerActive = elements.timerScreen.classList.contains('slide-in');
         const programasActive = document.getElementById('programas-screen')?.classList.contains('translate-x-0');
         const createProgramActive = document.getElementById('create-program-screen')?.classList.contains('translate-x-0');
         
