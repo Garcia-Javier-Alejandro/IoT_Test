@@ -217,6 +217,14 @@ const AppModule = (() => {
     if (elements.btnValve1) {
       elements.btnValve1.addEventListener("click", () => {
         if (valveMode === "1") return; // Already in mode 1
+        
+        // Check if timer is active
+        if (timerState.active) {
+          LogModule.append("⚠️ Timer cancelado");
+          stopTimer();
+          return;
+        }
+        
         LogModule.append(`Cambiando válvulas a modo 1 (Cascada)...`);
         MQTTModule.publish(
           "1",
@@ -230,6 +238,14 @@ const AppModule = (() => {
     if (elements.btnValve2) {
       elements.btnValve2.addEventListener("click", () => {
         if (valveMode === "2") return; // Already in mode 2
+        
+        // Check if timer is active
+        if (timerState.active) {
+          LogModule.append("⚠️ Timer cancelado");
+          stopTimer();
+          return;
+        }
+        
         LogModule.append(`Cambiando válvulas a modo 2 (Eyectores)...`);
         MQTTModule.publish(
           "2",
@@ -568,20 +584,24 @@ const AppModule = (() => {
     // Show active timer display
     elements.activeTimerCard.classList.remove('hidden');
     updateTimerDisplay();
+    updateTimerButton();
 
     // Start countdown
     if (timerState.interval) clearInterval(timerState.interval);
     timerState.interval = setInterval(() => {
       timerState.remaining--;
       updateTimerDisplay();
+      updateTimerButton();
 
       if (timerState.remaining <= 0) {
         stopTimer(true);
       }
     }, 1000);
 
-    // Return to main screen
-    hideTimerScreen();
+    // Return to main screen after 0.5s delay
+    setTimeout(() => {
+      hideTimerScreen();
+    }, 500);
   }
 
   /**
@@ -615,6 +635,30 @@ const AppModule = (() => {
 
     // Hide timer display
     elements.activeTimerCard.classList.add('hidden');
+    
+    // Reset timer button text
+    updateTimerButton();
+  }
+
+  /**
+   * Update timer button text with countdown
+   */
+  function updateTimerButton() {
+    if (!elements.btnTimer) return;
+    
+    const timerText = elements.btnTimer.querySelector('span:last-child');
+    if (!timerText) return;
+    
+    if (timerState.active && timerState.remaining > 0) {
+      const hours = Math.floor(timerState.remaining / 3600);
+      const minutes = Math.floor((timerState.remaining % 3600) / 60);
+      const seconds = timerState.remaining % 60;
+      
+      const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      timerText.textContent = timeStr;
+    } else {
+      timerText.textContent = 'Timer';
+    }
   }
 
   /**
