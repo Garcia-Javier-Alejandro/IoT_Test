@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 800">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500">
   <defs>
     <linearGradient id="dropGradient" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#2DD4BF;stop-opacity:1" />
@@ -6,7 +6,7 @@
       <stop offset="100%" style="stop-color:#1E3A8A;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <path d="M 200 100 C 200 100 350 300 350 450 C 350 580 275 650 200 650 C 125 650 50 580 50 450 C 50 300 200 100 200 100 Z" fill="url(#dropGradient)"/>
-  <path d="M 100 500 Q 150 480 200 490 Q 250 500 300 485" stroke="white" stroke-width="15" fill="none" opacity="0.9" stroke-linecap="round"/>
-  <path d="M 120 550 Q 160 535 200 540 Q 240 545 270 535" stroke="white" stroke-width="12" fill="none" opacity="0.8" stroke-linecap="round"/>
+  <path d="M 200 50 C 200 50 320 180 320 300 C 320 400 270 450 200 450 C 130 450 80 400 80 300 C 80 180 200 50 200 50 Z" fill="url(#dropGradient)"/>
+  <path d="M 110 320 Q 155 305 200 312 Q 245 319 290 308" stroke="white" stroke-width="14" fill="none" opacity="0.9" stroke-linecap="round"/>
+  <path d="M 130 360 Q 165 348 200 353 Q 235 358 270 348" stroke="white" stroke-width="11" fill="none" opacity="0.8" stroke-linecap="round"/>
 </svg>
