@@ -254,9 +254,9 @@ const AppModule = (() => {
     // Update pump ring animation
     if (elements.pumpRing) {
       if (state === "ON") {
-        elements.pumpRing.className = "animate-ping absolute inline-flex h-10 w-10 rounded-full bg-white opacity-20";
+        elements.pumpRing.className = "animate-ping absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20";
       } else {
-        elements.pumpRing.className = "absolute inline-flex h-10 w-10 rounded-full bg-white opacity-20";
+        elements.pumpRing.className = "absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20";
       }
     }
 
@@ -312,11 +312,11 @@ const AppModule = (() => {
   function connectUI() {
     if (elements.connText) elements.connText.textContent = "Conectado";
     
-    // Update connection indicator with animated ping (primary color)
+    // Update connection indicator with animated ping (green)
     if (elements.connIndicator) {
       elements.connIndicator.innerHTML = `
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
       `;
     }
     
@@ -331,10 +331,10 @@ const AppModule = (() => {
   function disconnectUI() {
     if (elements.connText) elements.connText.textContent = "Desconectado";
     
-    // Update connection indicator to gray
+    // Update connection indicator to red
     if (elements.connIndicator) {
       elements.connIndicator.innerHTML = `
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
       `;
     }
     
@@ -347,9 +347,9 @@ const AppModule = (() => {
    */
   function updateWiFiStatus(wifiState) {
     if (!wifiState || wifiState.status !== "connected") {
-      // Disconnected state
+      // Disconnected state - red
       if (elements.wifiIcon) elements.wifiIcon.textContent = "wifi_off";
-      if (elements.wifiIcon) elements.wifiIcon.className = "material-icons-round text-slate-400 text-lg";
+      if (elements.wifiIcon) elements.wifiIcon.className = "material-icons-round text-red-600 text-lg";
       if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
       return;
     }
@@ -363,13 +363,13 @@ const AppModule = (() => {
     
     if (quality === "excellent") {
       icon = "wifi";
-      iconColor = "text-primary";
+      iconColor = "text-green-600";
     } else if (quality === "good") {
       icon = "wifi";
-      iconColor = "text-primary-light";
+      iconColor = "text-blue-400";
     } else if (quality === "fair") {
       icon = "network_wifi_3_bar";
-      iconColor = "text-yellow-600";
+      iconColor = "text-yellow-500";
     } else {
       icon = "network_wifi_1_bar";
       iconColor = "text-orange-600";
