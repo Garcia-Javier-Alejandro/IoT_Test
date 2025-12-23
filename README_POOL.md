@@ -1,16 +1,14 @@
 # ESP32 Pool Control System v2.0
 
-IoT-based swimming pool control system using ESP32, MQTT, and voltage feedback sensors. Controls a 220V pump and dual 24V electrovalves with manual override priority.
-
---- test deployment trigger!
+IoT-based swimming pool control system using ESP32, MQTT, and voltage feedback sensors. Controls a 220V pump and dual 24V electrovalves with manual override priority and automated scheduling.
 
 ## 🏊 Project Overview
 
 This system allows remote control of:
 - **1× Swimming pool pump** (0.75kW @ 220V) via latching contactor
 - **2× Electrovalves** (24V) connected in parallel - controlled as unified modes (Mode 1 / Mode 2)
-  - Valve 1: Normally Open (NO)
-  - Valve 2: Normally Closed (NC)
+  - Valve 1: Normally Open (NO) - Cascada mode
+  - Valve 2: Normally Closed (NC) - Eyectores mode
 
 ### Key Features
 
@@ -19,8 +17,14 @@ This system allows remote control of:
 - ✅ **Manual override priority** - Pneumatic push buttons work independently alongside ESP32 control
 - ✅ **State verification** - Prevents unnecessary switching if already in target state
 - ✅ **MQTT over TLS** - Secure communication via HiveMQ Cloud
-- ✅ **Simplified dashboard** - Click-to-control cards for pump and valves
-- ✅ **WiFi status logging** - Real-time connection events in log panel
+- ✅ **Modern responsive dashboard** - Mobile-first design with Tailwind CSS
+- ✅ **Countdown timer** - Set duration and mode for automatic pump shutoff
+- ✅ **Program scheduling** - Up to 3 weekly schedules with automatic execution
+- ✅ **Conflict detection** - Automatic handling of timer/program/manual conflicts
+- ✅ **WiFi status monitoring** - Real-time signal strength with color-coded indicators
+- ✅ **Event logging** - Collapsible log panel with timestamps
+- ✅ **Multi-network WiFi** - Automatic fallback to 3 configured networks
+- ✅ **Well-documented code** - Comprehensive inline comments and section separators
 
 ---
 
@@ -36,14 +40,17 @@ IoT/
 │   │   └── ca_cert.h           # TLS certificate
 │   └── platformio.ini          # PlatformIO configuration
 │
-├── docs/                        # Web dashboard
-│   ├── index-pool.html         # Pool control dashboard (NEW!)
+├── docs/                        # Web dashboard (PWA-ready)
+│   ├── index.html              # Main dashboard (NEW unified design!)
 │   ├── config.js               # MQTT topics and device ID
 │   ├── js/
-│   │   ├── app-pool.js         # Pool control UI logic
-│   │   ├── mqtt-pool.js        # MQTT client for pool system
-│   │   └── log.js              # Event logging module
-│   └── css/styles.css          # Styling with clickable cards
+│   │   ├── app.js              # Main application controller
+│   │   ├── mqtt.js             # MQTT client wrapper
+│   │   ├── programas.js        # Schedule management module
+│   │   ├── log.js              # Event logging module
+│   │   └── history.js          # Historical data (optional)
+│   ├── logo.png                # Application logo
+│   └── _routes.json            # Deployment routes config
 │
 ├── WIRING_DIAGRAM.md           # Complete hardware wiring guide
 └── README_POOL.md              # This file
@@ -97,7 +104,10 @@ IoT/
 
 | Topic | Direction | Values | Description |
 |-------|-----------|--------|-------------|
-| `devices/esp32-pool-01/pump/set` | Dashboard → ESP32 | `ON`, `OFF`, `TOGGLE` | Pump control commands |
+| `devices/esp32-pool-01/pump/set` | Dashboard → ESP32 | `ON`, `OFF`, `TOGGLE` | Pump control command
+| `devices/esp32-pool-01/timer/set` | Dashboard → ESP32 | `{"mode":1,"duration":3600}` | Timer start command (JSON) |
+| `devices/esp32-pool-01/timer/state` | ESP32 → Dashboard | `{"active":true,"remaining":3420,...}` | Timer state updates (retained) |
+| `devices/esp32-pool-01/wifi/state` | ESP32 → Dashboard | `{"status":"connected","ssid":"...","rssi":-45,...}` | WiFi status with signal strength (retained) |s |
 | `devices/esp32-pool-01/pump/state` | ESP32 → Dashboard | `ON`, `OFF` | Pump actual state (retained) |
 | `devices/esp32-pool-01/valve/set` | Dashboard → ESP32 | `1`, `2`, `TOGGLE` | Valve mode commands |
 | `devices/esp32-pool-01/valve/state` | ESP32 → Dashboard | `1`, `2` | Valve actual mode (retained) |
@@ -170,35 +180,114 @@ pio device monitor  # View serial output
 
 #### Local Development
 ```bash
-cd docs
-python -m http.server 8000
-# Open http://localhost:8000/index-pool.html
 ```
+
+#### Production Deployment
+The dashboard is automatically deployed via GitHub Actions to Cloudflare Pages:
+- **Live URL**: https://iot-pool.pages.dev
+- **Deployment**: Automatic on push to main branch
+- **Custom domain**: Can be configured in Cloudflare
 
 **Or deploy to any static hosting** (GitHub Pages, Netlify, Vercel, etc.)
 
 ### 5. Configure Dashboard
 
-1. Open `index-pool.html` in browser
+1. Open dashboard in browser
 2. Enter MQTT credentials (same as in `secrets.h`)
 3. Click **"Conectar"**
 4. Wait for state synchronization
+5. Credentials are saved in localStorage for future sessionsser
+2. Enter MButton
+- **Large blue button** with power icon
+- Click to toggle pump ON/OFF
+- Animated ring appears when pump is running
+- Shows current state: "Bomba ON" or "Bomba OFF"
+- Automatically disabled during MQTT disconnection
+- Detects conflicts with active programs
 
----
+#### Valve Mode Buttons
+- **Two buttons side by side**: Cascada (waterfall icon) and Eyectores (air icon)
+- Click to switch between modes
+- Active mode highlighted in blue
+- Mode 1 (Cascada): Valve 1 energized
+- Mode 2 (Eyectores): Valve 2 energized
+- Switching modes automatically cancels active timer
+- Detects conflicts with active programs
 
-## 🎮 Usage
+#### Timer Button
+- Opens timer configuration screen
+- Select mode (Cascada or Eyectores)
+- Set duration (hours and minutes)
+- Start button begins countdown
+- Active timer shows on main screen with stop button
+- Timer button displays countdown (HH:MM:SS)
+- Auto-stops pump when timer expires
 
-### Dashboard Controls
+#### Programas Button
+- Opens weekly schedule management
+- Create up to 3 programs
+- Each program can have different schedules per day
+- Enable/disable programs with toggle button
+- Edit or delete existing programs
+- Active program name displayed on button
+- Visual ring indicator when program is running
+- Automatic execution every 15 minutes
+- Manual override pauses programs until next day
 
-#### Pump Card
-- **Click anywhere on card** to toggle pump ON/OFF
-- Green dot = ON, Gray dot = OFF
-- Status shows: `ON` or `OFF`
+### Program Scheduling
 
-#### Valve Card
-- **Click anywhere on card** to toggle between Mode 1 and Mode 2
-- Status shows: `1` or `2`
-- Mode 1: Valve 1 (NO) energized
+#### Creating a Program
+1. Click **"Programas"** button
+2. Select an empty slot (1, 2, or 3)
+3. Enable days by clicking day toggle buttons
+4. For each enabled day:
+   - Select mode (Cascada or Eyectores icon)
+   - Set start time
+   - Set stop time
+5. Click **"Crear"** and enter program name
+6. Program is automatically enabled
+
+#### Program Priority
+When multiple programs overlap:
+- Slot 0 > Slot 1 > Slot 2 (first slot has priority)
+- Alert shown for conflicts
+- Only highest priority program executes
+
+#### Manual Override
+When you manually control pump/valves while a program is active:
+- Alert: "⚠️ Conflicto con programa activo"
+- Program pauses until next day (midnight reset)
+- Programs resume automatically at 00:00
+
+### Connection Status
+
+#### WiFi Indicator
+- **Icon color** indicates signal quality:
+  - Green: Excellent (>= -50 dBm)
+  - Blue: Good (>= -60 dBm)
+  - Yellow: Fair (>= -70 dBm)
+  - Orange: Weak (< -70 dBm)
+  - Red: Disconnected
+- Displays connected SSID
+
+#### MQTT Indicator
+- **Green animated dot**: Connected
+- **Red static dot**: Disconnected
+- Shows connection status text
+
+#### Log Panel
+- Shows real-time events with timestamps
+- Color-coded messages:
+  - ✅ Success (green)
+  - ⚠️ Warnings (orange)
+  - ❌ Errors (red)
+  - ▶ Program execution
+  - ■ Program stop
+  - 🕐 Timer events
+- **▼** button: Expand/collapse
+- **🗑️** button: Clear log
+- Auto-scrolls to latest entry
+- Gradient fade at bottom for smooth UXgized
 - Mode 2: Valve 2 (NC) energized
 
 #### Log Panel
@@ -259,44 +348,99 @@ python -m http.server 8000
 | DC Sensor | No voltage | < 1000 | Valves OFF |
 
 ---
+Automatic Program Execution
 
-## ⚠️ Safety Considerations
+The dashboard checks every 15 minutes if any enabled program should be running:
 
-### Critical Warnings
+1. **Time Matching**: Compares current time against program schedules
+2. **Day Matching**: JavaScript `Date.getDay()` matches schedule (0=Sunday, 1=Monday, etc.)
+3. **Conflict Resolution**: Slot priority system (slot 0 beats slot 1 beats slot 2)
+4. **MQTT Commands**: Publishes pump ON and valve mode commands
+5. **Manual Override**: Detects user intervention and pauses until next day
+6. **Midnight Reset**: Automatic resume at 00:00 after manual override
 
-1. **HIGH VOLTAGE**: 220V can be lethal. Work only with power OFF.
-2. **Verify isolation**: ZMPT101B provides galvanic isolation - NEVER bypass this!
-3. **Use proper enclosure**: IP65 rated for outdoor/wet environments
-4. **Check local codes**: Pool electrical work may require licensed electrician
-5. **Test before installation**: Verify all relay switching on bench with LEDs
+### Timer Synchronization
 
-### Recommended Practices
+Timer state is synchronized between ESP32 and dashboard:
+- ESP32 sends timer state updates every 10 seconds
+- Dashboard displays countdown locally (1-second updates)
+- Resync on reconnection prevents drift
+- Stop command from either side stops both
 
-- ✅ Add circuit breakers (10A for pump circuit)
-- ✅ Use properly rated wire (16 AWG for 220V)
-- ✅ Label all connections
-- ✅ Keep low-voltage (ESP32/5V) physically separated from high-voltage (220V)
-- ✅ Document actual contactor model numbers for future reference
+### WiFi Fallback
 
----
+ESP32 attempts connection to 3 networks in priority order:
+1. Primary WiFi (WIFI_SSID)
+2. Secondary WiFi (WIFI_SSID_2)
+3. Tertiary WiFi (WIFI_SSID_3)
 
-## 🐛 Troubleshooting
+If all fail, periodic retry every 30 seconds.
+
+### Custom Sensor Calibration
+
+If ADC readings are inconsistent, calibrate in `firmware/src/main.cpp`:
+
+```cpp
+// Constants section at top of file
+const int VOLTAGE_THRESHOLD = 1200;  // Adjust based on your sensors
+```
+
+Test range: Read ADC values via Serial Monitor when ON/OFF, set threshold midway.
+
+### Pulse Duration Tuning
+
+Different contactors may need different pulse lengths (in `main.cpp`):
+
+```cpp
+const int PULSE_DURATION_MS = 150;  // Increase if contactors don't switch reliably
+```
+
+Test range: 50-200ms (too short = no trigger, too long = unnecessary)
+
+### Code Organization
+
+All code files follow consistent structure with section separators:
+
+**ESP32 Firmware** (`main.cpp`):
+- Constants → State → Helper Functions → Sensors → Relays → MQTT Publishing → Control Logic → Timer → MQTT Handler → WiFi → NTP → MQTT TLS → Setup/Loop
+
+**JavaScript Modules** (`app.js`, `programas.js`):
+- Constants → State → DOM Cache → Initialization → Event Listeners → Business Logic → Public API
+
+**HTML** (`index.html`):
+- Meta → Styles → Config → Header → Main Screen → Timer Screen → Programas Screen → Create Program Screen → Footer → Scripts
 
 ### ESP32 Won't Connect to WiFi
 
 **Check:**
 - SSID/password correct in `secrets.h`?
 - WiFi signal strength (RSSI should be > -70 dBm)
-- Try secondary WiFi (configured in `secrets.h`)
+- Try Recent Improvements (December 2025)
 
-**Serial output shows**:
-```
-[WiFi] ERROR: timeout conectando a ambas redes WiFi.
-```
+### ✅ Completed
+- ✅ **Automatic program execution** - 15-minute interval checking with conflict resolution
+- ✅ **Timer functionality** - Countdown with auto-shutoff and ESP32 sync
+- ✅ **Manual override detection** - Pauses programs when user takes manual control
+- ✅ **Code refactoring** - Comprehensive documentation and section separators
+- ✅ **WiFi multi-network** - Automatic fallback to 3 configured networks
+- ✅ **Custom waterfall icon** - SVG icon for Cascada mode
+- ✅ **Responsive UI polish** - Smaller table sizes, improved spacing
+- ✅ **Program scheduling** - Up to 3 weekly programs with per-day configuration
+- ✅ **Conflict handling** - Timer cancellation, program priority, manual override
+- ✅ **Signal strength monitoring** - Color-coded WiFi indicators
 
-### Relays Click But Contactors Don't Trigger
+### 🚧 TODO / Future Enhancements
 
-**Likely cause**: Relay contacts not wired in parallel with manual buttons
+- [ ] Hardware testing with actual ESP32 and sensors
+- [ ] Power usage monitoring (current sensor integration)
+- [ ] Temperature sensor for pool water monitoring
+- [ ] OTA (Over-The-Air) firmware updates
+- [ ] Mobile app wrapper (Capacitor or PWA improvements)
+- [ ] Historical data visualization and analytics
+- [ ] Email/SMS notifications for critical events
+- [ ] Integration with Home Assistant / Google Home
+- [ ] Multiple device support (control multiple pools)
+- [ ] Sensor debouncing and advanced validationlel with manual buttons
 
 **Fix**:
 - Verify relay NO (Normally Open) contacts are in parallel with manual button

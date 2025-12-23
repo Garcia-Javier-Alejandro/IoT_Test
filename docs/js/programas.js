@@ -1,9 +1,26 @@
 /**
- * Programas (Schedules) Module
+ * ==================== Programas (Schedules) Module ====================
  * Manages up to 3 programs with day/mode/time configurations
+ * 
+ * Features:
+ * - Create, edit, delete up to 3 scheduled programs
+ * - Each program has 7-day schedule (enable/disable per day)
+ * - Per-day configuration: mode (1=Cascada, 2=Eyectores), start/stop times
+ * - Automatic execution: checks every 15 minutes and publishes MQTT commands
+ * - Conflict resolution: slot priority (slot 0 > slot 1 > slot 2)
+ * - Manual override: pauses programs until next day when user takes manual control
  */
 
 const ProgramasModule = (() => {
+  // ==================== Constants ====================
+  const MAX_PROGRAMS = 3;                    // Maximum number of programs
+  const EXECUTION_CHECK_INTERVAL = 15 * 60 * 1000; // Check programs every 15 minutes
+  const STORAGE_KEY = 'poolPrograms';        // localStorage key for persistence
+  const DAY_NAMES_SHORT = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
+  const DAY_NAMES_LONG = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const MODE_NAMES = { 1: 'Cascada', 2: 'Eyectores' };
+  
+  // ==================== Module State ====================
   // Program storage (max 3 programs)
   let programs = [null, null, null]; // Array of program objects
   
@@ -17,11 +34,15 @@ const ProgramasModule = (() => {
   let manualOverride = false; // True if user manually controlled during program
   let manualOverrideDate = null; // Date when manual override happened
   
+  // ==================== DOM Elements Cache ====================
   // DOM elements
   let elements = {};
 
+  // ==================== Initialization ====================
+  
   /**
    * Initialize the Programas module
+   * Sets up DOM references, event listeners, loads saved programs, and starts execution timer
    */
   function init() {
     try {
@@ -108,7 +129,11 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Setup schedule table interactions
+   * Setup schedule table interactions (7-day weekly schedule)
+   * Each row represents one day with:
+   * - Day toggle: enable/disable the day
+   * - Mode buttons: select Cascada (1) or Eyectores (2)
+   * - Time inputs: start and stop times
    */
   function setupScheduleTable() {
     if (!elements.scheduleTableBody) {
@@ -196,8 +221,13 @@ const ProgramasModule = (() => {
     });
   }
 
+  // ==================== Form Management ====================
+  
   /**
    * Validate the create program form
+   * Requirements:
+   * - At least one day must be enabled
+   * - Each enabled day must have: mode selected, start time, stop time
    */
   function validateForm() {
     const hasAtLeastOneDay = Object.keys(scheduleData).length > 0;
@@ -215,7 +245,8 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Open create program screen
+   * Open create program screen for a specific slot
+   * @param {number} slot - Program slot index (0, 1, or 2)
    */
   function openCreateProgram(slot) {
     currentSlot = slot;
@@ -235,7 +266,8 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Reset the create program form
+   * Reset the create program form to initial state
+   * Deactivates all days, disables all controls, clears all values
    */
   function resetCreateForm() {
     const rows = elements.scheduleTableBody.querySelectorAll('tr');
@@ -280,8 +312,11 @@ const ProgramasModule = (() => {
     }
   }
 
+  // ==================== Program CRUD Operations ====================
+  
   /**
-   * Save program
+   * Save program to current slot
+   * Prompts for program name, creates/updates program object, saves to localStorage
    */
   function saveProgram() {
     const existingProgram = programs[currentSlot];
@@ -321,7 +356,9 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Update program slot display
+   * Update program slot display in the UI
+   * Shows/hides create button, updates program card with name, summary, toggle state
+   * @param {number} slot - Program slot index (0, 1, or 2)
    */
   function updateProgramSlot(slot) {
     const program = programs[slot];
@@ -351,12 +388,11 @@ const ProgramasModule = (() => {
       
       // Update summary
       const days = Object.keys(program.schedule).map(d => {
-        const dayNames = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
-        return dayNames[parseInt(d)];
+        return DAY_NAMES_SHORT[parseInt(d)];
       }).join(', ');
       
       const modes = [...new Set(Object.values(program.schedule).map(s => s.mode))];
-      const modeStr = modes.map(m => m === 1 ? 'Cascada' : 'Eyectores').join(', ');
+      const modeStr = modes.map(m => MODE_NAMES[m]).join(', ');
       
       const times = Object.values(program.schedule).map(s => `${s.start}-${s.stop}`);
       const timeStr = [...new Set(times)].join(', ');
@@ -374,7 +410,8 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Toggle program enabled/disabled
+   * Toggle program enabled/disabled state
+   * @param {number} slot - Program slot index (0, 1, or 2)
    */
   function toggleProgram(slot) {
     const program = programs[slot];
@@ -391,7 +428,9 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Edit program
+   * Edit existing program
+   * Opens create screen with program data pre-loaded
+   * @param {number} slot - Program slot index (0, 1, or 2)
    */
   function editProgram(slot) {
     const program = programs[slot];
@@ -422,7 +461,9 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Load program data into create form
+   * Load program data into create form for editing
+   * Populates schedule table with existing program configuration
+   * @param {Object} program - Program object to load
    */
   function loadProgramIntoForm(program) {
     const rows = elements.scheduleTableBody.querySelectorAll('tr');
@@ -464,7 +505,8 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Delete program
+   * Delete program with confirmation
+   * @param {number} slot - Program slot index (0, 1, or 2)
    */
   function deleteProgram(slot) {
     const program = programs[slot];
@@ -481,18 +523,21 @@ const ProgramasModule = (() => {
     }
   }
 
+  // ==================== Persistence (localStorage) ====================
+  
   /**
-   * Save programs to localStorage
+   * Save all programs to localStorage for persistence
    */
   function savePrograms() {
-    localStorage.setItem('poolPrograms', JSON.stringify(programs));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(programs));
   }
 
   /**
-   * Load programs from localStorage
+   * Load programs from localStorage on init
+   * Restores program state from previous session
    */
   function loadPrograms() {
-    const saved = localStorage.getItem('poolPrograms');
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         programs = JSON.parse(saved);
@@ -504,8 +549,11 @@ const ProgramasModule = (() => {
     }
   }
 
+  // ==================== Screen Navigation ====================
+  
   /**
-   * Show programas screen
+   * Show programas screen with slide animation
+   * Updates header with back button and title
    */
   function showScreen() {
     // Animate screen transition
@@ -525,7 +573,8 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Hide programas screen
+   * Hide programas screen with reverse animation
+   * Returns to main screen
    */
   function hideScreen() {
     // Animate screen transition
@@ -544,8 +593,12 @@ const ProgramasModule = (() => {
     }
   }
 
+  // ==================== Automatic Program Execution ====================
+  
   /**
-   * Start automatic execution timer (checks every 15 minutes)
+   * Start automatic execution timer
+   * Checks every 15 minutes if any enabled program should be running
+   * Executes immediately on start, then at regular intervals
    */
   function startExecutionTimer() {
     // Clear any existing timer
@@ -556,14 +609,22 @@ const ProgramasModule = (() => {
     // Check immediately on start
     checkAndExecutePrograms();
     
-    // Then check every 15 minutes
+    // Then check at regular intervals
     executionTimer = setInterval(() => {
       checkAndExecutePrograms();
-    }, 15 * 60 * 1000); // 15 minutes
+    }, EXECUTION_CHECK_INTERVAL);
   }
 
   /**
    * Check if programs should be executed and publish MQTT commands
+   * 
+   * Logic:
+   * 1. Reset manual override if it's a new day
+   * 2. Skip if manual override is active
+   * 3. Find all programs matching current day and time
+   * 4. Execute highest priority program (lowest slot number)
+   * 5. Alert on conflicts
+   * 6. Stop execution if no program should be running
    */
   function checkAndExecutePrograms() {
     // Reset manual override if it's a new day
@@ -630,7 +691,14 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Execute a program (publish MQTT commands)
+   * Execute a program by publishing MQTT commands
+   * Publishes pump ON command and valve mode command
+   * Only publishes if not already executing the same program
+   * 
+   * @param {number} slot - Program slot index (0, 1, or 2)
+   * @param {Object} program - Program object
+   * @param {Object} daySchedule - Schedule for current day {mode, start, stop}
+   * @param {number} currentDay - Current day of week (0-6)
    */
   function executeProgram(slot, program, daySchedule, currentDay) {
     // Check if already executing this exact program
@@ -643,9 +711,7 @@ const ProgramasModule = (() => {
     
     // Log program start
     if (window.LogModule) {
-      const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const modes = { 1: 'Cascada', 2: 'Eyectores' };
-      LogModule.append(`▶ Ejecutando programa "${program.name}" - ${days[currentDay]} - ${modes[daySchedule.mode]} (${daySchedule.start} - ${daySchedule.stop})`);
+      LogModule.append(`▶ Ejecutando programa "${program.name}" - ${DAY_NAMES_LONG[currentDay]} - ${MODE_NAMES[daySchedule.mode]} (${daySchedule.start} - ${daySchedule.stop})`);
     }
     
     // Publish MQTT commands
@@ -676,6 +742,7 @@ const ProgramasModule = (() => {
 
   /**
    * Stop program execution (turn off pump)
+   * Called when program schedule ends or no program should be running
    */
   function stopProgramExecution() {
     if (!currentlyExecuting) return;
@@ -698,6 +765,8 @@ const ProgramasModule = (() => {
 
   /**
    * Mark manual override (pause programs until tomorrow)
+   * Called from app.js when user manually controls pump/valves while program is active
+   * Programs will resume automatically at midnight
    */
   function setManualOverride() {
     if (!manualOverride && currentlyExecuting) {
@@ -709,8 +778,12 @@ const ProgramasModule = (() => {
     }
   }
 
+  // ==================== Public API ====================
+  
   /**
    * Get active program name for display
+   * Checks if any enabled program should be running at current time
+   * @returns {string|null} Program name if active, null if no program running
    */
   function getActiveProgramName() {
     const now = new Date();
@@ -734,20 +807,22 @@ const ProgramasModule = (() => {
   }
 
   /**
-   * Get all programs
+   * Get all programs (for debugging/inspection)
+   * @returns {Array} Array of program objects [3 slots]
    */
   function getPrograms() {
     return programs;
   }
 
   // Public API
+  // Exposed methods for external module interaction
   return {
-    init,
-    showScreen,
-    hideScreen,
-    getActiveProgramName,
-    getPrograms,
-    setManualOverride
+    init,                    // Initialize module (call on app start)
+    showScreen,              // Show programas screen
+    hideScreen,              // Hide programas screen
+    getActiveProgramName,    // Get name of currently active program
+    getPrograms,             // Get all programs array
+    setManualOverride        // Pause programs until tomorrow (manual control)
   };
 })();
 

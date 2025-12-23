@@ -1,9 +1,35 @@
 /**
- * Pool Control Application Module
- * Simplified dashboard for pump + valve control (no timeline feature)
+ * ==================== Pool Control Application Module ====================
+ * Main application controller for simplified dashboard
+ * 
+ * Features:
+ * - MQTT broker connection with credential management
+ * - Pump control (ON/OFF with visual feedback)
+ * - Valve mode control (1=Cascada, 2=Eyectores)
+ * - Timer functionality (countdown with auto-stop)
+ * - Program scheduling integration (conflict detection)
+ * - WiFi status monitoring with signal quality
+ * - Real-time logging with expand/collapse UI
+ * 
+ * Dependencies:
+ * - MQTTModule: MQTT client communication
+ * - LogModule: Event logging and display
+ * - ProgramasModule: Schedule management (optional)
+ * - APP_CONFIG: Configuration (topics, broker URL, device ID)
  */
 
 const AppModule = (() => {
+  // ==================== Constants ====================
+  const BUTTON_DEBOUNCE_MS = 1000;           // Prevent rapid button clicks
+  const VALVE_SWITCH_DELAY_MS = 500;         // Delay between valve and pump commands
+  const TIMER_UPDATE_INTERVAL = 1000;        // Update timer display every second
+  const PROGRAMAS_UPDATE_INTERVAL = 60000;   // Update programas button every minute
+  const SCREEN_TRANSITION_DELAY = 500;       // Delay before returning to main screen
+  const MAX_PROGRAM_NAME_LENGTH = 12;        // Max characters for program name display
+  const STORAGE_KEY_USER = 'mqtt_user';      // localStorage key for MQTT username
+  const STORAGE_KEY_PASS = 'mqtt_pass';      // localStorage key for MQTT password
+  
+  // ==================== Application State ====================
   // UI state
   let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
   let valveMode = "UNKNOWN";   // "1" | "2" | "UNKNOWN"
@@ -17,11 +43,23 @@ const AppModule = (() => {
     interval: null
   };
 
+  // ==================== DOM Elements Cache ====================
   // Cached DOM elements
   let elements = {};
 
+  // ==================== Initialization ====================
+  
   /**
    * Initialize the entire application
+   * 
+   * Sequence:
+   * 1. Validate APP_CONFIG
+   * 2. Cache DOM elements
+   * 3. Initialize modules (Log, Programas)
+   * 4. Setup MQTT event callbacks
+   * 5. Wire UI event listeners
+   * 6. Load stored credentials
+   * 7. Auto-connect if credentials available
    */
   async function init() {
     // Validate APP_CONFIG
@@ -90,8 +128,12 @@ const AppModule = (() => {
     });
   }
 
+  // ==================== DOM Element Caching ====================
+  
   /**
    * Cache all required DOM elements at startup
+   * Improves performance by avoiding repeated querySelector calls
+   * Logs warning for any missing elements
    */
   function cacheElements() {
     const mapping = {
@@ -144,8 +186,14 @@ const AppModule = (() => {
     }
   }
 
+  // ==================== MQTT Event Callbacks ====================
+  
   /**
    * Setup MQTT event callbacks
+   * Registers callbacks for all MQTT events:
+   * - State changes (pump, valve, timer, WiFi)
+   * - Connection events (connected, disconnected)
+   * - WiFi events and status updates
    */
   function setupMQTTEvents() {
     MQTTModule.onEvents(
@@ -180,8 +228,17 @@ const AppModule = (() => {
     );
   }
 
+  // ==================== UI Event Listeners ====================
+  
   /**
    * Wire up UI event listeners
+   * Handles all user interactions:
+   * - MQTT connection
+   * - Pump control (with program conflict detection)
+   * - Valve mode selection (with timer/program conflict handling)
+   * - Timer management (start, stop, cancel)
+   * - Screen navigation (back button)
+   * - Program scheduling interface
    */
   function wireUIEvents() {
     // Connect button
@@ -201,7 +258,7 @@ const AppModule = (() => {
     // Pump toggle button
     if (elements.btnPump) {
       elements.btnPump.addEventListener("click", () => {
-        // Check if a program is active
+        // Check if a program is active (conflict detection)
         if (window.ProgramasModule) {
           const activeProgramName = ProgramasModule.getActiveProgramName();
           if (activeProgramName) {
@@ -222,7 +279,7 @@ const AppModule = (() => {
           if (MQTTModule.isConnected()) {
             elements.btnPump.disabled = false;
           }
-        }, 1000);
+        }, BUTTON_DEBOUNCE_MS);
         
         MQTTModule.publish(
           newState,
@@ -237,14 +294,14 @@ const AppModule = (() => {
       elements.btnValve1.addEventListener("click", () => {
         if (valveMode === "1") return; // Already in mode 1
         
-        // Check if timer is active
+        // Check if timer is active (must cancel timer to change mode)
         if (timerState.active) {
           alert("⚠️ Timer cancelado - Cambiando a modo Cascada");
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
         }
         
-        // Check if a program is active
+        // Check if a program is active (conflict detection)
         if (window.ProgramasModule) {
           const activeProgramName = ProgramasModule.getActiveProgramName();
           if (activeProgramName) {
@@ -371,8 +428,16 @@ const AppModule = (() => {
     }
   }
 
+  // ==================== MQTT Connection Management ====================
+  
   /**
    * Connect to MQTT broker
+   * Initiates connection with username/password authentication
+   * Subscribes to state topics for pump, valve, WiFi, and timer
+   * 
+   * @param {string} username - MQTT username
+   * @param {string} password - MQTT password
+   * @param {string} brokerUrl - WebSocket Secure URL (wss://)
    */
   function connectMQTT(username, password, brokerUrl) {
     MQTTModule.connect(
@@ -390,8 +455,13 @@ const AppModule = (() => {
     );
   }
 
+  // ==================== State Management & UI Updates ====================
+  
   /**
    * Update pump state display
+   * Updates label text and animation ring based on state
+   * 
+   * @param {string} state - "ON" | "OFF" | "UNKNOWN"
    */
   function setPumpState(state) {
     pumpState = state;
@@ -420,6 +490,10 @@ const AppModule = (() => {
 
   /**
    * Update valve mode display
+   * Changes button styling to highlight active mode
+   * Mode 1 = Cascada (waterfall), Mode 2 = Eyectores (jets)
+   * 
+   * @param {string} mode - "1" | "2" | "UNKNOWN"
    */
   function setValveMode(mode) {
     valveMode = mode;
@@ -446,6 +520,7 @@ const AppModule = (() => {
 
   /**
    * Update button enabled/disabled states based on connection
+   * Disables all control buttons when MQTT is disconnected
    */
   function updateButtonStates() {
     const connected = MQTTModule.isConnected();
@@ -461,8 +536,11 @@ const AppModule = (() => {
     }
   }
 
+  // ==================== Connection UI Feedback ====================
+  
   /**
    * Update UI for connected state
+   * Shows green animated indicator, hides login card, enables buttons
    */
   function connectUI() {
     if (elements.connText) elements.connText.textContent = "Conectado";
@@ -482,6 +560,7 @@ const AppModule = (() => {
 
   /**
    * Update UI for disconnected state
+   * Shows red static indicator, displays login card, disables buttons
    */
   function disconnectUI() {
     if (elements.connText) elements.connText.textContent = "Desconectado";
@@ -499,6 +578,14 @@ const AppModule = (() => {
 
   /**
    * Update WiFi status display
+   * Shows WiFi icon with color-coded signal strength:
+   * - Green: Excellent (>= -50 dBm)
+   * - Blue: Good (>= -60 dBm)
+   * - Yellow: Fair (>= -70 dBm)
+   * - Orange: Weak (< -70 dBm)
+   * - Red: Disconnected
+   * 
+   * @param {Object} wifiState - {status, ssid, ip, rssi, quality}
    */
   function updateWiFiStatus(wifiState) {
     if (!wifiState || wifiState.status !== "connected") {
@@ -538,28 +625,34 @@ const AppModule = (() => {
     if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
   }
 
+  // ==================== Credential Persistence ====================
+  
   /**
    * Load credentials from localStorage
+   * Auto-fills username and password fields if previously saved
    */
   function loadStoredCredentials() {
-    const LS_USER = "mqtt_user";
-    const LS_PASS = "mqtt_pass";
-    if (elements.userInput) elements.userInput.value = localStorage.getItem(LS_USER) || "";
-    if (elements.passInput) elements.passInput.value = localStorage.getItem(LS_PASS) || "";
+    if (elements.userInput) elements.userInput.value = localStorage.getItem(STORAGE_KEY_USER) || "";
+    if (elements.passInput) elements.passInput.value = localStorage.getItem(STORAGE_KEY_PASS) || "";
   }
 
   /**
-   * Save credentials to localStorage
+   * Save credentials to localStorage for future sessions
+   * 
+   * @param {string} user - MQTT username
+   * @param {string} pass - MQTT password
    */
   function saveStoredCredentials(user, pass) {
-    const LS_USER = "mqtt_user";
-    const LS_PASS = "mqtt_pass";
-    localStorage.setItem(LS_USER, user);
-    localStorage.setItem(LS_PASS, pass);
+    localStorage.setItem(STORAGE_KEY_USER, user);
+    localStorage.setItem(STORAGE_KEY_PASS, pass);
   }
 
+  // ==================== Screen Navigation ====================
+
+  
   /**
    * Show timer screen with slide animation
+   * Resets form to default values and validates MQTT connection
    */
   function showTimerScreen() {
     if (!MQTTModule.isConnected()) {
@@ -580,7 +673,7 @@ const AppModule = (() => {
   }
 
   /**
-   * Hide timer screen and return to main
+   * Hide timer screen and return to main with reverse animation
    */
   function hideTimerScreen() {
     elements.mainScreen.classList.remove('slide-left');
@@ -589,8 +682,13 @@ const AppModule = (() => {
     elements.headerTitle.textContent = 'Smart Pool';
   }
 
+  // ==================== Timer Management ====================
+  
   /**
    * Select timer mode (1 = Cascada, 2 = Eyectores)
+   * Updates button visual state
+   * 
+   * @param {number} mode - 1 (Cascada) or 2 (Eyectores)
    */
   function selectTimerMode(mode) {
     timerState.mode = mode;
@@ -607,6 +705,13 @@ const AppModule = (() => {
 
   /**
    * Start timer with selected settings
+   * 
+   * Sequence:
+   * 1. Validate duration > 0
+   * 2. Set valve mode
+   * 3. Turn on pump (after delay)
+   * 4. Start countdown interval
+   * 5. Return to main screen
    */
   function startTimer() {
     const hours = parseInt(elements.timerHours.value) || 0;
@@ -640,7 +745,7 @@ const AppModule = (() => {
         window.APP_CONFIG.TOPIC_PUMP_CMD,
         (msg) => LogModule.append(msg)
       );
-    }, 500);
+    }, VALVE_SWITCH_DELAY_MS);
 
     // Show active timer display
     elements.activeTimerCard.classList.remove('hidden');
@@ -657,16 +762,19 @@ const AppModule = (() => {
       if (timerState.remaining <= 0) {
         stopTimer(true);
       }
-    }, 1000);
+    }, TIMER_UPDATE_INTERVAL);
 
-    // Return to main screen after 0.5s delay
+    // Return to main screen after delay
     setTimeout(() => {
       hideTimerScreen();
-    }, 500);
+    }, SCREEN_TRANSITION_DELAY);
   }
 
   /**
    * Stop active timer
+   * Clears countdown interval, turns off pump, resets state
+   * 
+   * @param {boolean} autoStop - true if timer expired naturally, false if manually stopped
    */
   function stopTimer(autoStop = false) {
     if (!timerState.active) return;
@@ -701,8 +809,11 @@ const AppModule = (() => {
     updateTimerButton();
   }
 
+  // ==================== Display Updates ====================
+  
   /**
    * Update timer button text with countdown
+   * Shows HH:MM:SS when active, "Timer" when inactive
    */
   function updateTimerButton() {
     if (!elements.btnTimer) return;
@@ -724,6 +835,8 @@ const AppModule = (() => {
 
   /**
    * Update Programas button text with active program name
+   * Shows program name when active, "Programas" when no program running
+   * Adds visual ring highlight when program is active
    */
   function updateProgramasButton() {
     if (!window.ProgramasModule || !elements.btnProgramas) return;
@@ -732,9 +845,9 @@ const AppModule = (() => {
     const programasText = elements.btnProgramas.querySelector('span:last-child');
     
     if (activeProgramName) {
-      // Truncate name if too long (max 12 characters)
-      const displayName = activeProgramName.length > 12 
-        ? activeProgramName.substring(0, 12) + '...' 
+      // Truncate name if too long
+      const displayName = activeProgramName.length > MAX_PROGRAM_NAME_LENGTH 
+        ? activeProgramName.substring(0, MAX_PROGRAM_NAME_LENGTH) + '...' 
         : activeProgramName;
       programasText.textContent = displayName;
       
@@ -749,7 +862,8 @@ const AppModule = (() => {
   }
 
   /**
-   * Update timer countdown display
+   * Update timer countdown display in active timer card
+   * Formats remaining time as HH:MM:SS and shows mode name
    */
   function updateTimerDisplay() {
     const hours = Math.floor(timerState.remaining / 3600);
@@ -765,6 +879,10 @@ const AppModule = (() => {
 
   /**
    * Handle timer state updates from MQTT
+   * Syncs local timer with remote ESP32 timer state
+   * Starts/stops local countdown to match remote state
+   * 
+   * @param {Object} stateUpdate - {active, mode, remaining, duration}
    */
   function handleTimerStateUpdate(stateUpdate) {
     if (stateUpdate.active) {
@@ -785,7 +903,7 @@ const AppModule = (() => {
             timerState.remaining--;
             updateTimerDisplay();
           }
-        }, 1000);
+        }, TIMER_UPDATE_INTERVAL);
       }
     } else {
       // Timer stopped remotely
@@ -799,11 +917,14 @@ const AppModule = (() => {
     }
   }
 
+  // ==================== Public API ====================
+  // Minimal public interface - only init is exposed
   return {
-    init,
+    init,  // Initialize application (called on DOMContentLoaded)
   };
 })();
 
+// ==================== Application Bootstrap ====================
 // Initialize app when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   AppModule.init().catch((err) => {

@@ -1,10 +1,38 @@
 <!DOCTYPE html>
 <html lang="es">
+<!--
+  ==================== Pool Control Application ====================
+  Smart Pool Control Dashboard - Main HTML Document
+  
+  Features:
+  - Responsive mobile-first design (max-width: 28rem)
+  - MQTT-based real-time control and monitoring
+  - Pump control with visual feedback
+  - Dual valve modes (Cascada/Eyectores)
+  - Timer functionality with countdown display
+  - Program scheduling (up to 3 programs)
+  - WiFi and MQTT connection status indicators
+  - Event logging with expand/collapse UI
+  
+  Technology Stack:
+  - Tailwind CSS 3.x (CDN with custom config)
+  - Material Icons Round (Google Fonts)
+  - MQTT.js 5.x (WebSocket Secure)
+  - Vanilla JavaScript (ES6+ modules)
+  
+  Structure:
+  - Main Screen: Primary controls and status
+  - Timer Screen: Countdown timer configuration
+  - Programas Screen: Schedule management
+  - Create Program Screen: Weekly schedule editor
+-->
 <head>
+  <!-- ==================== Meta Tags ==================== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>💧 Smart Pool</title>
   
+  <!-- ==================== External Stylesheets ==================== -->
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
   
@@ -12,6 +40,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
   
+  <!-- ==================== Tailwind CSS Configuration ==================== -->
   <script>
     tailwind.config = {
       darkMode: "class",
@@ -36,7 +65,9 @@
     };
   </script>
   
+  <!-- ==================== Custom Styles ==================== -->
   <style>
+    /* Scrollbar styling for log container */
     .log-scrollbar::-webkit-scrollbar {
       width: 4px;
     }
@@ -93,11 +124,13 @@
   </style>
 </head>
 
+<!-- ==================== Application Body ==================== -->
 <body class="bg-slate-100 text-slate-900 font-sans flex justify-center items-center p-4 transition-colors duration-300">
   
+  <!-- ==================== Main Container ==================== -->
   <main class="w-full max-w-sm bg-white rounded-3xl shadow-xl border-2 border-slate-300 overflow-hidden relative flex flex-col max-h-[90vh]">
     
-    <!-- Header -->
+    <!-- ==================== Header Section ==================== -->
     <header class="pt-8 pb-6 px-6 text-center border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
       <div class="flex items-center justify-center gap-3">
         <button id="btn-back" class="absolute left-4 p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-all opacity-0 pointer-events-none">
@@ -110,10 +143,12 @@
       </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- ==================== Main Screen ==================== -->
+    <!-- Primary dashboard with pump/valve controls, status indicators, and event log -->
     <div id="main-screen" class="p-6 space-y-8 flex-1 overflow-y-auto transition-transform duration-300">
       
-      <!-- Login Card -->
+      <!-- ========== Login Card ========== -->
+      <!-- MQTT broker authentication -->
       <div id="login-card" class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-5 space-y-4">
         <div class="flex items-center gap-3 text-slate-700 font-bold">
           <span class="material-icons-round text-2xl">key</span>
@@ -151,9 +186,9 @@
         </button>
       </div>
 
-      <!-- Control Buttons -->
+      <!-- ========== Control Buttons ========== -->
       <div class="space-y-4">
-        <!-- Pump Button -->
+        <!-- Pump Button (Main control with visual feedback) -->
         <button 
           id="btn-pump"
           disabled
@@ -165,7 +200,8 @@
           </div>
         </button>
 
-        <!-- Valve Mode Buttons (side by side) -->
+        <!-- Valve Mode Buttons (Cascada vs Eyectores) -->
+        <!-- Side by side layout with custom waterfall SVG icon -->
         <div class="grid grid-cols-2 gap-3">
           <button 
             id="btn-valve-1"
@@ -194,6 +230,7 @@
         </div>
 
         <!-- Timer and Programas Buttons -->
+        <!-- Navigation to secondary screens -->
         <div class="grid grid-cols-2 gap-3">
           <button 
             id="btn-timer"
@@ -211,9 +248,9 @@
         </div>
       </div>
 
-      <!-- Connection Status -->
+      <!-- ========== Connection Status Indicators ========== -->
       <div class="space-y-2">
-        <!-- WiFi Status -->
+        <!-- WiFi Status (signal strength with color-coded icons) -->
         <div id="wifi-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span id="wifi-icon" class="material-icons-round text-slate-400 text-lg">wifi_off</span>
@@ -224,7 +261,7 @@
           </span>
         </div>
 
-        <!-- MQTT Status -->
+        <!-- MQTT Status (broker connection with animated indicator) -->
         <div id="conn-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between">
           <div class="flex items-center gap-2">
             <div class="relative flex h-2 w-2" id="conn-indicator">
@@ -238,7 +275,8 @@
         </div>
       </div>
 
-      <!-- Event Log -->
+      <!-- ========== Event Log ========== -->
+      <!-- Collapsible log with auto-scroll and gradient fade -->
       <div class="space-y-2">
         <div class="flex items-center justify-between px-1">
           <div class="flex items-center gap-2">
@@ -269,13 +307,14 @@
 
     </div>
 
-    <!-- Timer Screen -->
+    <!-- ==================== Timer Screen ==================== -->
+    <!-- Countdown timer configuration with mode selection and duration input -->
     <div id="timer-screen" class="absolute inset-0 bg-white pt-32 px-6 pb-6 space-y-6 overflow-y-auto transition-transform duration-300 translate-x-full">
       
       <!-- Timer Settings Card -->
       <div class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-5 space-y-5">
 
-        <!-- Mode Selection -->
+        <!-- Mode Selection (Cascada vs Eyectores) -->
         <div class="grid grid-cols-2 gap-3">
           <button 
             id="timer-mode-1"
@@ -300,7 +339,7 @@
           </button>
         </div>
 
-        <!-- Duration Selection -->
+        <!-- Duration Selection (Hours and Minutes) -->
         <div class="flex items-center gap-3">
           <div class="flex-1">
             <label class="text-xs text-slate-500 font-medium mb-1 block">Horas</label>
@@ -329,7 +368,7 @@
 
       </div>
 
-      <!-- Action Buttons -->
+      <!-- Action Buttons (Cancel/Start) -->
       <div class="grid grid-cols-2 gap-3">
         <button 
           id="btn-timer-cancel"
@@ -343,7 +382,8 @@
         </button>
       </div>
 
-      <!-- Active Timer Display (hidden by default) -->
+      <!-- Active Timer Display (shown when timer is running) -->
+      <!-- Countdown with stop button -->
       <div id="active-timer-card" class="hidden bg-primary/10 rounded-2xl border-2 border-primary p-5 space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -362,13 +402,14 @@
 
     </div>
 
-    <!-- Programas Screen -->
+    <!-- ==================== Programas Screen ==================== -->
+    <!-- Schedule management: view, create, edit, delete up to 3 programs -->
     <div id="programas-screen" class="absolute inset-0 bg-white pt-32 px-6 pb-6 space-y-6 overflow-y-auto transition-transform duration-300 translate-x-full">
       
-      <!-- Program Slots -->
+      <!-- Program Slots (Max 3) -->
       <div class="space-y-3">
         
-        <!-- Program Slot 1 -->
+        <!-- ========== Program Slot 1 ========== -->
         <div id="program-slot-1" class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-4">
           <button 
             id="btn-create-program-1"
@@ -377,7 +418,7 @@
             <span>Crear Programa</span>
           </button>
           
-          <!-- Program Card (hidden by default, shown when program exists) -->
+          <!-- Program Card (hidden initially, shown when program exists) -->
           <div id="program-card-1" class="hidden space-y-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -413,7 +454,7 @@
           </div>
         </div>
 
-        <!-- Program Slot 2 -->
+        <!-- ========== Program Slot 2 ========== -->
         <div id="program-slot-2" class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-4">
           <button 
             id="btn-create-program-2"
@@ -457,7 +498,7 @@
           </div>
         </div>
 
-        <!-- Program Slot 3 -->
+        <!-- ========== Program Slot 3 ========== -->
         <div id="program-slot-3" class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-4">
           <button 
             id="btn-create-program-3"
@@ -505,12 +546,14 @@
 
     </div>
 
-    <!-- Create Program Screen -->
+    <!-- ==================== Create Program Screen ==================== -->
+    <!-- Weekly schedule editor: 7-day table with day toggle, mode selection, time inputs -->
     <div id="create-program-screen" class="absolute inset-0 bg-white pt-32 px-6 pb-6 space-y-6 overflow-y-auto transition-transform duration-300 translate-x-full">
       
-      <!-- Schedule Table -->
+      <!-- Schedule Table (7 rows for each day of the week) -->
       <div class="bg-white rounded-xl border-2 border-slate-300 overflow-hidden">
         <table class="w-full text-xs">
+            <!-- Table Header -->
             <thead>
               <tr class="bg-slate-100 border-b-2 border-slate-300">
                 <th class="py-1.5 px-1.5 text-center text-[10px] font-bold text-slate-600">Día</th>
@@ -519,8 +562,10 @@
                 <th class="py-1.5 px-1.5 text-center text-[10px] font-bold text-slate-600">Fin</th>
               </tr>
             </thead>
+            <!-- Table Body: 7 rows (Mon-Sun) -->
+            <!-- Each row: day toggle, mode buttons (Cascada/Eyectores), start time, stop time -->
             <tbody id="schedule-table-body">
-              <!-- Lunes -->
+              <!-- Lunes (Monday - day index 1) -->
               <tr class="border-b border-slate-200" data-day="1">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Lu</button>
@@ -549,7 +594,7 @@
                   <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
-              <!-- Martes -->
+              <!-- Martes (Tuesday - day index 2) -->
               <tr class="border-b border-slate-200" data-day="2">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Ma</button>
@@ -578,7 +623,7 @@
                   <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
-              <!-- Miércoles -->
+              <!-- Miércoles (Wednesday - day index 3) -->
               <tr class="border-b border-slate-200" data-day="3">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Mi</button>
@@ -607,7 +652,7 @@
                   <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
-              <!-- Jueves -->
+              <!-- Jueves (Thursday - day index 4) -->
               <tr class="border-b border-slate-200" data-day="4">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Ju</button>
@@ -636,7 +681,7 @@
                   <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
-              <!-- Viernes -->
+              <!-- Viernes (Friday - day index 5) -->
               <tr class="border-b border-slate-200" data-day="5">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Vi</button>
@@ -665,7 +710,7 @@
                   <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
-              <!-- Sábado -->
+              <!-- Sábado (Saturday - day index 6) -->
               <tr class="border-b border-slate-200" data-day="6">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Sa</button>
@@ -694,7 +739,7 @@
                   <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
-              <!-- Domingo -->
+              <!-- Domingo (Sunday - day index 0) -->
               <tr data-day="0">
                 <td class="py-2 px-1.5 text-center">
                   <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Do</button>
@@ -727,7 +772,7 @@
           </table>
         </div>
 
-      <!-- Action Buttons -->
+      <!-- Action Buttons (Cancel/Create) -->
       <div class="grid grid-cols-2 gap-3">
         <button 
           id="btn-create-cancel"
@@ -744,7 +789,7 @@
 
     </div>
 
-    <!-- Footer -->
+    <!-- ==================== Footer ==================== -->
     <footer class="pb-6 pt-4 text-center border-t border-slate-200 mt-auto bg-slate-50">
       <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
         v2.0 • 2025
@@ -753,14 +798,16 @@
 
   </main>
 
-  <!-- External libraries -->
+  <!-- ==================== External Libraries ==================== -->
+  <!-- MQTT.js WebSocket client -->
   <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
 
-  <!-- Application modules -->
-  <script src="/config.js"></script>
-  <script src="/js/log.js"></script>
-  <script src="/js/mqtt.js"></script>
-  <script src="/js/programas.js"></script>
-  <script src="/js/app.js"></script>
+  <!-- ==================== Application Modules ==================== -->
+  <!-- Load order: config → log → mqtt → programas → app -->
+  <script src="/config.js"></script>           <!-- App configuration (topics, broker URL) -->
+  <script src="/js/log.js"></script>          <!-- Event logging module -->
+  <script src="/js/mqtt.js"></script>         <!-- MQTT client wrapper -->
+  <script src="/js/programas.js"></script>    <!-- Schedule management -->
+  <script src="/js/app.js"></script>          <!-- Main application controller -->
 </body>
 </html>
