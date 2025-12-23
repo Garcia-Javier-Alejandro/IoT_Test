@@ -8,6 +8,9 @@ const LogModule = (() => {
   const MAX_LINES = 500;
   let logBuffer = []; // Array of log entries
   let logBox = null;
+  let logContainer = null;
+  let logToggleIcon = null;
+  let logTimestamp = null;
   let isVisible = true;
 
   /**
@@ -15,9 +18,15 @@ const LogModule = (() => {
    * @param {HTMLElement} logBoxEl - The log display container
    * @param {HTMLElement} toggleBtn - Button to toggle log visibility
    * @param {HTMLElement} clearBtn - Button to clear the log
+   * @param {HTMLElement} containerEl - The log container element
+   * @param {HTMLElement} toggleIconEl - The toggle icon element
+   * @param {HTMLElement} timestampEl - The timestamp element
    */
-  function init(logBoxEl, toggleBtn, clearBtn) {
+  function init(logBoxEl, toggleBtn, clearBtn, containerEl, toggleIconEl, timestampEl) {
     logBox = logBoxEl;
+    logContainer = containerEl;
+    logToggleIcon = toggleIconEl;
+    logTimestamp = timestampEl;
 
     if (toggleBtn) {
       toggleBtn.addEventListener("click", () => toggleVisibility());
@@ -47,6 +56,20 @@ const LogModule = (() => {
     if (logBox) {
       renderLog();
     }
+
+    // Update timestamp
+    updateTimestamp();
+  }
+
+  /**
+   * Update the last updated timestamp
+   */
+  function updateTimestamp() {
+    if (logTimestamp) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      logTimestamp.textContent = `Última actualización: ${timeStr}`;
+    }
   }
 
   /**
@@ -70,14 +93,16 @@ const LogModule = (() => {
    * Toggle log panel visibility
    */
   function toggleVisibility() {
-    const logPanel = document.getElementById("log-panel");
-    if (!logPanel) return;
+    if (!logContainer || !logToggleIcon) return;
 
     isVisible = !isVisible;
+    
     if (isVisible) {
-      logPanel.classList.remove("hidden");
+      logContainer.style.display = "";
+      logToggleIcon.textContent = "expand_more";
     } else {
-      logPanel.classList.add("hidden");
+      logContainer.style.display = "none";
+      logToggleIcon.textContent = "chevron_right";
     }
   }
 

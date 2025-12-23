@@ -34,8 +34,11 @@ const AppModule = (() => {
     // Initialize logging module
     LogModule.init(
       elements.logBox,
-      null, // No toggle button in new design
-      elements.btnLogClear
+      elements.btnLogToggle,
+      elements.btnLogClear,
+      elements.logContainer,
+      elements.logToggleIcon,
+      elements.logTimestamp
     );
 
     // Setup MQTT event callbacks
@@ -75,20 +78,25 @@ const AppModule = (() => {
   function cacheElements() {
     const mapping = {
       "pump-label": "pumpLabel",
-      "pump-status-badge": "pumpStatusBadge",
-      "pump-icon": "pumpIcon",
-      "valve-mode-label": "valveModeLabel",
+      "pump-ring": "pumpRing",
+      "btn-valve-1": "btnValve1",
+      "btn-valve-2": "btnValve2",
+      "btn-timer": "btnTimer",
+      "btn-programas": "btnProgramas",
       "conn-text": "connText",
       "conn-indicator": "connIndicator",
       "wifi-icon": "wifiIcon",
       "wifi-ssid": "wifiSsid",
       "btn-pump": "btnPump",
-      "btn-valve": "btnValve",
       "log-box": "logBox",
+      "log-container": "logContainer",
+      "log-toggle-icon": "logToggleIcon",
+      "log-timestamp": "logTimestamp",
       "mqtt-user": "userInput",
       "mqtt-pass": "passInput",
       "btn-connect": "btnConnect",
       "login-card": "loginCard",
+      "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
     };
 
@@ -168,16 +176,43 @@ const AppModule = (() => {
       });
     }
 
-    // Valve toggle button (switches between mode 1 and mode 2)
-    if (elements.btnValve) {
-      elements.btnValve.addEventListener("click", () => {
-        const newMode = valveMode === "1" ? "2" : "1";
-        LogModule.append(`Cambiando válvulas a modo ${newMode}...`);
+    // Valve mode 1 button (Cascada)
+    if (elements.btnValve1) {
+      elements.btnValve1.addEventListener("click", () => {
+        if (valveMode === "1") return; // Already in mode 1
+        LogModule.append(`Cambiando válvulas a modo 1 (Cascada)...`);
         MQTTModule.publish(
-          newMode,
+          "1",
           window.APP_CONFIG.TOPIC_VALVE_CMD,
           (msg) => LogModule.append(msg)
         );
+      });
+    }
+
+    // Valve mode 2 button (Eyectores)
+    if (elements.btnValve2) {
+      elements.btnValve2.addEventListener("click", () => {
+        if (valveMode === "2") return; // Already in mode 2
+        LogModule.append(`Cambiando válvulas a modo 2 (Eyectores)...`);
+        MQTTModule.publish(
+          "2",
+          window.APP_CONFIG.TOPIC_VALVE_CMD,
+          (msg) => LogModule.append(msg)
+        );
+      });
+    }
+
+    // Timer button (placeholder)
+    if (elements.btnTimer) {
+      elements.btnTimer.addEventListener("click", () => {
+        LogModule.append("Timer: Funcionalidad próximamente");
+      });
+    }
+
+    // Programas button (placeholder)
+    if (elements.btnProgramas) {
+      elements.btnProgramas.addEventListener("click", () => {
+        LogModule.append("Programas: Funcionalidad próximamente");
       });
     }
   }
@@ -206,37 +241,22 @@ const AppModule = (() => {
   function setPumpState(state) {
     pumpState = state;
 
-    // Update button colors based on state
-    if (elements.btnPump) {
-      if (state === "ON") {
-        // Blue when ON
-        elements.btnPump.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xl py-5 px-6 rounded-2xl shadow-xl shadow-blue-700/20 transition-all active:scale-[0.98] flex items-center justify-between group border border-blue-800/10";
-      } else if (state === "OFF") {
-        // Dull grey-blue when OFF
-        elements.btnPump.className = "w-full bg-slate-400 hover:bg-slate-500 text-white font-extrabold text-xl py-5 px-6 rounded-2xl shadow-xl shadow-slate-400/20 transition-all active:scale-[0.98] flex items-center justify-between group border border-slate-500/10";
-      } else {
-        // Default primary blue for unknown state
-        elements.btnPump.className = "w-full bg-primary hover:bg-primary-hover text-white font-extrabold text-xl py-5 px-6 rounded-2xl shadow-xl shadow-blue-700/20 transition-all active:scale-[0.98] flex items-center justify-between group border border-blue-800/10 disabled:opacity-50 disabled:cursor-not-allowed";
-      }
-    }
-
     if (elements.pumpLabel) {
       if (state === "ON") {
-        elements.pumpLabel.textContent = "Apagar bomba";
+        elements.pumpLabel.textContent = "Bomba ON";
       } else if (state === "OFF") {
-        elements.pumpLabel.textContent = "Encender bomba";
+        elements.pumpLabel.textContent = "Bomba OFF";
       } else {
-        elements.pumpLabel.textContent = "Estado desconocido";
+        elements.pumpLabel.textContent = "Bomba ?";
       }
     }
 
-    if (elements.pumpStatusBadge) {
+    // Update pump ring animation
+    if (elements.pumpRing) {
       if (state === "ON") {
-        elements.pumpStatusBadge.textContent = "ON";
-      } else if (state === "OFF") {
-        elements.pumpStatusBadge.textContent = "OFF";
+        elements.pumpRing.className = "animate-ping absolute inline-flex h-10 w-10 rounded-full bg-white opacity-20";
       } else {
-        elements.pumpStatusBadge.textContent = "?";
+        elements.pumpRing.className = "absolute inline-flex h-10 w-10 rounded-full bg-white opacity-20";
       }
     }
 
@@ -249,13 +269,20 @@ const AppModule = (() => {
   function setValveMode(mode) {
     valveMode = mode;
 
-    if (elements.valveModeLabel) {
+    // Update button styles based on active mode
+    if (elements.btnValve1 && elements.btnValve2) {
       if (mode === "1") {
-        elements.valveModeLabel.textContent = "Modo 1: Cascada";
+        // Cascada active
+        elements.btnValve1.className = "bg-primary hover:bg-primary-hover text-white font-bold text-base py-6 px-4 rounded-2xl border-2 border-primary shadow-lg transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
+        elements.btnValve2.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
       } else if (mode === "2") {
-        elements.valveModeLabel.textContent = "Modo 2: Eyectores";
+        // Eyectores active
+        elements.btnValve1.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
+        elements.btnValve2.className = "bg-primary hover:bg-primary-hover text-white font-bold text-base py-6 px-4 rounded-2xl border-2 border-primary shadow-lg transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
       } else {
-        elements.valveModeLabel.textContent = "Modo ?";
+        // Unknown state
+        elements.btnValve1.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
+        elements.btnValve2.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
       }
     }
 
@@ -271,8 +298,11 @@ const AppModule = (() => {
     if (elements.btnPump) {
       elements.btnPump.disabled = !connected;
     }
-    if (elements.btnValve) {
-      elements.btnValve.disabled = !connected;
+    if (elements.btnValve1) {
+      elements.btnValve1.disabled = !connected;
+    }
+    if (elements.btnValve2) {
+      elements.btnValve2.disabled = !connected;
     }
   }
 
@@ -282,11 +312,11 @@ const AppModule = (() => {
   function connectUI() {
     if (elements.connText) elements.connText.textContent = "Conectado";
     
-    // Update connection indicator with animated ping (blue instead of green)
+    // Update connection indicator with animated ping (primary color)
     if (elements.connIndicator) {
       elements.connIndicator.innerHTML = `
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
       `;
     }
     
@@ -333,10 +363,10 @@ const AppModule = (() => {
     
     if (quality === "excellent") {
       icon = "wifi";
-      iconColor = "text-green-600";
+      iconColor = "text-primary";
     } else if (quality === "good") {
       icon = "wifi";
-      iconColor = "text-blue-600";
+      iconColor = "text-primary-light";
     } else if (quality === "fair") {
       icon = "network_wifi_3_bar";
       iconColor = "text-yellow-600";
