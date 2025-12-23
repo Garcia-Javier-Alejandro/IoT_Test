@@ -165,9 +165,19 @@ const AppModule = (() => {
     // Pump toggle button
     if (elements.btnPump) {
       elements.btnPump.addEventListener("click", () => {
+        // Toggle based on current known state
         const newState = pumpState === "ON" ? "OFF" : "ON";
         const action = newState === "ON" ? "Encendiendo" : "Apagando";
         LogModule.append(`${action} bomba...`);
+        
+        // Temporarily disable button to prevent rapid clicking
+        elements.btnPump.disabled = true;
+        setTimeout(() => {
+          if (MQTTModule.isConnected()) {
+            elements.btnPump.disabled = false;
+          }
+        }, 1000);
+        
         MQTTModule.publish(
           newState,
           window.APP_CONFIG.TOPIC_PUMP_CMD,

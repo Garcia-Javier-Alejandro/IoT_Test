@@ -51,19 +51,27 @@ def on_message(client, userdata, msg):
     if topic == TOPIC_PUMP_CMD:
         payload_upper = payload.upper()
         if payload_upper in ["ON", "OFF"]:
-            pump_state = payload_upper
-            print(f"→ Pump state changed to: {pump_state}")
-            client.publish(TOPIC_PUMP_STATE, pump_state, retain=True)
-            print(f"[TX] {TOPIC_PUMP_STATE}: {pump_state}")
+            # Only change if different from current state
+            if pump_state != payload_upper:
+                pump_state = payload_upper
+                print(f"→ Pump state changed to: {pump_state}")
+                client.publish(TOPIC_PUMP_STATE, pump_state, retain=True)
+                print(f"[TX] {TOPIC_PUMP_STATE}: {pump_state}")
+            else:
+                print(f"→ Pump already in state: {pump_state}")
         else:
             print(f"✗ Unknown pump command: '{payload}'")
     
     elif topic == TOPIC_VALVE_CMD:
         if payload in ["1", "2"]:
-            valve_mode = payload
-            print(f"→ Valve mode changed to: {valve_mode}")
-            client.publish(TOPIC_VALVE_STATE, valve_mode, retain=True)
-            print(f"[TX] {TOPIC_VALVE_STATE}: {valve_mode}")
+            # Only change if different from current mode
+            if valve_mode != payload:
+                valve_mode = payload
+                print(f"→ Valve mode changed to: {valve_mode}")
+                client.publish(TOPIC_VALVE_STATE, valve_mode, retain=True)
+                print(f"[TX] {TOPIC_VALVE_STATE}: {valve_mode}")
+            else:
+                print(f"→ Valve already in mode: {valve_mode}")
         else:
             print(f"✗ Unknown valve command: '{payload}'")
 
