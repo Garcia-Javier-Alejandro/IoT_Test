@@ -301,13 +301,8 @@ const AppModule = (() => {
     // Programas button
     if (elements.btnProgramas) {
       elements.btnProgramas.addEventListener("click", () => {
-        console.log('Programas button clicked');
-        console.log('ProgramasModule exists:', !!window.ProgramasModule);
         if (window.ProgramasModule) {
-          console.log('Calling ProgramasModule.showScreen()');
           ProgramasModule.showScreen();
-        } else {
-          console.error('ProgramasModule not found');
         }
       });
     }

@@ -3,11 +3,7 @@
  * Manages up to 3 programs with day/mode/time configurations
  */
 
-console.log('programas.js file is being loaded');
-
 const ProgramasModule = (() => {
-  console.log('ProgramasModule IIFE starting');
-  
   // Program storage (max 3 programs)
   let programs = [null, null, null]; // Array of program objects
   
@@ -23,14 +19,9 @@ const ProgramasModule = (() => {
    */
   function init() {
     try {
-      console.log('ProgramasModule init started');
       cacheElements();
-      console.log('Elements cached');
       setupEventListeners();
-      console.log('Event listeners setup');
       loadPrograms();
-      console.log('Programs loaded');
-      console.log('ProgramasModule init completed');
     } catch (error) {
       console.error('Error initializing ProgramasModule:', error);
     }
@@ -107,7 +98,6 @@ const ProgramasModule = (() => {
    */
   function setupScheduleTable() {
     if (!elements.scheduleTableBody) {
-      console.error('Schedule table body not found');
       return;
     }
     
@@ -496,21 +486,14 @@ const ProgramasModule = (() => {
   }
 
   // Public API
-  const api = {
+  return {
     init,
     showScreen,
     hideScreen,
     getActiveProgramName,
     getPrograms
   };
-  
-  console.log('ProgramasModule API created:', api);
-  return api;
 })();
-
-console.log('ProgramasModule after IIFE:', ProgramasModule);
-console.log('typeof ProgramasModule:', typeof ProgramasModule);
 
 // Explicitly assign to window to ensure it's available globally
 window.ProgramasModule = ProgramasModule;
-console.log('ProgramasModule assigned to window.ProgramasModule');
