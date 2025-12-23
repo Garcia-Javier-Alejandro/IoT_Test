@@ -9,6 +9,7 @@ const MQTTModule = (() => {
   let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
   let valveMode = "UNKNOWN";   // "1" | "2" | "UNKNOWN"
   let wifiState = null;        // WiFi status object
+  let timerState = null;       // Timer status object
   
   let onPumpStateChange = null;   // Callback when pump state changes
   let onValveStateChange = null;  // Callback when valve mode changes
@@ -16,17 +17,19 @@ const MQTTModule = (() => {
   let onDisconnected = null;      // Callback when disconnected
   let onWiFiEvent = null;         // Callback for WiFi connection events
   let onWiFiStateChange = null;   // Callback for WiFi status updates
+  let onTimerStateChange = null;  // Callback for Timer status updates
 
   /**
    * Register callbacks for MQTT events
    */
-  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb, wifiStateCb) {
+  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb, wifiStateCb, timerStateCb) {
     onPumpStateChange = pumpChangeCb;
     onValveStateChange = valveChangeCb;
     onConnected = connectedCb;
     onDisconnected = disconnectedCb;
     onWiFiEvent = wifiEventCb || null;
     onWiFiStateChange = wifiStateCb || null;
+    onTimerStateChange = timerStateCb || null;
   }
 
   /**
@@ -44,7 +47,7 @@ const MQTTModule = (() => {
 
     logFn(`Device: ${deviceId}`);
     logFn(`WSS: ${brokerUrl}`);
-    logFn(`Topics: pump=${topics.pumpState} | valve=${topics.valveState} | wifi=${topics.wifiState}`);
+    logFn(`Topics: pump=${topics.pumpState} | valve=${topics.valveState} | wifi=${topics.wifiState} | timer=${topics.timerState}`);
     logFn("Conectando…");
 
     client = mqtt.connect(brokerUrl, {
@@ -82,6 +85,14 @@ const MQTTModule = (() => {
           logFn("✓ Suscripto a wifi/state");
         } else {
           logFn("✗ Error suscripción wifi: " + err.message);
+        }
+      });
+
+      client.subscribe(topics.timerState, { qos: 0 }, (err) => {
+        if (!err) {
+          logFn("✓ Suscripto a timer/state");
+        } else {
+          logFn("✗ Error suscripción timer: " + err.message);
         }
       });
 
@@ -134,6 +145,14 @@ const MQTTModule = (() => {
           if (onWiFiStateChange) onWiFiStateChange(wifiState);
         } catch (e) {
           logFn(`✗ Error parseando WiFi status: ${e.message}`);
+        }
+      } else if (topic === topics.timerState) {
+        try {
+          timerState = JSON.parse(msg);
+          logFn(`Timer: ${timerState.active ? 'activo' : 'inactivo'} (${timerState.remaining || 0}s restantes)`);
+          if (onTimerStateChange) onTimerStateChange(timerState);
+        } catch (e) {
+          logFn(`✗ Error parseando Timer status: ${e.message}`);
         }
       }
     });

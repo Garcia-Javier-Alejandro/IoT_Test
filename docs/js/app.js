@@ -7,6 +7,15 @@ const AppModule = (() => {
   // UI state
   let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
   let valveMode = "UNKNOWN";   // "1" | "2" | "UNKNOWN"
+  
+  // Timer state
+  let timerState = {
+    active: false,
+    mode: 1, // 1 = Cascada, 2 = Eyectores
+    duration: 3600, // seconds
+    remaining: 0,
+    interval: null
+  };
 
   // Cached DOM elements
   let elements = {};
@@ -98,6 +107,20 @@ const AppModule = (() => {
       "login-card": "loginCard",
       "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
+      "main-screen": "mainScreen",
+      "timer-screen": "timerScreen",
+      "btn-back": "btnBack",
+      "header-title": "headerTitle",
+      "timer-mode-1": "timerMode1",
+      "timer-mode-2": "timerMode2",
+      "timer-hours": "timerHours",
+      "timer-minutes": "timerMinutes",
+      "btn-timer-start": "btnTimerStart",
+      "btn-timer-cancel": "btnTimerCancel",
+      "btn-timer-stop": "btnTimerStop",
+      "active-timer-card": "activeTimerCard",
+      "timer-countdown": "timerCountdown",
+      "timer-mode-display": "timerModeDisplay",
     };
 
     const missing = [];
@@ -133,13 +156,17 @@ const AppModule = (() => {
       () => {
         disconnectUI();
       },
-      // onWiFiEvent callback (NEW!)
+      // onWiFiEvent callback
       (event) => {
         LogModule.append(`[WiFi] ${event}`);
       },
       // onWiFiStateChange callback
       (wifiState) => {
         updateWiFiStatus(wifiState);
+      },
+      // onTimerStateChange callback
+      (timerStateUpdate) => {
+        handleTimerStateUpdate(timerStateUpdate);
       }
     );
   }
@@ -212,10 +239,61 @@ const AppModule = (() => {
       });
     }
 
-    // Timer button (placeholder)
+    // Timer button
     if (elements.btnTimer) {
       elements.btnTimer.addEventListener("click", () => {
-        LogModule.append("Timer: Funcionalidad próximamente");
+        showTimerScreen();
+      });
+    }
+
+    // Timer screen navigation
+    if (elements.btnBack) {
+      elements.btnBack.addEventListener("click", () => {
+        hideTimerScreen();
+      });
+    }
+
+    if (elements.btnTimerCancel) {
+      elements.btnTimerCancel.addEventListener("click", () => {
+        hideTimerScreen();
+      });
+    }
+
+    // Timer mode selection
+    if (elements.timerMode1) {
+      elements.timerMode1.addEventListener("click", () => {
+        selectTimerMode(1);
+      });
+    }
+
+    if (elements.timerMode2) {
+      elements.timerMode2.addEventListener("click", () => {
+        selectTimerMode(2);
+      });
+    }
+
+    // Timer preset buttons
+    const presetButtons = document.querySelectorAll('.timer-preset');
+    presetButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hours = parseInt(btn.dataset.hours);
+        const minutes = parseInt(btn.dataset.minutes);
+        if (elements.timerHours) elements.timerHours.value = hours;
+        if (elements.timerMinutes) elements.timerMinutes.value = minutes;
+      });
+    });
+
+    // Timer start button
+    if (elements.btnTimerStart) {
+      elements.btnTimerStart.addEventListener("click", () => {
+        startTimer();
+      });
+    }
+
+    // Timer stop button
+    if (elements.btnTimerStop) {
+      elements.btnTimerStop.addEventListener("click", () => {
+        stopTimer();
       });
     }
 
@@ -238,7 +316,8 @@ const AppModule = (() => {
       {
         pumpState: window.APP_CONFIG.TOPIC_PUMP_STATE,
         valveState: window.APP_CONFIG.TOPIC_VALVE_STATE,
-        wifiState: window.APP_CONFIG.TOPIC_WIFI_STATE
+        wifiState: window.APP_CONFIG.TOPIC_WIFI_STATE,
+        timerState: window.APP_CONFIG.TOPIC_TIMER_STATE
       },
       window.APP_CONFIG.DEVICE_ID,
       (msg) => LogModule.append(msg)
@@ -411,6 +490,193 @@ const AppModule = (() => {
     const LS_PASS = "mqtt_pass";
     localStorage.setItem(LS_USER, user);
     localStorage.setItem(LS_PASS, pass);
+  }
+
+  /**
+   * Show timer screen with slide animation
+   */
+  function showTimerScreen() {
+    if (!MQTTModule.isConnected()) {
+      LogModule.append("Conectá MQTT primero");
+      return;
+    }
+
+    // Reset timer form
+    selectTimerMode(timerState.mode);
+    if (elements.timerHours) elements.timerHours.value = 1;
+    if (elements.timerMinutes) elements.timerMinutes.value = 0;
+
+    // Animate screen transition
+    elements.mainScreen.classList.add('slide-left');
+    elements.timerScreen.classList.add('slide-in');
+    elements.btnBack.classList.remove('opacity-0', 'pointer-events-none');
+    elements.headerTitle.textContent = 'Timer';
+  }
+
+  /**
+   * Hide timer screen and return to main
+   */
+  function hideTimerScreen() {
+    elements.mainScreen.classList.remove('slide-left');
+    elements.timerScreen.classList.remove('slide-in');
+    elements.btnBack.classList.add('opacity-0', 'pointer-events-none');
+    elements.headerTitle.textContent = 'Smart Pool';
+  }
+
+  /**
+   * Select timer mode (1 = Cascada, 2 = Eyectores)
+   */
+  function selectTimerMode(mode) {
+    timerState.mode = mode;
+    
+    // Update UI
+    if (mode === 1) {
+      elements.timerMode1.classList.add('selected');
+      elements.timerMode2.classList.remove('selected');
+    } else {
+      elements.timerMode1.classList.remove('selected');
+      elements.timerMode2.classList.add('selected');
+    }
+  }
+
+  /**
+   * Start timer with selected settings
+   */
+  function startTimer() {
+    const hours = parseInt(elements.timerHours.value) || 0;
+    const minutes = parseInt(elements.timerMinutes.value) || 0;
+    const totalSeconds = (hours * 3600) + (minutes * 60);
+
+    if (totalSeconds === 0) {
+      LogModule.append("⚠️ Configurá una duración válida");
+      return;
+    }
+
+    // Set timer state
+    timerState.active = true;
+    timerState.duration = totalSeconds;
+    timerState.remaining = totalSeconds;
+
+    // Turn on pump
+    LogModule.append(`🕐 Timer iniciado: ${hours}h ${minutes}m (Modo ${timerState.mode})`);
+    
+    // Set valve mode first
+    MQTTModule.publish(
+      timerState.mode.toString(),
+      window.APP_CONFIG.TOPIC_VALVE_CMD,
+      (msg) => LogModule.append(msg)
+    );
+
+    // Then turn on pump
+    setTimeout(() => {
+      MQTTModule.publish(
+        "ON",
+        window.APP_CONFIG.TOPIC_PUMP_CMD,
+        (msg) => LogModule.append(msg)
+      );
+    }, 500);
+
+    // Show active timer display
+    elements.activeTimerCard.classList.remove('hidden');
+    updateTimerDisplay();
+
+    // Start countdown
+    if (timerState.interval) clearInterval(timerState.interval);
+    timerState.interval = setInterval(() => {
+      timerState.remaining--;
+      updateTimerDisplay();
+
+      if (timerState.remaining <= 0) {
+        stopTimer(true);
+      }
+    }, 1000);
+
+    // Return to main screen
+    hideTimerScreen();
+  }
+
+  /**
+   * Stop active timer
+   */
+  function stopTimer(autoStop = false) {
+    if (!timerState.active) return;
+
+    // Clear interval
+    if (timerState.interval) {
+      clearInterval(timerState.interval);
+      timerState.interval = null;
+    }
+
+    // Turn off pump
+    if (autoStop) {
+      LogModule.append("⏰ Timer finalizado - Apagando bomba");
+    } else {
+      LogModule.append("🛑 Timer detenido manualmente");
+    }
+
+    MQTTModule.publish(
+      "OFF",
+      window.APP_CONFIG.TOPIC_PUMP_CMD,
+      (msg) => LogModule.append(msg)
+    );
+
+    // Reset state
+    timerState.active = false;
+    timerState.remaining = 0;
+
+    // Hide timer display
+    elements.activeTimerCard.classList.add('hidden');
+  }
+
+  /**
+   * Update timer countdown display
+   */
+  function updateTimerDisplay() {
+    const hours = Math.floor(timerState.remaining / 3600);
+    const minutes = Math.floor((timerState.remaining % 3600) / 60);
+    const seconds = timerState.remaining % 60;
+
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    elements.timerCountdown.textContent = timeStr;
+
+    const modeName = timerState.mode === 1 ? 'Cascada' : 'Eyectores';
+    elements.timerModeDisplay.textContent = `Modo: ${modeName}`;
+  }
+
+  /**
+   * Handle timer state updates from MQTT
+   */
+  function handleTimerStateUpdate(stateUpdate) {
+    if (stateUpdate.active) {
+      // Sync local timer with remote state
+      timerState.active = true;
+      timerState.mode = stateUpdate.mode;
+      timerState.remaining = stateUpdate.remaining;
+      timerState.duration = stateUpdate.duration || timerState.remaining;
+
+      // Show active timer card
+      elements.activeTimerCard.classList.remove('hidden');
+      updateTimerDisplay();
+
+      // Start local countdown if not already running
+      if (!timerState.interval) {
+        timerState.interval = setInterval(() => {
+          if (timerState.remaining > 0) {
+            timerState.remaining--;
+            updateTimerDisplay();
+          }
+        }, 1000);
+      }
+    } else {
+      // Timer stopped remotely
+      if (timerState.interval) {
+        clearInterval(timerState.interval);
+        timerState.interval = null;
+      }
+      timerState.active = false;
+      timerState.remaining = 0;
+      elements.activeTimerCard.classList.add('hidden');
+    }
   }
 
   return {

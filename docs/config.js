@@ -21,5 +21,9 @@ window.APP_CONFIG = {
   TOPIC_VALVE_STATE: "devices/esp32-pool-01/valve/state", // ESP32 -> dashboard (valores: "1" o "2")
 
   // Topic para estado WiFi
-  TOPIC_WIFI_STATE: "devices/esp32-pool-01/wifi/state"   // ESP32 -> dashboard (JSON con ssid, ip, rssi, quality)
+  TOPIC_WIFI_STATE: "devices/esp32-pool-01/wifi/state",   // ESP32 -> dashboard (JSON con ssid, ip, rssi, quality)
+
+  // Topics para Timer
+  TOPIC_TIMER_CMD: "devices/esp32-pool-01/timer/set",     // dashboard -> ESP32 (JSON: {mode, duration})
+  TOPIC_TIMER_STATE: "devices/esp32-pool-01/timer/state"  // ESP32 -> dashboard (JSON: {active, remaining, mode})
 };

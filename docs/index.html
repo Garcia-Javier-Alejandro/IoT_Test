@@ -51,6 +51,31 @@
       min-height: 100vh;
       min-height: 100dvh;
     }
+    /* Timer mode button selected state */
+    .timer-mode-btn.selected {
+      background-color: #001A72;
+      border-color: #001A72;
+      color: white;
+    }
+    .timer-mode-btn.selected span {
+      color: white;
+    }
+    /* Screen transitions */
+    #main-screen, #timer-screen {
+      transition: transform 0.3s ease-in-out;
+    }
+    #main-screen.slide-left {
+      transform: translateX(-100%);
+    }
+    #timer-screen.slide-in {
+      transform: translateX(0);
+    }
+    /* Number input styling */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 1;
+      height: 40px;
+    }
   </style>
 </head>
 
@@ -60,14 +85,19 @@
     
     <!-- Header -->
     <header class="pt-8 pb-6 px-6 text-center border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-      <h1 class="text-3xl font-black text-slate-900 flex items-center justify-center gap-3 tracking-tight">
-        <img src="logo.png" alt="Logo" class="h-12">
-        Smart Pool
-      </h1>
+      <div class="flex items-center justify-center gap-3">
+        <button id="btn-back" class="absolute left-4 p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-all opacity-0 pointer-events-none">
+          <span class="material-icons-round text-2xl">arrow_back</span>
+        </button>
+        <h1 class="text-3xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
+          <img src="logo.png" alt="Logo" class="h-12">
+          <span id="header-title">Smart Pool</span>
+        </h1>
+      </div>
     </header>
 
     <!-- Main Content -->
-    <div class="p-6 space-y-8 flex-1 overflow-y-auto">
+    <div id="main-screen" class="p-6 space-y-8 flex-1 overflow-y-auto transition-transform duration-300">
       
       <!-- Login Card -->
       <div id="login-card" class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-5 space-y-4">
@@ -211,6 +241,111 @@
             <div class="text-slate-600">Esperando conexión...</div>
           </div>
           <div class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Timer Screen -->
+    <div id="timer-screen" class="absolute inset-0 bg-white p-6 space-y-6 overflow-y-auto transition-transform duration-300 translate-x-full">
+      
+      <!-- Timer Settings Card -->
+      <div class="bg-slate-50 rounded-2xl border-2 border-slate-300 p-5 space-y-5">
+        <div class="flex items-center gap-3 text-slate-900 font-bold text-lg">
+          <span class="material-icons-round text-3xl text-primary">timer</span>
+          Configurar Timer
+        </div>
+
+        <!-- Mode Selection -->
+        <div class="space-y-3">
+          <label class="text-sm font-bold text-slate-700 uppercase tracking-wide">Modo de Operación</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button 
+              id="timer-mode-1"
+              class="timer-mode-btn py-4 px-4 rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2">
+              <span class="material-icons-round text-3xl">waves</span>
+              <span class="text-sm font-bold">Cascada</span>
+            </button>
+            <button 
+              id="timer-mode-2"
+              class="timer-mode-btn py-4 px-4 rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2">
+              <span class="material-icons-round text-3xl">air</span>
+              <span class="text-sm font-bold">Eyectores</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Duration Selection -->
+        <div class="space-y-3">
+          <label class="text-sm font-bold text-slate-700 uppercase tracking-wide">Duración</label>
+          <div class="flex items-center gap-3">
+            <div class="flex-1">
+              <label class="text-xs text-slate-500 font-medium mb-1 block">Horas</label>
+              <input 
+                id="timer-hours"
+                type="number"
+                min="0"
+                max="23"
+                value="1"
+                class="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-bold text-2xl text-center"
+              />
+            </div>
+            <span class="text-3xl font-black text-slate-400 mt-5">:</span>
+            <div class="flex-1">
+              <label class="text-xs text-slate-500 font-medium mb-1 block">Minutos</label>
+              <input 
+                id="timer-minutes"
+                type="number"
+                min="0"
+                max="59"
+                value="0"
+                class="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-bold text-2xl text-center"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="space-y-3">
+          <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Accesos Rápidos</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button class="timer-preset py-2 px-3 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 transition-all text-xs font-bold" data-hours="0" data-minutes="30">30m</button>
+            <button class="timer-preset py-2 px-3 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 transition-all text-xs font-bold" data-hours="1" data-minutes="0">1h</button>
+            <button class="timer-preset py-2 px-3 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 transition-all text-xs font-bold" data-hours="2" data-minutes="0">2h</button>
+            <button class="timer-preset py-2 px-3 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 transition-all text-xs font-bold" data-hours="3" data-minutes="0">3h</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-3">
+        <button 
+          id="btn-timer-cancel"
+          class="py-4 px-4 rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-900 font-bold transition-all active:scale-[0.98]">
+          Cancelar
+        </button>
+        <button 
+          id="btn-timer-start"
+          class="py-4 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold shadow-lg transition-all active:scale-[0.98]">
+          Iniciar Timer
+        </button>
+      </div>
+
+      <!-- Active Timer Display (hidden by default) -->
+      <div id="active-timer-card" class="hidden bg-primary/10 rounded-2xl border-2 border-primary p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-icons-round text-primary text-2xl animate-pulse">timer</span>
+            <span class="text-sm font-bold text-slate-900">Timer Activo</span>
+          </div>
+          <button id="btn-timer-stop" class="p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all">
+            <span class="material-icons-round text-xl">stop</span>
+          </button>
+        </div>
+        <div class="text-center">
+          <div id="timer-countdown" class="text-4xl font-black text-primary">--:--:--</div>
+          <div id="timer-mode-display" class="text-xs text-slate-600 font-medium mt-1">Modo: --</div>
         </div>
       </div>
 
