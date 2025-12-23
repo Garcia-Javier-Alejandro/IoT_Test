@@ -50,11 +50,20 @@ const AppModule = (() => {
       elements.logTimestamp
     );
 
+    // Initialize Programas module
+    if (window.ProgramasModule) {
+      ProgramasModule.init();
+    }
+
     // Setup MQTT event callbacks
     setupMQTTEvents();
 
     // Wire up UI event listeners
     wireUIEvents();
+
+    // Start interval to update programas button
+    setInterval(updateProgramasButton, 60000); // Update every minute
+    updateProgramasButton(); // Initial update
 
     // Load stored credentials
     loadStoredCredentials();
@@ -259,6 +268,15 @@ const AppModule = (() => {
     if (elements.btnTimer) {
       elements.btnTimer.addEventListener("click", () => {
         showTimerScreen();
+      });
+    }
+
+    // Programas button
+    if (elements.btnProgramas) {
+      elements.btnProgramas.addEventListener("click", () => {
+        if (window.ProgramasModule) {
+          ProgramasModule.showScreen();
+        }
       });
     }
 
@@ -658,6 +676,32 @@ const AppModule = (() => {
       timerText.textContent = timeStr;
     } else {
       timerText.textContent = 'Timer';
+    }
+  }
+
+  /**
+   * Update Programas button text with active program name
+   */
+  function updateProgramasButton() {
+    if (!window.ProgramasModule || !elements.btnProgramas) return;
+    
+    const activeProgramName = ProgramasModule.getActiveProgramName();
+    const programasText = elements.btnProgramas.querySelector('span:last-child');
+    
+    if (activeProgramName) {
+      // Truncate name if too long (max 12 characters)
+      const displayName = activeProgramName.length > 12 
+        ? activeProgramName.substring(0, 12) + '...' 
+        : activeProgramName;
+      programasText.textContent = displayName;
+      
+      // Highlight button to indicate active program
+      if (!elements.btnProgramas.classList.contains('ring-2')) {
+        elements.btnProgramas.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+      }
+    } else {
+      programasText.textContent = 'Programas';
+      elements.btnProgramas.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
     }
   }
 
