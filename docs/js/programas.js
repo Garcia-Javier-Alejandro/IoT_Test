@@ -496,11 +496,21 @@ const ProgramasModule = (() => {
   }
 
   // Public API
-  return {
+  const api = {
     init,
     showScreen,
     hideScreen,
     getActiveProgramName,
     getPrograms
   };
+  
+  console.log('ProgramasModule API created:', api);
+  return api;
 })();
+
+console.log('ProgramasModule after IIFE:', ProgramasModule);
+console.log('typeof ProgramasModule:', typeof ProgramasModule);
+
+// Explicitly assign to window to ensure it's available globally
+window.ProgramasModule = ProgramasModule;
+console.log('ProgramasModule assigned to window.ProgramasModule');
