@@ -207,6 +207,7 @@ const AppModule = (() => {
           if (activeProgramName) {
             alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
             LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+            ProgramasModule.setManualOverride();
           }
         }
         
@@ -249,6 +250,7 @@ const AppModule = (() => {
           if (activeProgramName) {
             alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
             LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+            ProgramasModule.setManualOverride();
           }
         }
         
@@ -279,6 +281,7 @@ const AppModule = (() => {
           if (activeProgramName) {
             alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
             LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+            ProgramasModule.setManualOverride();
           }
         }
         

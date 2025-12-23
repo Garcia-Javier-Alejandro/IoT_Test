@@ -11,6 +11,12 @@ const ProgramasModule = (() => {
   let currentSlot = null; // Which slot is being edited (0, 1, or 2)
   let scheduleData = {}; // Temporary schedule data during creation
   
+  // Execution state
+  let executionTimer = null; // Interval for checking programs
+  let currentlyExecuting = null; // Which program is currently running {slot, day, mode}
+  let manualOverride = false; // True if user manually controlled during program
+  let manualOverrideDate = null; // Date when manual override happened
+  
   // DOM elements
   let elements = {};
 
@@ -22,6 +28,7 @@ const ProgramasModule = (() => {
       cacheElements();
       setupEventListeners();
       loadPrograms();
+      startExecutionTimer();
     } catch (error) {
       console.error('Error initializing ProgramasModule:', error);
     }
@@ -538,6 +545,171 @@ const ProgramasModule = (() => {
   }
 
   /**
+   * Start automatic execution timer (checks every 15 minutes)
+   */
+  function startExecutionTimer() {
+    // Clear any existing timer
+    if (executionTimer) {
+      clearInterval(executionTimer);
+    }
+    
+    // Check immediately on start
+    checkAndExecutePrograms();
+    
+    // Then check every 15 minutes
+    executionTimer = setInterval(() => {
+      checkAndExecutePrograms();
+    }, 15 * 60 * 1000); // 15 minutes
+  }
+
+  /**
+   * Check if programs should be executed and publish MQTT commands
+   */
+  function checkAndExecutePrograms() {
+    // Reset manual override if it's a new day
+    const now = new Date();
+    if (manualOverride && manualOverrideDate) {
+      const overrideDate = new Date(manualOverrideDate);
+      if (now.getDate() !== overrideDate.getDate() || now.getMonth() !== overrideDate.getMonth()) {
+        manualOverride = false;
+        manualOverrideDate = null;
+        if (window.LogModule) {
+          LogModule.append('✓ Programas reanudados (nuevo día)');
+        }
+      }
+    }
+    
+    // Skip execution if manually overridden
+    if (manualOverride) {
+      return;
+    }
+    
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    let programToExecute = null;
+    let conflictingPrograms = [];
+    
+    // Check programs in order (slot 0 has priority)
+    for (let i = 0; i < programs.length; i++) {
+      const program = programs[i];
+      if (!program || !program.enabled) continue;
+      
+      const daySchedule = program.schedule[currentDay];
+      if (!daySchedule) continue;
+      
+      // Check if current time is within this schedule
+      if (currentTime >= daySchedule.start && currentTime < daySchedule.stop) {
+        if (!programToExecute) {
+          programToExecute = { slot: i, program, daySchedule };
+        } else {
+          conflictingPrograms.push(program.name);
+        }
+      }
+    }
+    
+    // Alert if there are conflicting programs
+    if (conflictingPrograms.length > 0) {
+      const message = `⚠️ Conflicto de programas: "${programToExecute.program.name}" tiene prioridad sobre: ${conflictingPrograms.join(', ')}`;
+      if (window.LogModule) {
+        LogModule.append(message);
+      }
+      // Only show alert once per execution
+      if (!currentlyExecuting || currentlyExecuting.slot !== programToExecute.slot) {
+        alert(message);
+      }
+    }
+    
+    // Execute the program if found
+    if (programToExecute) {
+      executeProgram(programToExecute.slot, programToExecute.program, programToExecute.daySchedule, currentDay);
+    } else if (currentlyExecuting) {
+      // No program should be running, stop current execution
+      stopProgramExecution();
+    }
+  }
+
+  /**
+   * Execute a program (publish MQTT commands)
+   */
+  function executeProgram(slot, program, daySchedule, currentDay) {
+    // Check if already executing this exact program
+    if (currentlyExecuting && 
+        currentlyExecuting.slot === slot && 
+        currentlyExecuting.day === currentDay && 
+        currentlyExecuting.mode === daySchedule.mode) {
+      return; // Already executing, no need to republish
+    }
+    
+    // Log program start
+    if (window.LogModule) {
+      const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const modes = { 1: 'Cascada', 2: 'Eyectores' };
+      LogModule.append(`▶ Ejecutando programa "${program.name}" - ${days[currentDay]} - ${modes[daySchedule.mode]} (${daySchedule.start} - ${daySchedule.stop})`);
+    }
+    
+    // Publish MQTT commands
+    if (window.MQTTModule && window.MQTTModule.isConnected()) {
+      // Turn pump ON
+      window.MQTTModule.publish(
+        'ON',
+        window.APP_CONFIG.TOPIC_PUMP_CMD,
+        (msg) => { if (window.LogModule) LogModule.append(msg); }
+      );
+      
+      // Set valve mode
+      window.MQTTModule.publish(
+        String(daySchedule.mode),
+        window.APP_CONFIG.TOPIC_VALVE_CMD,
+        (msg) => { if (window.LogModule) LogModule.append(msg); }
+      );
+    }
+    
+    // Update execution state
+    currentlyExecuting = {
+      slot,
+      day: currentDay,
+      mode: daySchedule.mode,
+      name: program.name
+    };
+  }
+
+  /**
+   * Stop program execution (turn off pump)
+   */
+  function stopProgramExecution() {
+    if (!currentlyExecuting) return;
+    
+    if (window.LogModule) {
+      LogModule.append(`■ Programa "${currentlyExecuting.name}" finalizado`);
+    }
+    
+    // Publish pump OFF command
+    if (window.MQTTModule && window.MQTTModule.isConnected()) {
+      window.MQTTModule.publish(
+        'OFF',
+        window.APP_CONFIG.TOPIC_PUMP_CMD,
+        (msg) => { if (window.LogModule) LogModule.append(msg); }
+      );
+    }
+    
+    currentlyExecuting = null;
+  }
+
+  /**
+   * Mark manual override (pause programs until tomorrow)
+   */
+  function setManualOverride() {
+    if (!manualOverride && currentlyExecuting) {
+      manualOverride = true;
+      manualOverrideDate = new Date();
+      if (window.LogModule) {
+        LogModule.append(`⚠️ Control manual activado - Programa "${currentlyExecuting.name}" pausado hasta mañana`);
+      }
+    }
+  }
+
+  /**
    * Get active program name for display
    */
   function getActiveProgramName() {
@@ -574,7 +746,8 @@ const ProgramasModule = (() => {
     showScreen,
     hideScreen,
     getActiveProgramName,
-    getPrograms
+    getPrograms,
+    setManualOverride
   };
 })();
 
