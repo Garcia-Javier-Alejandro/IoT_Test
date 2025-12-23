@@ -201,6 +201,15 @@ const AppModule = (() => {
     // Pump toggle button
     if (elements.btnPump) {
       elements.btnPump.addEventListener("click", () => {
+        // Check if a program is active
+        if (window.ProgramasModule) {
+          const activeProgramName = ProgramasModule.getActiveProgramName();
+          if (activeProgramName) {
+            alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
+            LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+          }
+        }
+        
         // Toggle based on current known state
         const newState = pumpState === "ON" ? "OFF" : "ON";
         const action = newState === "ON" ? "Encendiendo" : "Apagando";
@@ -234,6 +243,15 @@ const AppModule = (() => {
           stopTimer();
         }
         
+        // Check if a program is active
+        if (window.ProgramasModule) {
+          const activeProgramName = ProgramasModule.getActiveProgramName();
+          if (activeProgramName) {
+            alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
+            LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+          }
+        }
+        
         LogModule.append(`Cambiando válvulas a modo 1 (Cascada)...`);
         MQTTModule.publish(
           "1",
@@ -253,6 +271,15 @@ const AppModule = (() => {
           alert("⚠️ Timer cancelado - Cambiando a modo Eyectores");
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
+        }
+        
+        // Check if a program is active
+        if (window.ProgramasModule) {
+          const activeProgramName = ProgramasModule.getActiveProgramName();
+          if (activeProgramName) {
+            alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
+            LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+          }
         }
         
         LogModule.append(`Cambiando válvulas a modo 2 (Eyectores)...`);
