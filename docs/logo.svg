@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 30 280 440">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
   <defs>
     <linearGradient id="dropGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#2DD4BF;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#3B82F6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1E3A8A;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#1EA7D4;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#2B7EC5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A2F8F;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <path d="M 200 50 C 200 50 320 180 320 300 C 320 400 270 450 200 450 C 130 450 80 400 80 300 C 80 180 200 50 200 50 Z" fill="url(#dropGradient)"/>
-  <path d="M 110 320 Q 155 305 200 312 Q 245 319 290 308" stroke="white" stroke-width="14" fill="none" opacity="0.9" stroke-linecap="round"/>
-  <path d="M 130 360 Q 165 348 200 353 Q 235 358 270 348" stroke="white" stroke-width="11" fill="none" opacity="0.8" stroke-linecap="round"/>
+  <path d="M 100 20 C 100 20 170 90 170 145 C 170 190 140 220 100 220 C 60 220 30 190 30 145 C 30 90 100 20 100 20 Z" fill="url(#dropGradient)"/>
+  <path d="M 45 155 Q 72 147 100 151 Q 128 155 155 149" stroke="white" stroke-width="8" fill="none" opacity="0.95" stroke-linecap="round"/>
+  <path d="M 52 175 Q 76 169 100 172 Q 124 175 148 170" stroke="white" stroke-width="7" fill="none" opacity="0.85" stroke-linecap="round"/>
 </svg>
