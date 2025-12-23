@@ -310,7 +310,20 @@ const AppModule = (() => {
     // Timer screen navigation
     if (elements.btnBack) {
       elements.btnBack.addEventListener("click", () => {
-        hideTimerScreen();
+        // Check which screen is active
+        const timerActive = elements.timerScreen.classList.contains('translate-x-0');
+        const programasActive = document.getElementById('programas-screen')?.classList.contains('translate-x-0');
+        const createProgramActive = document.getElementById('create-program-screen')?.classList.contains('translate-x-0');
+        
+        if (createProgramActive && window.ProgramasModule) {
+          // Hide create program screen, show programas list
+          document.getElementById('create-program-screen').classList.remove('translate-x-0');
+          document.getElementById('create-program-screen').classList.add('translate-x-full');
+        } else if (programasActive && window.ProgramasModule) {
+          ProgramasModule.hideScreen();
+        } else if (timerActive) {
+          hideTimerScreen();
+        }
       });
     }
 

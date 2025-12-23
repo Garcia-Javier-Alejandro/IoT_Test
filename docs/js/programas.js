@@ -31,6 +31,11 @@ const ProgramasModule = (() => {
     elements.programasScreen = document.getElementById('programas-screen');
     elements.createProgramScreen = document.getElementById('create-program-screen');
     
+    // Header elements (from main app)
+    elements.btnBack = document.getElementById('btn-back');
+    elements.headerTitle = document.getElementById('header-title');
+    elements.mainScreen = document.getElementById('main-screen');
+    
     // Program slots
     for (let i = 1; i <= 3; i++) {
       elements[`btnCreateProgram${i}`] = document.getElementById(`btn-create-program-${i}`);
@@ -45,7 +50,6 @@ const ProgramasModule = (() => {
     elements.scheduleTableBody = document.getElementById('schedule-table-body');
     elements.btnCreateCancel = document.getElementById('btn-create-cancel');
     elements.btnCreateSave = document.getElementById('btn-create-save');
-    elements.btnProgramasBack = document.getElementById('btn-programas-back');
   }
 
   /**
@@ -66,9 +70,6 @@ const ProgramasModule = (() => {
         deleteProgram(i - 1);
       });
     }
-    
-    // Back button
-    elements.btnProgramasBack.addEventListener('click', hideScreen);
     
     // Create program screen
     elements.btnCreateCancel.addEventListener('click', hideCreateScreen);
@@ -194,6 +195,11 @@ const ProgramasModule = (() => {
     // Show create screen
     elements.createProgramScreen.classList.remove('translate-x-full');
     elements.createProgramScreen.classList.add('translate-x-0');
+    
+    // Update header title
+    if (elements.headerTitle) {
+      elements.headerTitle.textContent = 'Crear Programa';
+    }
   }
 
   /**
@@ -235,6 +241,11 @@ const ProgramasModule = (() => {
     elements.createProgramScreen.classList.remove('translate-x-0');
     elements.createProgramScreen.classList.add('translate-x-full');
     currentSlot = null;
+    
+    // Restore header title to Programas
+    if (elements.headerTitle) {
+      elements.headerTitle.textContent = 'Programas';
+    }
   }
 
   /**
@@ -389,16 +400,40 @@ const ProgramasModule = (() => {
    * Show programas screen
    */
   function showScreen() {
+    // Animate screen transition
+    if (elements.mainScreen) {
+      elements.mainScreen.classList.add('slide-left');
+    }
     elements.programasScreen.classList.remove('translate-x-full');
     elements.programasScreen.classList.add('translate-x-0');
+    
+    // Update header
+    if (elements.btnBack) {
+      elements.btnBack.classList.remove('opacity-0', 'pointer-events-none');
+    }
+    if (elements.headerTitle) {
+      elements.headerTitle.textContent = 'Programas';
+    }
   }
 
   /**
    * Hide programas screen
    */
   function hideScreen() {
+    // Animate screen transition
+    if (elements.mainScreen) {
+      elements.mainScreen.classList.remove('slide-left');
+    }
     elements.programasScreen.classList.remove('translate-x-0');
     elements.programasScreen.classList.add('translate-x-full');
+    
+    // Reset header
+    if (elements.btnBack) {
+      elements.btnBack.classList.add('opacity-0', 'pointer-events-none');
+    }
+    if (elements.headerTitle) {
+      elements.headerTitle.textContent = 'Smart Pool';
+    }
   }
 
   /**
