@@ -18,9 +18,18 @@ const ProgramasModule = (() => {
    * Initialize the Programas module
    */
   function init() {
-    cacheElements();
-    setupEventListeners();
-    loadPrograms();
+    try {
+      console.log('ProgramasModule init started');
+      cacheElements();
+      console.log('Elements cached');
+      setupEventListeners();
+      console.log('Event listeners setup');
+      loadPrograms();
+      console.log('Programs loaded');
+      console.log('ProgramasModule init completed');
+    } catch (error) {
+      console.error('Error initializing ProgramasModule:', error);
+    }
   }
 
   /**
@@ -93,6 +102,11 @@ const ProgramasModule = (() => {
    * Setup schedule table interactions
    */
   function setupScheduleTable() {
+    if (!elements.scheduleTableBody) {
+      console.error('Schedule table body not found');
+      return;
+    }
+    
     const rows = elements.scheduleTableBody.querySelectorAll('tr');
     
     rows.forEach(row => {
