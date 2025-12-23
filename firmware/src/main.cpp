@@ -10,15 +10,14 @@
 #include "secrets.h"   // wifi y mqtt user/pass (SECRETO, no va a GitHub)
 #include "ca_cert.h"   // certificado Root CA (público)
 
-// ==================== Constants ====================
-const int PULSE_DURATION_MS = 100;        // Duración del pulso para relays (ms)
-const int RELAY_SETTLE_DELAY = 200;       // Tiempo para que el relay se estabilice (ms)
-const int VALVE_SWITCH_DELAY = 500;       // Tiempo para que las válvulas cambien completamente (ms)
-const int WIFI_CONNECT_TIMEOUT = 15000;   // Timeout para conexión WiFi (ms)
-const int NTP_SYNC_TIMEOUT = 15000;       // Timeout para sincronización NTP (ms)
-const int WIFI_STATE_INTERVAL = 30000;    // Intervalo para publicar estado WiFi (ms)
-const int TIMER_PUBLISH_INTERVAL = 10000; // Intervalo para publicar estado del timer (ms)
-const long MIN_VALID_EPOCH = 1700000000L; // Época mínima válida para NTP (Nov 2023)
+// ==================== Timing Constants ====================
+#define RELAY_SETTLE_DELAY      200       // Tiempo para que el relay se estabilice (ms)
+#define VALVE_SWITCH_DELAY      500       // Tiempo para que las válvulas cambien completamente (ms)
+#define WIFI_CONNECT_TIMEOUT    15000     // Timeout para conexión WiFi (ms)
+#define NTP_SYNC_TIMEOUT        15000     // Timeout para sincronización NTP (ms)
+#define WIFI_STATE_INTERVAL     30000     // Intervalo para publicar estado WiFi (ms)
+#define TIMER_PUBLISH_INTERVAL  10000     // Intervalo para publicar estado del timer (ms)
+#define MIN_VALID_EPOCH         1700000000L // Época mínima válida para NTP (Nov 2023)
 
 // ==================== Hardware State ====================
 static bool pumpState = false;     // Estado lógico de la bomba (ON/OFF)
