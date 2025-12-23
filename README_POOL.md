@@ -56,37 +56,6 @@ IoT/
 └── README_POOL.md              # This file
 ```
 
----
-
-## 🛠️ Hardware Components
-
-### Essential Components
-
-| Component | Qty | Purpose | Approx Cost |
-|-----------|-----|---------|-------------|
-| ESP32 DevKit V1 | 1 | Main controller | $8 |
-| **ZMPT101B** AC voltage sensor | 1 | Pump state feedback (220V) | $3 |
-| **25V DC voltage sensor** module | 1 | Valve state feedback (24V) | $3 |
-| **Songle SRD-05VDC-SL-C** relay | 3 | Control signals (pump + 2 valves) | $6 |
-| 2N2222 transistor | 3 | Relay drivers | $1 |
-| 1N4007 diode | 3 | Flyback protection | $1 |
-| 1kΩ resistor | 3 | Base current limiting | $0.50 |
-| 10kΩ resistor | 3 | Pull-down | $0.50 |
-| 5V/2A power supply | 1 | Power ESP32 + relays | $5 |
-| IP65 enclosure | 1 | Weather protection | $10 |
-| Terminal blocks | 5 | Connections | $5 |
-
-**Total: ~$40-45**
-
-### Existing Pool Equipment (Your Setup)
-
-- Pneumatic push buttons (momentary)
-- 24V latching contactors (pump + valves)
-- 24V power supply
-- 0.75kW pool pump (220V AC)
-- 2× 24V electrovalves (parallel installation)
-
----
 
 ## ⚡ GPIO Pin Assignment
 
@@ -597,4 +566,4 @@ For issues or questions:
 
 ---
 
-**Built with ☕ and 🏊‍♂️ in 2025**
+**Built with ☕ in 2025**
