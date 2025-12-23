@@ -272,17 +272,6 @@ const AppModule = (() => {
       });
     }
 
-    // Timer preset buttons
-    const presetButtons = document.querySelectorAll('.timer-preset');
-    presetButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const hours = parseInt(btn.dataset.hours);
-        const minutes = parseInt(btn.dataset.minutes);
-        if (elements.timerHours) elements.timerHours.value = hours;
-        if (elements.timerMinutes) elements.timerMinutes.value = minutes;
-      });
-    });
-
     // Timer start button
     if (elements.btnTimerStart) {
       elements.btnTimerStart.addEventListener("click", () => {

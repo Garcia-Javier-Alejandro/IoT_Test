@@ -14,6 +14,13 @@
 static bool pumpState = false;     // Estado lógico de la bomba (ON/OFF)
 static int valveMode = 1;          // Modo de válvulas: 1 o 2
 
+// ==================== Timer State ====================
+static bool timerActive = false;   // Timer está corriendo
+static int timerMode = 1;          // Modo del timer (1=Cascada, 2=Eyectores)
+static uint32_t timerDuration = 0; // Duración total del timer en segundos
+static uint32_t timerRemaining = 0; // Tiempo restante en segundos
+static uint32_t timerLastUpdate = 0; // Último millis() para countdown
+
 // ==================== MQTT/TLS ====================
 // Cliente TLS (se usa para conectar a un servidor con certificado)
 WiFiClientSecure tlsClient;
@@ -159,6 +166,24 @@ void publishWiFiState() {
   Serial.println(ok ? " OK" : " FAIL");
 }
 
+// Publica el estado del timer (JSON con active, remaining, mode, duration)
+void publishTimerState() {
+  String json = "{";
+  json += "\"active\":" + String(timerActive ? "true" : "false") + ",";
+  json += "\"remaining\":" + String(timerRemaining) + ",";
+  json += "\"mode\":" + String(timerMode) + ",";
+  json += "\"duration\":" + String(timerDuration);
+  json += "}";
+  
+  bool ok = mqtt.publish(TOPIC_TIMER_STATE, json.c_str(), true /*retain*/);
+  
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_TIMER_STATE);
+  Serial.print(" = ");
+  Serial.print(json);
+  Serial.println(ok ? " OK" : " FAIL");
+}
+
 // ==================== Control Logic ====================
 
 // Controla la bomba: intenta cambiar al estado targetState
@@ -222,6 +247,96 @@ void setValveMode(int targetMode) {
   publishValveState();
 }
 
+// ==================== Timer Control ====================
+
+// Inicia el timer con modo y duración especificados
+void startTimer(int mode, uint32_t durationSeconds) {
+  if (mode != 1 && mode != 2) {
+    Serial.println("[TIMER] ERROR: Invalid mode. Use 1 or 2");
+    return;
+  }
+  
+  if (durationSeconds == 0) {
+    Serial.println("[TIMER] ERROR: Duration must be > 0");
+    return;
+  }
+  
+  Serial.print("[TIMER] Starting timer: mode=");
+  Serial.print(mode);
+  Serial.print(", duration=");
+  Serial.print(durationSeconds);
+  Serial.println("s");
+  
+  // Configurar timer
+  timerActive = true;
+  timerMode = mode;
+  timerDuration = durationSeconds;
+  timerRemaining = durationSeconds;
+  timerLastUpdate = millis();
+  
+  // Establecer modo de válvulas
+  setValveMode(mode);
+  delay(500); // Esperar que válvulas cambien
+  
+  // Encender bomba
+  setPumpState(true);
+  
+  // Publicar estado inicial del timer
+  publishTimerState();
+}
+
+// Detiene el timer
+void stopTimer() {
+  if (!timerActive) return;
+  
+  Serial.println("[TIMER] Stopping timer");
+  
+  timerActive = false;
+  timerRemaining = 0;
+  
+  // Apagar bomba
+  setPumpState(false);
+  
+  // Publicar estado del timer
+  publishTimerState();
+}
+
+// Actualiza el countdown del timer (llamar en loop)
+void updateTimer() {
+  if (!timerActive) return;
+  
+  uint32_t now = millis();
+  uint32_t elapsed = (now - timerLastUpdate) / 1000; // Segundos transcurridos
+  
+  if (elapsed >= 1) {
+    timerLastUpdate = now;
+    
+    if (timerRemaining > 0) {
+      timerRemaining--;
+      
+      // Publicar estado cada 10 segundos o cuando quede poco tiempo
+      static uint32_t lastPublish = 0;
+      if (timerRemaining % 10 == 0 || timerRemaining <= 10 || (now - lastPublish) > 10000) {
+        lastPublish = now;
+        publishTimerState();
+      }
+      
+      // Mostrar tiempo restante en Serial
+      if (timerRemaining % 60 == 0 || timerRemaining <= 60) {
+        Serial.print("[TIMER] Remaining: ");
+        Serial.print(timerRemaining / 60);
+        Serial.print("m ");
+        Serial.print(timerRemaining % 60);
+        Serial.println("s");
+      }
+    } else {
+      // Timer finalizado
+      Serial.println("[TIMER] Time expired!");
+      stopTimer();
+    }
+  }
+}
+
 // ==================== MQTT Message Handler ====================
 
 // Esta función se llama cada vez que llega un mensaje MQTT
@@ -264,7 +379,49 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     }
     return;
   }
+
+  // ===== Control de Timer =====
+  if (t == TOPIC_TIMER_SET) {
+    // Parsear JSON: {"mode": 1, "duration": 3600}
+    int modeIdx = msg.indexOf("\"mode\":");
+    int durationIdx = msg.indexOf("\"duration\":");
+    
+    if (modeIdx == -1 || durationIdx == -1) {
+      Serial.println("[MQTT] ERROR: Timer command must be JSON with mode and duration");
+      return;
+    }
+    
+    // Extraer valores (parsing simple)
+    int modeStart = msg.indexOf(":", modeIdx) + 1;
+    int modeEnd = msg.indexOf(",", modeStart);
+    if (modeEnd == -1) modeEnd = msg.indexOf("}", modeStart);
+    String modeStr = msg.substring(modeStart, modeEnd);
+    modeStr.trim();
+    int mode = modeStr.toInt();
+    
+    int durationStart = msg.indexOf(":", durationIdx) + 1;
+    int durationEnd = msg.indexOf("}", durationStart);
+    if (durationEnd == -1) durationEnd = msg.length();
+    String durationStr = msg.substring(durationStart, durationEnd);
+    durationStr.trim();
+    uint32_t duration = durationStr.toInt();
+    
+    if (duration == 0) {
+      // Comando para detener timer
+      Serial.println("[MQTT] Timer stop command received");
+      stopTimer();
+    } else {
+      // Comando para iniciar timer
+      Serial.print("[MQTT] Timer start command: mode=");
+      Serial.print(mode);
+      Serial.print(", duration=");
+      Serial.println(duration);
+      startTimer(mode, duration);
+    }
+    return;
+  }
 }
+
 
 // -------------------- WiFi --------------------
 bool connectWiFi() {
@@ -405,11 +562,16 @@ bool connectMqtt() {
   Serial.print("[MQTT] Subscribed: ");
   Serial.println(TOPIC_VALVE_SET);
 
+  mqtt.subscribe(TOPIC_TIMER_SET);
+  Serial.print("[MQTT] Subscribed: ");
+  Serial.println(TOPIC_TIMER_SET);
+
   // Leer sensores y publicar estado inicial
   pumpState = readPumpSensor();
   publishPumpState();
   publishValveState();
   publishWiFiState();
+  publishTimerState();
   
   return true;
 }
@@ -459,6 +621,9 @@ void setup() {
 }
 
 void loop() {
+  // Actualizar timer si está activo
+  updateTimer();
+  
   // Publicar estado WiFi cada 30 segundos
   static uint32_t lastWiFiUpdate = 0;
   if (millis() - lastWiFiUpdate > 30000) {

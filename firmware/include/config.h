@@ -43,3 +43,9 @@
 // WiFi Status:
 // TOPIC_WIFI_STATE = ESP32 publica estado WiFi (JSON: ssid, ip, rssi, quality) -> dashboard se suscribe
 #define TOPIC_WIFI_STATE    "devices/" DEVICE_ID "/wifi/state"
+
+// Timer Control:
+// TOPIC_TIMER_SET   = dashboard publica config timer (JSON: mode, duration) -> ESP32 se suscribe
+// TOPIC_TIMER_STATE = ESP32 publica estado timer (JSON: active, remaining, mode) -> dashboard se suscribe
+#define TOPIC_TIMER_SET     "devices/" DEVICE_ID "/timer/set"
+#define TOPIC_TIMER_STATE   "devices/" DEVICE_ID "/timer/state"
