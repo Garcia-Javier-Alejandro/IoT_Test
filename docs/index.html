@@ -492,168 +492,168 @@
       
       <!-- Schedule Table -->
       <div class="bg-white rounded-xl border-2 border-slate-300 overflow-hidden">
-        <table class="w-full text-sm">
+        <table class="w-full text-xs">
             <thead>
               <tr class="bg-slate-100 border-b-2 border-slate-300">
-                <th class="py-2 px-2 text-center text-xs font-bold text-slate-600">Día</th>
-                <th class="py-2 px-2 text-center text-xs font-bold text-slate-600">Modo</th>
-                <th class="py-2 px-2 text-center text-xs font-bold text-slate-600">Inicio</th>
-                <th class="py-2 px-2 text-center text-xs font-bold text-slate-600">Fin</th>
+                <th class="py-1.5 px-1.5 text-center text-[10px] font-bold text-slate-600">Día</th>
+                <th class="py-1.5 px-1.5 text-center text-[10px] font-bold text-slate-600">Modo</th>
+                <th class="py-1.5 px-1.5 text-center text-[10px] font-bold text-slate-600">Inicio</th>
+                <th class="py-1.5 px-1.5 text-center text-[10px] font-bold text-slate-600">Fin</th>
               </tr>
             </thead>
             <tbody id="schedule-table-body">
               <!-- Lunes -->
               <tr class="border-b border-slate-200" data-day="1">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Lu</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Lu</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
               <!-- Martes -->
               <tr class="border-b border-slate-200" data-day="2">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Ma</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Ma</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
               <!-- Miércoles -->
               <tr class="border-b border-slate-200" data-day="3">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Mi</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Mi</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
               <!-- Jueves -->
               <tr class="border-b border-slate-200" data-day="4">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Ju</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Ju</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
               <!-- Viernes -->
               <tr class="border-b border-slate-200" data-day="5">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Vi</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Vi</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
               <!-- Sábado -->
               <tr class="border-b border-slate-200" data-day="6">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Sa</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Sa</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
               <!-- Domingo -->
               <tr data-day="0">
-                <td class="py-3 px-2 text-center">
-                  <button class="day-toggle w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 transition-all">Do</button>
+                <td class="py-2 px-1.5 text-center">
+                  <button class="day-toggle w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 font-bold text-slate-400 text-xs transition-all">Do</button>
                 </td>
-                <td class="py-3 px-2 text-center">
+                <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <span class="material-icons-round text-sm">waves</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
+                      <span class="material-icons-round text-xs">waves</span>
                     </button>
-                    <button class="mode-btn w-8 h-8 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-sm">air</span>
+                    <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
+                      <span class="material-icons-round text-xs">air</span>
                     </button>
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="start-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="start-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
-                <td class="py-3 px-2">
-                  <input type="time" class="stop-time w-full text-xs text-center border-2 border-slate-300 rounded-lg py-1 px-2 disabled:opacity-30 disabled:bg-slate-100" disabled>
+                <td class="py-2 px-1.5">
+                  <input type="time" class="stop-time w-full text-[10px] text-center border-2 border-slate-300 rounded-lg py-0.5 px-1 disabled:opacity-30 disabled:bg-slate-100" disabled>
                 </td>
               </tr>
             </tbody>

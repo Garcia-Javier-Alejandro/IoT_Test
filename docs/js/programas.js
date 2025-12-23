@@ -245,7 +245,7 @@ const ProgramasModule = (() => {
       
       // Deactivate mode buttons
       modeBtns.forEach(btn => {
-        btn.classList.remove('bg-primary', 'text-white', 'border-primary');
+        btn.classList.remove('bg-primary', 'text-white', 'border-primary', 'active');
         btn.disabled = true;
       });
       
