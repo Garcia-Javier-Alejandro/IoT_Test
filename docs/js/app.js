@@ -220,6 +220,7 @@ const AppModule = (() => {
         
         // Check if timer is active
         if (timerState.active) {
+          alert("⚠️ Timer cancelado - Cambiando a modo Cascada");
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
           return;
@@ -241,6 +242,7 @@ const AppModule = (() => {
         
         // Check if timer is active
         if (timerState.active) {
+          alert("⚠️ Timer cancelado - Cambiando a modo Eyectores");
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
           return;
