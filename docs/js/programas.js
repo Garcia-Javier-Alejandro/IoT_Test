@@ -3,7 +3,11 @@
  * Manages up to 3 programs with day/mode/time configurations
  */
 
+console.log('programas.js file is being loaded');
+
 const ProgramasModule = (() => {
+  console.log('ProgramasModule IIFE starting');
+  
   // Program storage (max 3 programs)
   let programs = [null, null, null]; // Array of program objects
   
