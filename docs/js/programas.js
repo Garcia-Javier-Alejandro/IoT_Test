@@ -47,6 +47,7 @@ const ProgramasModule = (() => {
       elements[`programName${i}`] = document.getElementById(`program-name-${i}`);
       elements[`programSummary${i}`] = document.getElementById(`program-summary-${i}`);
       elements[`btnToggleProgram${i}`] = document.getElementById(`btn-toggle-program-${i}`);
+      elements[`btnEditProgram${i}`] = document.getElementById(`btn-edit-program-${i}`);
       elements[`btnDeleteProgram${i}`] = document.getElementById(`btn-delete-program-${i}`);
     }
     
@@ -71,6 +72,12 @@ const ProgramasModule = (() => {
       if (elements[`btnToggleProgram${i}`]) {
         elements[`btnToggleProgram${i}`].addEventListener('click', () => {
           toggleProgram(i - 1);
+        });
+      }
+      
+      if (elements[`btnEditProgram${i}`]) {
+        elements[`btnEditProgram${i}`].addEventListener('click', () => {
+          editProgram(i - 1);
         });
       }
       
@@ -270,18 +277,20 @@ const ProgramasModule = (() => {
    * Save program
    */
   function saveProgram() {
-    // Prompt for program name
-    const name = prompt('Nombre del programa:');
+    const existingProgram = programs[currentSlot];
+    
+    // Prompt for program name (pre-fill if editing)
+    const name = prompt('Nombre del programa:', existingProgram ? existingProgram.name : '');
     
     if (!name || name.trim() === '') {
       alert('Debes ingresar un nombre para el programa');
       return;
     }
     
-    // Create program object
+    // Create/update program object
     const program = {
       name: name.trim(),
-      enabled: true,
+      enabled: existingProgram ? existingProgram.enabled : true,
       schedule: { ...scheduleData }
     };
     
@@ -299,7 +308,8 @@ const ProgramasModule = (() => {
     
     // Log
     if (window.LogModule) {
-      LogModule.append(`✅ Programa "${program.name}" creado`);
+      const action = existingProgram ? 'actualizado' : 'creado';
+      LogModule.append(`✅ Programa "${program.name}" ${action}`);
     }
   }
 
@@ -371,6 +381,79 @@ const ProgramasModule = (() => {
       const status = program.enabled ? 'activado' : 'desactivado';
       LogModule.append(`🔄 Programa "${program.name}" ${status}`);
     }
+  }
+
+  /**
+   * Edit program
+   */
+  function editProgram(slot) {
+    const program = programs[slot];
+    if (!program) return;
+    
+    // Open create program screen with existing program data
+    currentSlot = slot;
+    scheduleData = JSON.parse(JSON.stringify(program.schedule)); // Deep copy
+    
+    // Reset form first
+    resetCreateForm();
+    
+    // Load program data into form
+    loadProgramIntoForm(program);
+    
+    // Show create screen
+    elements.createProgramScreen.classList.remove('translate-x-full');
+    elements.createProgramScreen.classList.add('translate-x-0');
+    
+    // Update header title
+    if (elements.headerTitle) {
+      elements.headerTitle.textContent = `Editar: ${program.name}`;
+    }
+    
+    if (window.LogModule) {
+      LogModule.append(`✏️ Editando programa "${program.name}"`);
+    }
+  }
+
+  /**
+   * Load program data into create form
+   */
+  function loadProgramIntoForm(program) {
+    const rows = elements.scheduleTableBody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+      const day = row.getAttribute('data-day');
+      const dayData = program.schedule[day];
+      
+      if (dayData) {
+        const dayToggle = row.querySelector('.day-toggle');
+        const modeBtns = row.querySelectorAll('.mode-btn');
+        const startTime = row.querySelector('.start-time');
+        const stopTime = row.querySelector('.stop-time');
+        
+        // Activate day
+        dayToggle.classList.add('active', 'bg-primary', 'text-white', 'border-primary');
+        dayToggle.classList.remove('text-slate-400');
+        
+        // Enable controls
+        modeBtns.forEach(btn => btn.disabled = false);
+        startTime.disabled = false;
+        stopTime.disabled = false;
+        
+        // Set mode
+        modeBtns.forEach(btn => {
+          if (parseInt(btn.getAttribute('data-mode')) === dayData.mode) {
+            btn.classList.add('bg-primary', 'text-white', 'border-primary');
+          }
+        });
+        
+        // Set times
+        startTime.value = dayData.start;
+        stopTime.value = dayData.stop;
+      }
+    });
+    
+    // Validate form
+    validateForm();
   }
 
   /**
