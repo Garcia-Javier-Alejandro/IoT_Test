@@ -223,7 +223,6 @@ const AppModule = (() => {
           alert("⚠️ Timer cancelado - Cambiando a modo Cascada");
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
-          return;
         }
         
         LogModule.append(`Cambiando válvulas a modo 1 (Cascada)...`);
@@ -245,7 +244,6 @@ const AppModule = (() => {
           alert("⚠️ Timer cancelado - Cambiando a modo Eyectores");
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
-          return;
         }
         
         LogModule.append(`Cambiando válvulas a modo 2 (Eyectores)...`);
