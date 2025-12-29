@@ -149,7 +149,7 @@
       
       <!-- Temperature Display (top right of content area) -->
       <div class="flex justify-end">
-        <div class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+        <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
           <span id="temp-icon" class="material-icons-round text-blue-500 text-base">device_thermostat</span>
           <span id="temp-value" class="text-sm font-bold text-slate-700">--</span>
         </div>
@@ -262,7 +262,7 @@
       <!-- ========== Connection Status Indicators ========== -->
       <div class="space-y-2">
         <!-- WiFi Status (signal strength with color-coded icons) -->
-        <div id="wifi-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between">
+        <div id="wifi-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between min-h-[52px]">
           <div class="flex items-center gap-2">
             <span id="wifi-icon" class="material-icons-round text-slate-400 text-lg">wifi_off</span>
             <span id="wifi-ssid" class="text-xs font-bold text-slate-700">Sin WiFi</span>
@@ -273,7 +273,7 @@
         </div>
 
         <!-- MQTT Status (broker connection with animated indicator) -->
-        <div id="conn-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between">
+        <div id="conn-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between min-h-[52px]">
           <div class="flex items-center gap-2">
             <div class="relative flex h-2 w-2" id="conn-indicator">
               <span class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
