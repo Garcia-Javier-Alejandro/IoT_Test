@@ -483,13 +483,9 @@ const AppModule = (() => {
       }
     }
 
-    // Update pump ring animation
+    // Update pump ring (removed animation)
     if (elements.pumpRing) {
-      if (state === "ON") {
-        elements.pumpRing.className = "animate-ping absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20";
-      } else {
-        elements.pumpRing.className = "absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20";
-      }
+      elements.pumpRing.className = "absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20";
     }
 
     updateButtonStates();
