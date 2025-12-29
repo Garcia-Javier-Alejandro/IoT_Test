@@ -11,7 +11,7 @@ const LogModule = (() => {
   let logContainer = null;
   let logToggleIcon = null;
   let logTimestamp = null;
-  let isVisible = true;
+  let isVisible = false; // Start collapsed by default
 
   /**
    * Initialize the logging module with DOM elements
@@ -27,6 +27,14 @@ const LogModule = (() => {
     logContainer = containerEl;
     logToggleIcon = toggleIconEl;
     logTimestamp = timestampEl;
+
+    // Set initial collapsed state
+    if (logContainer) {
+      logContainer.style.display = "none";
+    }
+    if (logToggleIcon) {
+      logToggleIcon.textContent = "chevron_right";
+    }
 
     if (toggleBtn) {
       toggleBtn.addEventListener("click", () => toggleVisibility());
