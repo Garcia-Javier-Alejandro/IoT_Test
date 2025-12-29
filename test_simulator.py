@@ -20,6 +20,7 @@ TOPIC_PUMP_STATE = "devices/esp32-pool-01/pump/state"
 TOPIC_VALVE_STATE = "devices/esp32-pool-01/valve/state"
 TOPIC_WIFI_STATE = "devices/esp32-pool-01/wifi/state"
 TOPIC_TIMER_STATE = "devices/esp32-pool-01/timer/state"
+TOPIC_TEMP_STATE = "devices/esp32-pool-01/temperature/state"
 TOPIC_PUMP_CMD = "devices/esp32-pool-01/pump/set"
 TOPIC_VALVE_CMD = "devices/esp32-pool-01/valve/set"
 TOPIC_TIMER_CMD = "devices/esp32-pool-01/timer/set"
@@ -114,6 +115,12 @@ def publish_states(client):
     # Publish valve state
     client.publish(TOPIC_VALVE_STATE, valve_mode, retain=True)
     print(f"[TX] {TOPIC_VALVE_STATE}: {valve_mode}")
+    
+    # Publish temperature (simulated)
+    import random
+    temp = round(random.uniform(20.0, 28.0), 1)
+    client.publish(TOPIC_TEMP_STATE, str(temp), retain=True)
+    print(f"[TX] {TOPIC_TEMP_STATE}: {temp}°C")
     
     # Publish WiFi state (simulated)
     wifi_data = {
@@ -232,19 +239,30 @@ def main():
         
         print("\n✓ Simulator running. Press Ctrl+C to stop.")
         print("\nCommands from dashboard will be processed automatically.")
-        print("Publishing WiFi status every 30 seconds...\n")
+        print("Publishing WiFi status every 30 seconds...")
+        print("Publishing temperature every 60 seconds...\n")
         
         # Periodic updates
         counter = 0
         last_wifi_update = time.time()
+        last_temp_update = time.time()
         
         while True:
             # Update timer every second
             update_timer(client)
             time.sleep(1)
             
-            # WiFi updates every 30 seconds
             now = time.time()
+            
+            # Temperature updates every 60 seconds
+            if now - last_temp_update >= 60:
+                last_temp_update = now
+                import random
+                temp = round(random.uniform(20.0, 28.0), 1)
+                client.publish(TOPIC_TEMP_STATE, str(temp), retain=True)
+                print(f"[TX] Temperature: {temp}°C")
+            
+            # WiFi updates every 30 seconds
             if now - last_wifi_update >= 30:
                 last_wifi_update = now
                 counter += 1
