@@ -3,7 +3,9 @@
 #include <WiFi.h>              // WiFi del ESP32
 #include <WiFiClientSecure.h>  // Cliente TLS (HTTPS/MQTTS)
 #include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
-#include <time.h>              // Para NTP (hora del sistema) 
+#include <time.h>              // Para NTP (hora del sistema)
+#include <OneWire.h>           // OneWire protocol for DS18B20
+#include <DallasTemperature.h> // DS18B20 temperature sensor library
 
 // =================== Project Includes ====================
 #include "config.h"    // host/puertos/topics/device_id (NO secretos)
@@ -11,17 +13,18 @@
 #include "ca_cert.h"   // certificado Root CA (público)
 
 // ==================== Timing Constants ====================
-#define RELAY_SETTLE_DELAY      200       // Tiempo para que el relay se estabilice (ms)
 #define VALVE_SWITCH_DELAY      500       // Tiempo para que las válvulas cambien completamente (ms)
 #define WIFI_CONNECT_TIMEOUT    15000     // Timeout para conexión WiFi (ms)
 #define NTP_SYNC_TIMEOUT        15000     // Timeout para sincronización NTP (ms)
 #define WIFI_STATE_INTERVAL     30000     // Intervalo para publicar estado WiFi (ms)
 #define TIMER_PUBLISH_INTERVAL  10000     // Intervalo para publicar estado del timer (ms)
+#define TEMP_PUBLISH_INTERVAL   60000     // Intervalo para publicar temperatura (ms) - 1 minuto
 #define MIN_VALID_EPOCH         1700000000L // Época mínima válida para NTP (Nov 2023)
 
 // ==================== Hardware State ====================
 static bool pumpState = false;     // Estado lógico de la bomba (ON/OFF)
 static int valveMode = 1;          // Modo de válvulas: 1 o 2
+static float currentTemperature = 0.0; // Temperatura actual en °C
 
 // ==================== Timer State ====================
 static bool timerActive = false;   // Timer está corriendo
@@ -29,6 +32,11 @@ static int timerMode = 1;          // Modo del timer (1=Cascada, 2=Eyectores)
 static uint32_t timerDuration = 0; // Duración total del timer en segundos
 static uint32_t timerRemaining = 0; // Tiempo restante en segundos
 static uint32_t timerLastUpdate = 0; // Último millis() para countdown
+
+// ==================== Temperature Sensor ====================
+// Setup OneWire on GPIO 21
+OneWire oneWire(TEMP_SENSOR_PIN);
+DallasTemperature tempSensor(&oneWire);
 
 // ==================== MQTT/TLS ====================
 // Cliente TLS (se usa para conectar a un servidor con certificado)
@@ -53,83 +61,25 @@ String payloadToString(const byte* payload, unsigned int length) {
   return s;
 }
 
-// ==================== State Sensing ====================
+// ==================== Temperature Sensor ====================
 
 /**
- * Lee el sensor de voltaje de la bomba (220V AC via ZMPT101B)
- * Usa el ADC del ESP32 para leer el voltaje rectificado del sensor
- * @return true si detecta voltaje por encima del umbral (bomba ON), false en caso contrario
+ * Lee la temperatura del sensor DS18B20
+ * @return Temperatura en grados Celsius, o NAN si hay error
  */
-bool readPumpSensor() {
-  int adcValue = analogRead(PUMP_SENSE_PIN);
-  bool detected = (adcValue > VOLTAGE_THRESHOLD);
+float readTemperature() {
+  tempSensor.requestTemperatures();
+  float temp = tempSensor.getTempCByIndex(0);
   
-  Serial.print("[SENSOR] Pump ADC=");
-  Serial.print(adcValue);
-  Serial.print(" -> ");
-  Serial.println(detected ? "ON" : "OFF");
-  
-  return detected;
-}
-
-/**
- * Lee el sensor de voltaje de las válvulas (24V DC)
- * Detecta si las válvulas están recibiendo alimentación
- * @return true si detecta voltaje por encima del umbral (válvulas energizadas), false en caso contrario
- */
-bool readValveSensor() {
-  int adcValue = analogRead(VALVE_SENSE_PIN);
-  bool detected = (adcValue > VOLTAGE_THRESHOLD);
-  
-  Serial.print("[SENSOR] Valve ADC=");
-  Serial.print(adcValue);
-  Serial.print(" -> ");
-  Serial.println(detected ? "POWERED" : "OFF");
-  
-  return detected;
-}
-
-// ==================== Relay Control (Latching Pulses) ====================
-
-/**
- * Envía un pulso al relay para alternar (toggle) el contactor de la bomba
- * El relay es tipo "latching" o "biestable", cada pulso cambia el estado ON<->OFF
- * @note Usa PULSE_DURATION_MS para la duración del pulso
- */
-void sendPumpPulse() {
-  Serial.println("[RELAY] Sending pump pulse...");
-  digitalWrite(PUMP_RELAY_PIN, HIGH);
-  delay(PULSE_DURATION_MS);
-  digitalWrite(PUMP_RELAY_PIN, LOW);
-  Serial.println("[RELAY] Pump pulse sent");
-}
-
-/**
- * Envía pulsos a las válvulas para cambiar al modo especificado
- * Sistema de 2 válvulas con relays latching que controlan el flujo:
- * - Modo 1: Cascada (válvula 1 activa, normalmente abierta)
- * - Modo 2: Eyectores (válvula 2 activa, normalmente cerrada)
- * @param mode Modo de válvulas: 1 (Cascada) o 2 (Eyectores)
- */
-void sendValvePulse(int mode) {
-  Serial.print("[RELAY] Switching to valve mode ");
-  Serial.println(mode);
-  
-  if (mode == 1) {
-    // Modo 1: Activar válvula 1 (NO - Cascada)
-    digitalWrite(VALVE1_RELAY_PIN, HIGH);
-    digitalWrite(VALVE2_RELAY_PIN, LOW);
-    delay(PULSE_DURATION_MS);
-    digitalWrite(VALVE1_RELAY_PIN, LOW);
-  } else if (mode == 2) {
-    // Modo 2: Activar válvula 2 (NC - Eyectores)
-    digitalWrite(VALVE1_RELAY_PIN, LOW);
-    digitalWrite(VALVE2_RELAY_PIN, HIGH);
-    delay(PULSE_DURATION_MS);
-    digitalWrite(VALVE2_RELAY_PIN, LOW);
+  Serial.print("[SENSOR] Temperature: ");
+  if (temp == DEVICE_DISCONNECTED_C) {
+    Serial.println("ERROR - sensor desconectado");
+    return NAN;
   }
+  Serial.print(temp);
+  Serial.println(" °C");
   
-  Serial.println("[RELAY] Valve pulse sent");
+  return temp;
 }
 
 // ==================== MQTT State Publishing ====================
@@ -230,47 +180,72 @@ void publishTimerState() {
   Serial.println(ok ? " OK" : " FAIL");
 }
 
+/**
+ * Publica la temperatura actual al topic MQTT
+ * Formato: número decimal con 1 decimal (ej: "25.3")
+ */
+void publishTemperature() {
+  if (isnan(currentTemperature)) {
+    Serial.println("[MQTT] Skip temperature publish - invalid reading");
+    return;
+  }
+  
+  char tempStr[8];
+  dtostrf(currentTemperature, 4, 1, tempStr); // Format: "XX.X"
+  
+  bool ok = mqtt.publish(TOPIC_TEMP_STATE, tempStr, true);
+  
+  Serial.print("[MQTT] publish ");
+  Serial.print(TOPIC_TEMP_STATE);
+  Serial.print(" = ");
+  Serial.print(tempStr);
+  Serial.println(ok ? " OK" : " FAIL");
+}
+
+// ==================== Relay Control ====================
+
+/**
+ * Controla el relay de la bomba con estado continuo
+ * @param targetState Estado deseado: true=ON, false=OFF
+ */
+void setPumpRelay(bool targetState) {
+  Serial.print("[RELAY] Pump relay: ");
+  Serial.println(targetState ? "ON" : "OFF");
+  
+  digitalWrite(PUMP_RELAY_PIN, targetState ? HIGH : LOW);
+  pumpState = targetState;
+}
+
+/**
+ * Controla el relay de las válvulas (NC+NO en paralelo)
+ * LOW = Modo 1 (Cascada), HIGH = Modo 2 (Eyectores)
+ * @param targetMode Modo deseado: 1 (Cascada) o 2 (Eyectores)
+ */
+void setValveRelay(int targetMode) {
+  if (targetMode != 1 && targetMode != 2) {
+    Serial.println("[RELAY] ERROR: Invalid valve mode. Use 1 or 2");
+    return;
+  }
+  
+  Serial.print("[RELAY] Valve relay: Mode ");
+  Serial.println(targetMode);
+  
+  // Mode 1 (Cascada) = LOW, Mode 2 (Eyectores) = HIGH
+  digitalWrite(VALVE_RELAY_PIN, (targetMode == 2) ? HIGH : LOW);
+  valveMode = targetMode;
+}
+
 // ==================== Control Logic ====================
 
 /**
- * Controla la bomba: intenta cambiar al estado targetState
- * Usa sensor de feedback para:
- * 1. Verificar el estado actual antes de enviar pulso
- * 2. Evitar pulsos innecesarios si ya está en el estado deseado
- * 3. Confirmar que el cambio se realizó correctamente
+ * Controla la bomba: establece el estado del relay y publica
  * @param targetState Estado deseado: true=ON, false=OFF
  */
 void setPumpState(bool targetState) {
   Serial.print("[CONTROL] Pump target state: ");
   Serial.println(targetState ? "ON" : "OFF");
   
-  // Leer estado actual del sensor
-  bool actualState = readPumpSensor();
-  
-  if (actualState == targetState) {
-    Serial.println("[CONTROL] Pump already in target state, skipping pulse");
-    // Actualizamos la variable interna por si estaba desincronizada
-    pumpState = actualState;
-    publishPumpState();
-    return;
-  }
-  
-  // Enviar pulso de toggle al contactor
-  sendPumpPulse();
-  
-  // Esperar un momento para que el contactor cambie
-  delay(RELAY_SETTLE_DELAY);
-  
-  // Verificar el cambio
-  actualState = readPumpSensor();
-  pumpState = actualState;
-  
-  if (actualState == targetState) {
-    Serial.println("[CONTROL] Pump state changed successfully");
-  } else {
-    Serial.println("[CONTROL] WARNING: Pump state did not change as expected!");
-  }
-  
+  setPumpRelay(targetState);
   publishPumpState();
 }
 
@@ -290,17 +265,12 @@ void setValveMode(int targetMode) {
   Serial.println(targetMode);
   
   if (valveMode == targetMode) {
-    Serial.println("[CONTROL] Valves already in target mode, skipping pulse");
+    Serial.println("[CONTROL] Valve already in target mode");
     publishValveState();
     return;
   }
   
-  // Enviar pulso para cambiar modo
-  sendValvePulse(targetMode);
-  
-  // Actualizar estado interno
-  valveMode = targetMode;
-  
+  setValveRelay(targetMode);
   publishValveState();
 }
 
@@ -641,8 +611,8 @@ void setupMqtt() {
  * Conecta al broker MQTT con autenticación
  * Después de conectar:
  * 1. Se suscribe a topics de comando (pump, valve, timer)
- * 2. Lee sensores para sincronizar estado
- * 3. Publica estado inicial de todos los componentes
+ * 2. Publica estado inicial de todos los componentes (pump, valve, wifi, timer)
+ * 3. Lee y publica temperatura inicial
  * @return true si conectó exitosamente, false en caso contrario
  */
 bool connectMqtt() {
@@ -679,12 +649,15 @@ bool connectMqtt() {
   Serial.print("[MQTT] Subscribed: ");
   Serial.println(TOPIC_TIMER_SET);
 
-  // Leer sensores y publicar estado inicial
-  pumpState = readPumpSensor();
+  // Publicar estado inicial
   publishPumpState();
   publishValveState();
   publishWiFiState();
   publishTimerState();
+  
+  // Leer y publicar temperatura inicial
+  currentTemperature = readTemperature();
+  publishTemperature();
   
   return true;
 }
@@ -695,11 +668,12 @@ bool connectMqtt() {
  * Inicialización del sistema (ejecutada una vez al arrancar)
  * Secuencia:
  * 1. Configura Serial para debug
- * 2. Configura pines (relays como OUTPUT, sensores como INPUT)
- * 3. Estado inicial: todos los relays apagados
- * 4. Conecta WiFi (probando múltiples redes)
- * 5. Sincroniza hora con NTP (necesario para TLS)
- * 6. Configura y conecta MQTT con TLS
+ * 2. Configura pines de salida (relays para bomba y válvulas)
+ * 3. Inicializa sensor de temperatura DS18B20
+ * 4. Estado inicial: todos los relays apagados
+ * 5. Conecta WiFi (probando múltiples redes)
+ * 6. Sincroniza hora con NTP (necesario para TLS)
+ * 7. Configura y conecta MQTT con TLS
  */
 void setup() {
   Serial.begin(115200);
@@ -712,21 +686,23 @@ void setup() {
 
   // Configurar pines de salida (relays)
   pinMode(PUMP_RELAY_PIN, OUTPUT);
-  pinMode(VALVE1_RELAY_PIN, OUTPUT);
-  pinMode(VALVE2_RELAY_PIN, OUTPUT);
+  pinMode(VALVE_RELAY_PIN, OUTPUT);
   
   // Estado inicial: todos los relays apagados
   digitalWrite(PUMP_RELAY_PIN, LOW);
-  digitalWrite(VALVE1_RELAY_PIN, LOW);
-  digitalWrite(VALVE2_RELAY_PIN, LOW);
-  
-  // Configurar pines de entrada (sensores analógicos)
-  pinMode(PUMP_SENSE_PIN, INPUT);
-  pinMode(VALVE_SENSE_PIN, INPUT);
+  digitalWrite(VALVE_RELAY_PIN, LOW);
+
+  // Inicializar sensor de temperatura DS18B20
+  Serial.println("[SENSOR] Inicializando DS18B20...");
+  tempSensor.begin();
+  int deviceCount = tempSensor.getDeviceCount();
+  Serial.print("[SENSOR] Dispositivos DS18B20 encontrados: ");
+  Serial.println(deviceCount);
 
   // Estado inicial
   pumpState = false;
   valveMode = 1;
+  currentTemperature = 0.0;
 
   // 1) Conectar WiFi
   connectWiFi();
@@ -748,9 +724,10 @@ void setup() {
  * Responsabilidades:
  * 1. Actualizar countdown del timer
  * 2. Publicar estado WiFi periódicamente
- * 3. Detectar y recuperar pérdida de conexión WiFi
- * 4. Detectar y recuperar pérdida de conexión MQTT
- * 5. Procesar mensajes MQTT entrantes (mqtt.loop)
+ * 3. Leer y publicar temperatura periódicamente
+ * 4. Detectar y recuperar pérdida de conexión WiFi
+ * 5. Detectar y recuperar pérdida de conexión MQTT
+ * 6. Procesar mensajes MQTT entrantes (mqtt.loop)
  */
 void loop() {
   // Actualizar timer si está activo
@@ -762,6 +739,16 @@ void loop() {
     lastWiFiUpdate = millis();
     if (mqtt.connected()) {
       publishWiFiState();
+    }
+  }
+  
+  // Leer y publicar temperatura periódicamente (cada 1 minuto)
+  static uint32_t lastTempUpdate = 0;
+  if (millis() - lastTempUpdate > TEMP_PUBLISH_INTERVAL) {
+    lastTempUpdate = millis();
+    currentTemperature = readTemperature();
+    if (mqtt.connected()) {
+      publishTemperature();
     }
   }
   

@@ -25,5 +25,8 @@ window.APP_CONFIG = {
 
   // Topics para Timer
   TOPIC_TIMER_CMD: "devices/esp32-pool-01/timer/set",     // dashboard -> ESP32 (JSON: {mode, duration})
-  TOPIC_TIMER_STATE: "devices/esp32-pool-01/timer/state"  // ESP32 -> dashboard (JSON: {active, remaining, mode})
+  TOPIC_TIMER_STATE: "devices/esp32-pool-01/timer/state",  // ESP32 -> dashboard (JSON: {active, remaining, mode})
+
+  // Topic para Temperatura
+  TOPIC_TEMP_STATE: "devices/esp32-pool-01/temperature/state"  // ESP32 -> dashboard (°C)
 };

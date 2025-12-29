@@ -8,23 +8,12 @@
 
 // ==================== GPIO Pins ====================
 
-// --- Outputs: Relay Control (via transistors) ---
-#define PUMP_RELAY_PIN      19  // Latching pulse for pump contactor
-#define VALVE1_RELAY_PIN    18  // NO valve relay (Mode 1)
-#define VALVE2_RELAY_PIN    17  // NC valve relay (Mode 2)
+// --- Outputs: Relay Control ---
+#define PUMP_RELAY_PIN      18  // Standard relay controlling 220V AC pump
+#define VALVE_RELAY_PIN     19  // Standard relay controlling 24V electrovalves (NC+NO in parallel)
 
-// --- Inputs: State Feedback Sensors ---
-#define PUMP_SENSE_PIN      36  // ZMPT101B analog input (ADC1_0) - 220V pump detection
-#define VALVE_SENSE_PIN     39  // 24V sensor analog input (ADC1_3) - valve power detection
-
-// ==================== Control Parameters ====================
-
-// Latching relay pulse duration (milliseconds)
-#define PULSE_DURATION_MS   100
-
-// ADC threshold for voltage detection (0-4095 range)
-// If ADC reading > threshold, voltage is considered present
-#define VOLTAGE_THRESHOLD   1000
+// --- Inputs: Sensors ---
+#define TEMP_SENSOR_PIN     21  // DS18B20 temperature probe (OneWire)
 
 // ==================== MQTT Topics ====================
 
@@ -49,3 +38,7 @@
 // TOPIC_TIMER_STATE = ESP32 publica estado timer (JSON: active, remaining, mode) -> dashboard se suscribe
 #define TOPIC_TIMER_SET     "devices/" DEVICE_ID "/timer/set"
 #define TOPIC_TIMER_STATE   "devices/" DEVICE_ID "/timer/state"
+
+// Temperature:
+// TOPIC_TEMP_STATE = ESP32 publica temperatura actual (°C) -> dashboard se suscribe
+#define TOPIC_TEMP_STATE    "devices/" DEVICE_ID "/temperature/state"

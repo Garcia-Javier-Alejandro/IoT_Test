@@ -18,11 +18,12 @@ const MQTTModule = (() => {
   let onWiFiEvent = null;         // Callback for WiFi connection events
   let onWiFiStateChange = null;   // Callback for WiFi status updates
   let onTimerStateChange = null;  // Callback for Timer status updates
+  let onTemperatureChange = null; // Callback for Temperature updates
 
   /**
    * Register callbacks for MQTT events
    */
-  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb, wifiStateCb, timerStateCb) {
+  function onEvents(pumpChangeCb, valveChangeCb, connectedCb, disconnectedCb, wifiEventCb, wifiStateCb, timerStateCb, tempChangeCb) {
     onPumpStateChange = pumpChangeCb;
     onValveStateChange = valveChangeCb;
     onConnected = connectedCb;
@@ -30,6 +31,7 @@ const MQTTModule = (() => {
     onWiFiEvent = wifiEventCb || null;
     onWiFiStateChange = wifiStateCb || null;
     onTimerStateChange = timerStateCb || null;
+    onTemperatureChange = tempChangeCb || null;
   }
 
   /**
@@ -96,6 +98,14 @@ const MQTTModule = (() => {
         }
       });
 
+      client.subscribe(topics.tempState, { qos: 0 }, (err) => {
+        if (!err) {
+          logFn("✓ Suscripto a temperature/state");
+        } else {
+          logFn("✗ Error suscripción temperature: " + err.message);
+        }
+      });
+
       if (onConnected) onConnected();
     });
 
@@ -153,6 +163,14 @@ const MQTTModule = (() => {
           if (onTimerStateChange) onTimerStateChange(timerState);
         } catch (e) {
           logFn(`✗ Error parseando Timer status: ${e.message}`);
+        }
+      } else if (topic === topics.tempState) {
+        const temperature = parseFloat(msg);
+        if (!isNaN(temperature)) {
+          logFn(`Temperatura: ${temperature.toFixed(1)}°C`);
+          if (onTemperatureChange) onTemperatureChange(temperature);
+        } else {
+          logFn(`✗ Error parseando temperatura: ${msg}`);
         }
       }
     });

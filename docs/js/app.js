@@ -147,6 +147,8 @@ const AppModule = (() => {
       "conn-indicator": "connIndicator",
       "wifi-icon": "wifiIcon",
       "wifi-ssid": "wifiSsid",
+      "temp-icon": "tempIcon",
+      "temp-value": "tempValue",
       "btn-pump": "btnPump",
       "log-box": "logBox",
       "log-container": "logContainer",
@@ -224,6 +226,10 @@ const AppModule = (() => {
       // onTimerStateChange callback
       (timerStateUpdate) => {
         handleTimerStateUpdate(timerStateUpdate);
+      },
+      // onTemperatureChange callback
+      (temperature) => {
+        updateTemperature(temperature);
       }
     );
   }
@@ -448,7 +454,8 @@ const AppModule = (() => {
         pumpState: window.APP_CONFIG.TOPIC_PUMP_STATE,
         valveState: window.APP_CONFIG.TOPIC_VALVE_STATE,
         wifiState: window.APP_CONFIG.TOPIC_WIFI_STATE,
-        timerState: window.APP_CONFIG.TOPIC_TIMER_STATE
+        timerState: window.APP_CONFIG.TOPIC_TIMER_STATE,
+        tempState: window.APP_CONFIG.TOPIC_TEMP_STATE
       },
       window.APP_CONFIG.DEVICE_ID,
       (msg) => LogModule.append(msg)
@@ -623,6 +630,43 @@ const AppModule = (() => {
     }
     
     if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
+  }
+
+  /**
+   * Update temperature display
+   * Shows temperature with color-coded icon based on value:
+   * - Blue: < 20°C (cool)
+   * - Cyan: 20-25°C (comfortable)
+   * - Orange: 26-30°C (warm)
+   * - Red: > 30°C (hot)
+   * 
+   * @param {number|string} temperature - Temperature in Celsius
+   */
+  function updateTemperature(temperature) {
+    const temp = parseFloat(temperature);
+    
+    if (isNaN(temp)) {
+      if (elements.tempValue) elements.tempValue.textContent = "Error";
+      if (elements.tempIcon) elements.tempIcon.className = "material-icons-round text-slate-400 text-lg";
+      return;
+    }
+    
+    // Update value display
+    if (elements.tempValue) elements.tempValue.textContent = `${temp.toFixed(1)}°C`;
+    
+    // Update icon color based on temperature
+    let iconColor = "text-blue-500";  // Default: cool
+    if (temp >= 20 && temp < 26) {
+      iconColor = "text-cyan-500";    // Comfortable
+    } else if (temp >= 26 && temp < 31) {
+      iconColor = "text-orange-500";  // Warm
+    } else if (temp >= 31) {
+      iconColor = "text-red-600";     // Hot
+    }
+    
+    if (elements.tempIcon) {
+      elements.tempIcon.className = `material-icons-round ${iconColor} text-lg`;
+    }
   }
 
   // ==================== Credential Persistence ====================

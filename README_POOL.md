@@ -1,21 +1,22 @@
 # ESP32 Pool Control System v2.0
 
-IoT-based swimming pool control system using ESP32, MQTT, and voltage feedback sensors. Controls a 220V pump and dual 24V electrovalves with manual override priority and automated scheduling.
+IoT-based swimming pool control system using ESP32, MQTT, and DS18B20 temperature sensor. Controls a 220V pump and 24V electrovalves with manual override capability and automated scheduling.
 
 ## 🏊 Project Overview
 
 This system allows remote control of:
-- **1× Swimming pool pump** (0.75kW @ 220V) via latching contactor
-- **2× Electrovalves** (24V) connected in parallel - controlled as unified modes (Mode 1 / Mode 2)
-  - Valve 1: Normally Open (NO) - Cascada mode
-  - Valve 2: Normally Closed (NC) - Eyectores mode
+- **1× Swimming pool pump** (220V AC) via standard SONGLE relay
+- **2× Electrovalves** (24V) wired in parallel (NC + NO) - controlled by single relay
+  - Relay LOW = Mode 1 (Cascada) - NC valve open, NO valve closed
+  - Relay HIGH = Mode 2 (Eyectores) - NC valve closed, NO valve open
+- **1× DS18B20 temperature sensor** - Pool water temperature monitoring
 
 ### Key Features
 
-- ✅ **Latching contactor support** - 100ms pulse control for pump and valves
-- ✅ **Voltage feedback sensors** - ZMPT101B (pump) and DC sensor (valves) for state detection
-- ✅ **Manual override priority** - Pneumatic push buttons work independently alongside ESP32 control
-- ✅ **State verification** - Prevents unnecessary switching if already in target state
+- ✅ **Standard relay control** - Continuous HIGH/LOW for SONGLE SRD-5VDC-SL-C relays
+- ✅ **Temperature monitoring** - DS18B20 OneWire sensor with 1-minute update intervals
+- ✅ **Manual override compatibility** - SPDT switches wired in parallel with ESP32 relays
+- ✅ **Blind control** - No feedback sensors, simple command-based operation
 - ✅ **MQTT over TLS** - Secure communication via HiveMQ Cloud
 - ✅ **Modern responsive dashboard** - Mobile-first design with Tailwind CSS
 - ✅ **Countdown timer** - Set duration and mode for automatic pump shutoff
@@ -61,11 +62,9 @@ IoT/
 
 | GPIO | Direction | Function | Connection |
 |------|-----------|----------|------------|
-| **19** | Output | PUMP_RELAY_PIN | Relay 1 driver (via transistor) |
-| **18** | Output | VALVE1_RELAY_PIN | Relay 2 driver (Valve 1 / Mode 1) |
-| **17** | Output | VALVE2_RELAY_PIN | Relay 3 driver (Valve 2 / Mode 2) |
-| **36** | Input (ADC) | PUMP_SENSE_PIN | ZMPT101B output (220V detection) |
-| **39** | Input (ADC) | VALVE_SENSE_PIN | DC sensor output (24V detection) |
+| **18** | Output | PUMP_RELAY_PIN | Standard relay → 220V pump motor |
+| **19** | Output | VALVE_RELAY_PIN | Standard relay → NC+NO electrovalves (parallel, opposite polarity) |
+| **21** | Input (OneWire) | TEMP_SENSOR_PIN | DS18B20 temperature probe data line |
 
 ---
 
@@ -76,10 +75,11 @@ IoT/
 | `devices/esp32-pool-01/pump/set` | Dashboard → ESP32 | `ON`, `OFF`, `TOGGLE` | Pump control command
 | `devices/esp32-pool-01/timer/set` | Dashboard → ESP32 | `{"mode":1,"duration":3600}` | Timer start command (JSON) |
 | `devices/esp32-pool-01/timer/state` | ESP32 → Dashboard | `{"active":true,"remaining":3420,...}` | Timer state updates (retained) |
-| `devices/esp32-pool-01/wifi/state` | ESP32 → Dashboard | `{"status":"connected","ssid":"...","rssi":-45,...}` | WiFi status with signal strength (retained) |s |
+| `devices/esp32-pool-01/wifi/state` | ESP32 → Dashboard | `{"status":"connected","ssid":"...","rssi":-45,...}` | WiFi status with signal strength (retained) |
 | `devices/esp32-pool-01/pump/state` | ESP32 → Dashboard | `ON`, `OFF` | Pump actual state (retained) |
 | `devices/esp32-pool-01/valve/set` | Dashboard → ESP32 | `1`, `2`, `TOGGLE` | Valve mode commands |
 | `devices/esp32-pool-01/valve/state` | ESP32 → Dashboard | `1`, `2` | Valve actual mode (retained) |
+| `devices/esp32-pool-01/temperature/state` | ESP32 → Dashboard | `25.3` | Pool water temperature in °C (retained, updates every 60s) |
 
 ---
 
@@ -87,13 +87,14 @@ IoT/
 
 ### 1. Hardware Assembly
 
-1. **Follow [WIRING_DIAGRAM.md](WIRING_DIAGRAM.md)** for complete wiring instructions
-2. **Build relay driver circuits** (3× identical circuits for each relay)
-3. **Connect sensors**:
-   - ZMPT101B to pump 220V output
-   - DC sensor to 24V valve supply
-4. **Wire relays in parallel** with existing manual push buttons
-5. **Test on breadboard** with LEDs before connecting real loads!
+1. **ESP32 + SONGLE relay modules** (2× SRD-5VDC-SL-C relays)
+2. **Connect outputs**:
+   - GPIO 18 → Pump relay → 220V pump motor
+   - GPIO 19 → Valve relay → 24V electrovalves (NC+NO in parallel)
+3. **Connect temperature sensor**:
+   - DS18B20 data line → GPIO 21 (with 4.7kΩ pull-up to 3.3V)
+4. **Wire SPDT manual switches** in parallel with ESP32 relay outputs
+5. **Power supply**: 220V AC → 24V DC (5.5A) → LM2596S → 5V for ESP32/relays
 
 ### 2. Firmware Configuration
 
@@ -113,8 +114,7 @@ IoT/
 
 3. **Adjust `config.h`** if needed:
    - Change GPIO pins if using different connections
-   - Adjust `PULSE_DURATION_MS` (default 100ms for latching contactors)
-   - Modify `VOLTAGE_THRESHOLD` (default 1000 for ADC readings)
+   - Verify MQTT topics match your dashboard configuration
 
 ### 3. Flash Firmware
 
@@ -138,8 +138,8 @@ pio device monitor  # View serial output
 [MQTT] ✓ CONECTADO
 [MQTT] Subscribed: devices/esp32-pool-01/pump/set
 [MQTT] Subscribed: devices/esp32-pool-01/valve/set
-[SENSOR] Pump ADC=0 -> OFF
-[SENSOR] Valve ADC=0 -> OFF
+[SENSOR] Dispositivos DS18B20 encontrados: 1
+[SENSOR] Temperatura: 22.5°C
 ========================================
    Sistema listo
 ========================================
@@ -264,60 +264,60 @@ When you manually control pump/valves while a program is active:
   - WiFi connection status
   - MQTT messages
   - State changes
-  - Sensor readings
+  - Temperature readings
 - **▼** button: Expand/collapse
 - **🗑️** button: Clear log
 
 ### Manual Override
 
-**Manual push buttons ALWAYS have priority:**
+**Manual SPDT switches work in parallel with ESP32:**
 
-1. **Scenario**: Dashboard shows pump OFF, but you press manual button → Pump turns ON
-2. **ESP32 detects change** via voltage sensor → Updates dashboard to show ON
-3. **You can still use dashboard** - both controls work in parallel
+1. **Scenario**: Dashboard shows pump OFF, but you flip manual switch → Pump turns ON
+2. **ESP32 has no feedback** - it doesn't know about manual changes
+3. **Both controls work independently** - OR logic (either manual OR ESP32 can activate)
 
-**Note**: With latching contactors, if you manually switch while ESP32 is offline, the dashboard won't update until next sensor read.
+**Note**: ESP32 operates "blind" - it sends commands but doesn't verify state. If manual switch is used, dashboard won't reflect the change.
 
 ---
 
 ## 🔧 Control Logic
 
-### Pump Control (Latching)
+### Pump Control (Standard Relay)
 
 ```cpp
 // User clicks "Turn ON" in dashboard
-1. Read ZMPT101B sensor (check current state)
-2. If already ON → Skip (no pulse sent)
-3. If OFF → Send 100ms pulse to relay
-4. Wait 200ms for contactor to switch
-5. Read sensor again to verify
-6. Publish new state to MQTT
+1. Set GPIO 18 HIGH (relay closes)
+2. Pump motor receives 220V AC power
+3. Update internal state variable
+4. Publish "ON" to MQTT pump/state topic
 ```
 
-### Valve Control (Unified Mode)
+### Valve Control (Single Relay, NC+NO Parallel)
 
 ```cpp
 // User clicks "Change to Mode 2"
-1. Current mode is 1 → need to switch
-2. Send 100ms pulse to Valve2 relay
-3. Valve2 (NC) energizes
+1. Set GPIO 19 HIGH (relay energizes)
+2. NC valve closes, NO valve opens (opposite polarity)
+3. Water flow direction changes
 4. Update internal mode variable
-5. Publish "2" to MQTT valve/state
+5. Publish "2" to MQTT valve/state topic
 ```
 
-### State Feedback
+### Temperature Reading
 
-**ADC Threshold: 1000 (out of 4095)**
+**DS18B20 OneWire sensor on GPIO 21:**
 
-| Sensor | Voltage Present | ADC Reading | Interpreted State |
-|--------|----------------|-------------|-------------------|
-| ZMPT101B | 220V AC detected | > 1000 | Pump ON |
-| ZMPT101B | No voltage | < 1000 | Pump OFF |
-| DC Sensor | 24V DC detected | > 1000 | Valves powered |
-| DC Sensor | No voltage | < 1000 | Valves OFF |
+```cpp
+// Every 60 seconds in loop()
+1. Request temperature from sensor
+2. Wait for conversion (~750ms max)
+3. Read temperature value (°C with 1 decimal)
+4. Publish to MQTT temperature/state topic
+```
 
 ---
-Automatic Program Execution
+
+## ⏰ Automatic Program Execution
 
 The dashboard checks every 15 minutes if any enabled program should be running:
 
@@ -347,31 +347,12 @@ If all fail, periodic retry every 30 seconds.
 
 ### Custom Sensor Calibration
 
-If ADC readings are inconsistent, calibrate in `firmware/src/main.cpp`:
-
-```cpp
-// Constants section at top of file
-const int VOLTAGE_THRESHOLD = 1200;  // Adjust based on your sensors
-```
-
-Test range: Read ADC values via Serial Monitor when ON/OFF, set threshold midway.
-
-### Pulse Duration Tuning
-
-Different contactors may need different pulse lengths (in `main.cpp`):
-
-```cpp
-const int PULSE_DURATION_MS = 150;  // Increase if contactors don't switch reliably
-```
-
-Test range: 50-200ms (too short = no trigger, too long = unnecessary)
-
 ### Code Organization
 
 All code files follow consistent structure with section separators:
 
 **ESP32 Firmware** (`main.cpp`):
-- Constants → State → Helper Functions → Sensors → Relays → MQTT Publishing → Control Logic → Timer → MQTT Handler → WiFi → NTP → MQTT TLS → Setup/Loop
+- Constants → State → Temperature Sensor → MQTT Publishing → Relay Control → Control Logic → Timer → MQTT Handler → WiFi → NTP → MQTT TLS → Setup/Loop
 
 **JavaScript Modules** (`app.js`, `programas.js`):
 - Constants → State → DOM Cache → Initialization → Event Listeners → Business Logic → Public API
@@ -384,7 +365,23 @@ All code files follow consistent structure with section separators:
 **Check:**
 - SSID/password correct in `secrets.h`?
 - WiFi signal strength (RSSI should be > -70 dBm)
-- Try Recent Improvements (December 2025)
+- Try all 3 configured networks in order
+
+### Temperature Sensor Not Reading
+
+**Check DS18B20:**
+- 4.7kΩ pull-up resistor between data line and 3.3V
+- Verify VCC (3.3V or 5V) and GND connections
+- Check GPIO 21 wiring
+- Serial Monitor should show: `[SENSOR] Dispositivos DS18B20 encontrados: 1`
+
+### Relay Doesn't Click
+
+**SONGLE SRD-5VDC-SL-C relay module:**
+- Verify 5V and GND connected to relay module
+- Check GPIO signal wires (18 for pump, 19 for valve)
+- Test with LED on GPIO pin to verify output
+- Relay should audibly click when GPIO goes HIGH Recent Improvements (December 2025)
 
 ### ✅ Completed
 - ✅ **Automatic program execution** - 15-minute interval checking with conflict resolution
@@ -400,79 +397,17 @@ All code files follow consistent structure with section separators:
 
 ### 🚧 TODO / Future Enhancements
 
-- [ ] Hardware testing with actual ESP32 and sensors
-- [ ] Power usage monitoring (current sensor integration)
-- [ ] Temperature sensor for pool water monitoring
+## 🚀 Future Enhancements
+
+- [ ] Hardware testing with actual ESP32 and relays
+- [ ] Temperature alert thresholds (low/high water temp)
 - [ ] OTA (Over-The-Air) firmware updates
 - [ ] Mobile app wrapper (Capacitor or PWA improvements)
 - [ ] Historical data visualization and analytics
 - [ ] Email/SMS notifications for critical events
 - [ ] Integration with Home Assistant / Google Home
 - [ ] Multiple device support (control multiple pools)
-- [ ] Sensor debouncing and advanced validationlel with manual buttons
-
-**Fix**:
-- Verify relay NO (Normally Open) contacts are in parallel with manual button
-- Check contactor coil voltage (should be 24V, not 220V!)
-- Test with multimeter: Should see 24V across contactor coil when relay energizes
-
-### Sensor Always Reads Zero
-
-**Pump sensor (ZMPT101B)**:
-- Check 220V input connections
-- Verify VCC (5V) and GND connected
-- Test with multimeter on ZMPT output (should see ~2.5V at rest, varying with AC)
-
-**Valve sensor (DC 24V)**:
-- Check polarity (+/- connections)
-- Verify voltage is actually present at valve terminals
-- Swap input terminals if readings inverted
-
-### Dashboard Shows Wrong State
-
-**Root cause**: Manual button changed state while ESP32 was offline
-
-**Fix**:
-- ESP32 will auto-correct on next sensor read
-- Manually click dashboard button to resync
-- Consider adding periodic sensor polling (currently only reads on state change)
-
-### Pump Toggles Opposite Direction
-
-**Symptom**: Clicking "Turn ON" actually turns pump OFF
-
-**Cause**: Latching contactor was already in opposite state
-
-**Solution**: This is expected with latching contactors + blind control
-- Manual reset: Use physical push button to set known state
-- Add initialization routine in `setup()` to read sensors and sync state
-
----
-
-## 📊 Advanced Features
-
-### Custom Sensor Calibration
-
-If ADC readings are inconsistent, calibrate in `config.h`:
-
-```cpp
-// Read actual values via Serial Monitor:
-// [SENSOR] Pump ADC=2450 -> ON
-// [SENSOR] Pump ADC=80 -> OFF
-
-// Then set threshold midway between:
-#define VOLTAGE_THRESHOLD 1200  // Was 1000
-```
-
-### Pulse Duration Tuning
-
-Different contactors may need different pulse lengths:
-
-```cpp
-#define PULSE_DURATION_MS 150  // Increase if contactors don't switch reliably
-```
-
-Test range: 50-200ms (too short = no trigger, too long = unnecessary)
+- [ ] Relay health monitoring (click count tracking)
 
 ---
 
@@ -482,13 +417,14 @@ If upgrading from the original dual-valve control project:
 
 ### What Changed
 
+### What Changed
+
 | Old System | New System |
 |------------|------------|
-| 2× Independent valves | Unified valve modes (1/2) |
-| MOSFET control (continuous) | Relay pulses (latching) |
-| No state feedback | Voltage sensors |
+| 2× Independent valves | Single relay → parallel NC+NO valves |
+| MOSFET control | SONGLE standard relays |
+| No sensors | DS18B20 temperature sensor |
 | Separate ON/OFF buttons | Click-to-toggle cards |
-| Timeline chart | Removed (simpler UI) |
 
 ### Migration Steps
 
@@ -503,24 +439,11 @@ If upgrading from the original dual-valve control project:
    git checkout feature/pool-control
    ```
 
-3. **Update hardware**: Add relays + sensors (see WIRING_DIAGRAM.md)
+3. **Update hardware**: Replace old relays, add DS18B20 sensor (see GPIO table above)
 
 4. **Flash new firmware**: Follow "Getting Started" above
 
-5. **Deploy new dashboard**: Use `index-pool.html` instead of `index.html`
-
----
-
-## 📝 TODO / Future Enhancements
-
-- [ ] Add scheduling/timers for automatic pump cycles
-- [ ] Implement power usage monitoring (current sensor integration)
-- [ ] Add temperature sensor for pool water
-- [ ] OTA (Over-The-Air) firmware updates
-- [ ] Mobile app (React Native or Flutter)
-- [ ] Historical data visualization (re-enable timeline with D3.js)
-- [ ] Email/SMS notifications for critical events
-- [ ] Integration with Home Assistant / Google Home
+5. **Deploy new dashboard**: Includes temperature monitoring widget
 
 ---
 
