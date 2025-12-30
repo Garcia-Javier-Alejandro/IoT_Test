@@ -264,6 +264,14 @@ const AppModule = (() => {
     // Pump toggle button
     if (elements.btnPump) {
       elements.btnPump.addEventListener("click", () => {
+        // Check if timer is active (must cancel timer to control pump manually)
+        if (timerState.active) {
+          const modeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
+          alert(`⚠️ Timer cancelado (${modeName}) - Control manual de bomba`);
+          LogModule.append("⚠️ Timer cancelado");
+          stopTimer();
+        }
+        
         // Check if a program is active (conflict detection)
         if (window.ProgramasModule) {
           const activeProgramName = ProgramasModule.getActiveProgramName();
