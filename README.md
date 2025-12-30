@@ -62,9 +62,9 @@ IoT/
 
 | GPIO | Direction | Function | Connection |
 |------|-----------|----------|------------|
-| **18** | Output | PUMP_RELAY_PIN | Standard relay → 220V pump motor |
-| **19** | Output | VALVE_RELAY_PIN | Standard relay → NC+NO electrovalves (parallel, opposite polarity) |
-| **21** | Input (OneWire) | TEMP_SENSOR_PIN | DS18B20 temperature probe data line |
+| **16** | Output | VALVE_RELAY_PIN | Relay IN1 → NC+NO electrovalves (parallel, opposite polarity) + 10kΩ pull-down |
+| **19** | Output | PUMP_RELAY_PIN | Relay IN2 → 220V pump motor + 10kΩ pull-down |
+| **33** | Input (OneWire) | TEMP_SENSOR_PIN | DS18B20 temperature probe data line + 4.7kΩ pull-up to 3.3V |
 
 ---
 
@@ -89,12 +89,13 @@ IoT/
 
 1. **ESP32 + SONGLE relay modules** (2× SRD-5VDC-SL-C relays)
 2. **Connect outputs**:
-   - GPIO 18 → Pump relay → 220V pump motor
-   - GPIO 19 → Valve relay → 24V electrovalves (NC+NO in parallel)
+   - GPIO 16 → Relay IN1 (Valve control) → 24V electrovalves (NC+NO in parallel)
+   - GPIO 19 → Relay IN2 (Pump control) → 220V pump motor
 3. **Connect temperature sensor**:
-   - DS18B20 data line → GPIO 21 (with 4.7kΩ pull-up to 3.3V)
-4. **Wire SPDT manual switches** in parallel with ESP32 relay outputs
-5. **Power supply**: 220V AC → 24V DC (5.5A) → LM2596S → 5V for ESP32/relays
+   - DS18B20 data line → GPIO 33 (with 4.7kΩ pull-up to 3.3V)
+4. **Pull-down resistors**: 10kΩ from GPIO 16 to GND, 10kΩ from GPIO 19 to GND
+5. **Wire SPDT manual switches** in parallel with ESP32 relay outputs (optional)
+6. **Power supply**: 220V AC → 24V DC (5.5A) → LM2596S → 5V for ESP32/relays
 
 ### 2. Firmware Configuration
 
@@ -286,7 +287,7 @@ When you manually control pump/valves while a program is active:
 
 ```cpp
 // User clicks "Turn ON" in dashboard
-1. Set GPIO 18 HIGH (relay closes)
+1. Set GPIO 19 HIGH (relay closes)
 2. Pump motor receives 220V AC power
 3. Update internal state variable
 4. Publish "ON" to MQTT pump/state topic
@@ -296,7 +297,7 @@ When you manually control pump/valves while a program is active:
 
 ```cpp
 // User clicks "Change to Mode 2"
-1. Set GPIO 19 HIGH (relay energizes)
+1. Set GPIO 16 HIGH (relay energizes)
 2. NC valve closes, NO valve opens (opposite polarity)
 3. Water flow direction changes
 4. Update internal mode variable
@@ -305,7 +306,7 @@ When you manually control pump/valves while a program is active:
 
 ### Temperature Reading
 
-**DS18B20 OneWire sensor on GPIO 21:**
+**DS18B20 OneWire sensor on GPIO 33:**
 
 ```cpp
 // Every 60 seconds in loop()
@@ -372,16 +373,17 @@ All code files follow consistent structure with section separators:
 **Check DS18B20:**
 - 4.7kΩ pull-up resistor between data line and 3.3V
 - Verify VCC (3.3V or 5V) and GND connections
-- Check GPIO 21 wiring
+- Check GPIO 33 wiring
 - Serial Monitor should show: `[SENSOR] Dispositivos DS18B20 encontrados: 1`
 
 ### Relay Doesn't Click
 
 **SONGLE SRD-5VDC-SL-C relay module:**
 - Verify 5V and GND connected to relay module
-- Check GPIO signal wires (18 for pump, 19 for valve)
+- Check GPIO signal wires (19 for pump, 16 for valve)
 - Test with LED on GPIO pin to verify output
-- Relay should audibly click when GPIO goes HIGH Recent Improvements (December 2025)
+- Relay should audibly click when GPIO goes HIGH
+- Verify 10kΩ pull-down resistors installed on GPIO 16 and 19
 
 ### ✅ Completed
 - ✅ **Automatic program execution** - 15-minute interval checking with conflict resolution

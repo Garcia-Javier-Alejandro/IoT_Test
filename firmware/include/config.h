@@ -9,11 +9,12 @@
 // ==================== GPIO Pins ====================
 
 // --- Outputs: Relay Control ---
-#define PUMP_RELAY_PIN      18  // Standard relay controlling 220V AC pump
-#define VALVE_RELAY_PIN     19  // Standard relay controlling 24V electrovalves (NC+NO in parallel)
+// Note: 10kΩ pull-down resistors installed on GPIO 16 and 19 to prevent relay activation during boot
+#define VALVE_RELAY_PIN     16  // Relay IN1: Standard relay controlling 24V electrovalves (NC+NO in parallel)
+#define PUMP_RELAY_PIN      19  // Relay IN2: Standard relay controlling 220V AC pump
 
 // --- Inputs: Sensors ---
-#define TEMP_SENSOR_PIN     21  // DS18B20 temperature probe (OneWire)
+#define TEMP_SENSOR_PIN     33  // DS18B20 temperature probe (OneWire) - 4.7kΩ pull-up to 3.3V
 
 // ==================== MQTT Topics ====================
 

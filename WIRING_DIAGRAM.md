@@ -1,15 +1,16 @@
-# Pool Control System - Wiring Diagram
+# Pool Control System - Wiring Diagram v3.0
+
+> 📋 **Note:** For a complete visual schematic, see [wiring_diagram.png](wiring_diagram.png)
 
 ## Hardware Components
 - ESP32 DevKit V1
-- 3× Songle SRD-05VDC-SL-C relays
-- 3× 2N2222 transistors (or BC547)
-- 3× 1N4007 diodes
-- 3× 1kΩ resistors
-- 3× 10kΩ resistors
-- 1× ZMPT101B AC voltage sensor (220V pump sensing)
-- 1× 25V DC voltage sensor module (24V valve sensing)
-- 5V power supply (2A minimum)
+- 1× Dual-channel relay module (2× Songle SRD-05VDC-SL-C relays)
+- 1× DS18B20 temperature sensor (waterproof)
+- 1× 4.7kΩ resistor (pull-up for DS18B20 data line)
+- 2× 10kΩ resistors (pull-down for GPIO 16 and GPIO 19)
+- 24V DC power supply (5.5A for pump + valves)
+- LM2596S buck converter (24V → 5V for ESP32)
+- 2× SPDT manual override switches (optional)
 
 ---
 
@@ -17,152 +18,184 @@
 
 ### Outputs (Relay Control)
 ```
-GPIO 19 → PUMP_RELAY_PIN      (Latching pulse for pump contactor)
-GPIO 18 → VALVE1_RELAY_PIN    (NO valve relay)
-GPIO 17 → VALVE2_RELAY_PIN    (NC valve relay)
+GPIO 16 → VALVE_RELAY_PIN   (Relay IN1: 2× 24V electrovalves) + 10kΩ pull-down to GND
+GPIO 19 → PUMP_RELAY_PIN    (Relay IN2: 220V pump)           + 10kΩ pull-down to GND
 ```
 
-### Inputs (State Feedback)
+### Inputs (Sensors)
 ```
-GPIO 36 (ADC1_0) → PUMP_SENSE_PIN   (ZMPT101B analog input)
-GPIO 39 (ADC1_3) → VALVE_SENSE_PIN  (24V sensor analog input)
+GPIO 33 → TEMP_SENSOR_PIN   (DS18B20 OneWire data line)      + 4.7kΩ pull-up to 3.3V
 ```
 
 ---
 
-## Relay Driver Circuit (Repeat for Each of 3 Relays)
+## Dual-Channel Relay Module
 
+Most dual-channel relay modules have **built-in optocouplers** and don't require external transistor drivers.
+
+### Module Pinout (Typical)
 ```
-ESP32 GPIO Pin ──[1kΩ]──┬── 2N2222 Base (pin 1)
-                        │
-                      [10kΩ]
-                        │
-                       GND
+VCC  → ESP32 5V (or VIN)
+GND  → ESP32 GND
+IN1  → ESP32 GPIO 16 (Valve control) + [10kΩ to GND]
+IN2  → ESP32 GPIO 19 (Pump control)  + [10kΩ to GND]
 
-2N2222 Collector (pin 2) ── Relay Coil (+) ── 5V
-2N2222 Emitter (pin 3) ───── GND
+Relay 1 (IN1 - Valves):
+  COM → 24V DC (+) from power supply
+  NO  → NC valve (+) AND NO valve (-)  [see valve wiring below]
+  NC  → NC valve (-) AND NO valve (+)  [see valve wiring below]
 
-           ┌────[1N4007]────┐  ← Flyback diode
-           │   (Band to 5V) │     (Cathode to +5V side)
-           │                │
-        Relay Coil (+) ── Relay Coil (-)
+Relay 2 (IN2 - Pump):
+  COM → 220V Hot (from circuit breaker)
+  NO  → Pump motor hot wire
+  NC  → Not used
 ```
 
-**Per Relay Wiring:**
-| Relay # | GPIO Pin | Purpose |
-|---------|----------|---------|
-| Relay 1 | GPIO 19  | Pump contactor pulse |
-| Relay 2 | GPIO 18  | Valve 1 (NO) pulse |
-| Relay 3 | GPIO 17  | Valve 2 (NC) pulse |
+### Relay Module Logic
+- **Active LOW:** Most modules activate when GPIO = LOW (0V)
+- **Active HIGH:** Some modules activate when GPIO = HIGH (3.3V/5V)
+- Check your module's documentation or label (usually marked "H" or "L")
+
+**Note:** The firmware uses `digitalWrite(pin, HIGH)` to activate relays, so use an **Active HIGH** module or invert the logic in code.
 
 ---
 
-## Relay Contacts → Latching Contactors (Parallel Control)
+## Valve Wiring (2 Electrovalves in Parallel)
 
-### Pump Circuit
+The system uses **2× 24V electrovalves** (1× NC + 1× NO) wired to operate in opposite modes:
+
+### Mode 1 (Cascada) - Relay LOW
 ```
-Manual Button (momentary) ───┐
-                             ├──→ Pump Latching Contactor Coil (24V)
-Pump Relay COM ──────────────┘
-    │
-    └── Pump Relay NO contact (closes during 100ms pulse)
-```
-
-**Operation:**
-- Manual button OR relay can send 100ms pulse to toggle pump contactor
-- Both connected in parallel → either can trigger
-- Manual button always functional (independent of ESP32)
-
-### Valve Circuit (Mode 1)
-```
-Manual Button Mode 1 ────┐
-                         ├──→ Valve Latching Contactor Coil (24V)
-Valve1 Relay COM ────────┘
-    │
-    └── Valve1 Relay NO (closes during pulse)
-
-Valve2 Relay OFF (no pulse)
+Relay 1 NC contact closed:
+  24V+ → Relay COM → Relay NC → NC valve (+) → NC valve (-) → GND
+                               → NO valve (-) → NO valve (+) → 24V+
+Result: NC valve OPEN, NO valve CLOSED
 ```
 
-### Valve Circuit (Mode 2)
+### Mode 2 (Eyectores) - Relay HIGH  
 ```
-Manual Button Mode 2 ────┐
-                         ├──→ Valve Latching Contactor Coil (24V)
-Valve2 Relay COM ────────┘
-    │
-    └── Valve2 Relay NO (closes during pulse)
-
-Valve1 Relay OFF (no pulse)
+Relay 1 NO contact closed:
+  24V+ → Relay COM → Relay NO → NC valve (-) → NC valve (+) → GND
+                               → NO valve (+) → NO valve (-) → 24V+
+Result: NC valve CLOSED, NO valve OPEN
 ```
 
-**Operation:**
-- To switch to Mode 1: Energize Valve1 relay for 100ms
-- To switch to Mode 2: Energize Valve2 relay for 100ms
-- Manual buttons work independently
+**Wiring Schematic:**
+```
+        Relay 2
+          COM ────── 24V+ (from power supply)
+           │
+    ┌──────┴──────┐
+    │             │
+   NC            NO
+    │             │
+    │             │
+    └──┬───┐  ┌──┴───┐
+       │   │  │      │
+    NC Valve │  │  NO Valve
+     (+) (-) │  │  (+) (-)
+       │   │  │  │    │
+       └───┼──┘  └────┼───► Both negatives to GND
+           │           │
+           └───────────┘
+           (Cross-connected)
+```
 
 ---
 
-## State Feedback Sensors
+## DS18B20 Temperature Sensor
 
-### ZMPT101B (Pump 220V AC Sensing)
+### Wiring (3-wire waterproof sensor)
 ```
-220V Hot ──────┬── ZMPT101B Input Terminal 1
-               │
-            [PUMP LOAD]
-               │
-220V Neutral ──┴── ZMPT101B Input Terminal 2
-
-ZMPT101B:
-  VCC → 5V
-  GND → GND
-  OUT → ESP32 GPIO 36 (ADC1_0)
+Red    → ESP32 3.3V
+Black  → ESP32 GND
+Yellow → GPIO 33 + [4.7kΩ pull-up to 3.3V]
 ```
 
-**Readings:**
-- No voltage: ADC reads ~0-100
-- 220V present: ADC reads 2000-4095
-- Code: `analogRead(36) > 1000` → Pump is ON
-
-### 25V DC Sensor (Valve 24V Sensing)
+### Pull-up Resistor
 ```
-24V+ (to valves) ── DC Sensor Input (+)
-24V- (GND) ───────── DC Sensor Input (-)
-
-DC Sensor:
-  OUT → ESP32 GPIO 39 (ADC1_3)
-  GND → GND
+ESP32 3.3V ──┬── DS18B20 VCC (red)
+             │
+         [4.7kΩ]
+             │
+             └── DS18B20 DATA (yellow) ── GPIO 33
 ```
 
-**Readings:**
-- No voltage: ADC reads ~0-100
-- 24V present: ADC reads 2000-4095
-- Code: `analogRead(39) > 1000` → Valves are powered
+**Important:** Use **4.7kΩ** (not 47kΩ) for reliable OneWire communication.
+
+---
+
+## Pull-Down Resistors (GPIO Boot Protection)
+
+To prevent relays from activating randomly during ESP32 boot/reset, install pull-down resistors:
+
+### Wiring
+```
+GPIO 16 ──[10kΩ]── GND  (Valve relay control)
+GPIO 19 ──[10kΩ]── GND  (Pump relay control)
+```
+
+**Why needed:**
+- During boot, ESP32 GPIO pins float (undefined state)
+- Floating pins can trigger relay activation
+- 10kΩ pull-down ensures GPIO stays LOW until firmware initializes
+- Prevents pump/valves from turning on unexpectedly during power-up
+
+**Installation:**
+- Solder resistor between GPIO pin and GND rail on breadboard/PCB
+- Or use resistor directly on relay module if it has dedicated pull-down pads
+
+---
+
+## Manual Override Switches (Optional)
+
+Wire SPDT switches in **parallel** with ESP32 relays for manual control:
+
+### Pump Manual Override
+```
+Manual Switch:
+  Common → 220V Hot
+  NO     → Pump motor hot (in parallel with Relay 1 NO)
+  
+Either ESP32 OR manual switch can turn on pump
+```
+
+### Valve Manual Override  
+```
+Two separate switches for Mode 1 / Mode 2:
+  Mode 1 Switch → Connects 24V to NC valve circuit
+  Mode 2 Switch → Connects 24V to NO valve circuit
+  
+Wired in parallel with Relay 2 contacts
+```
 
 ---
 
 ## Power Distribution
 
-### 5V Rail (for ESP32 + Relays)
+### Main Power Supply Chain
 ```
-5V Power Supply (+) ──┬── ESP32 VIN (or 5V pin)
-                      ├── Relay 1 VCC
-                      ├── Relay 2 VCC
-                      ├── Relay 3 VCC
-                      └── ZMPT101B VCC
-
-5V Power Supply (-) ──┬── ESP32 GND
-                      ├── All relay GND
-                      ├── All transistor emitters
-                      └── ZMPT101B GND
+220V AC ──► 24V DC Power Supply (5.5A)
+            │
+            ├──► Pump motor (when relay active)
+            ├──► Electrovalves (1-2A typical)
+            │
+            └──► LM2596S Buck Converter
+                 │
+                 └──► 5V DC (2A)
+                      │
+                      ├──► ESP32 VIN (or 5V pin)
+                      └──► Relay module VCC
 ```
 
-**Current requirement:** ~500mA (ESP32 + 3 relays)
-
-### 24V Rail (External - Already Exists)
+### Grounding
 ```
-24V Supply ──┬── Valve Contactors
-             ├── Pump Contactor Coil
-             └── DC Voltage Sensor Input
+All GND connections must be common:
+  - ESP32 GND
+  - Relay module GND  
+  - DS18B20 GND (black)
+  - 24V power supply (-)
+  - 5V buck converter (-)
 ```
 
 ---
@@ -170,49 +203,49 @@ DC Sensor:
 ## Complete System Diagram (ASCII)
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │          ESP32 DevKit V1             │
-                    │                                      │
-   ┌────────────────┤ GPIO 19 (Pump Relay)                 │
-   │  ┌─────────────┤ GPIO 18 (Valve1 Relay)               │
-   │  │  ┌──────────┤ GPIO 17 (Valve2 Relay)               │
-   │  │  │          │                                      │
-   │  │  │          │ GPIO 36 (ADC) ◄── ZMPT101B           │
-   │  │  │          │ GPIO 39 (ADC) ◄── 24V Sensor         │
-   │  │  │          │                                      │
-   │  │  │          │ VIN ◄── 5V Supply                    │
-   │  │  │          │ GND ◄── GND                          │
-   │  │  │          └──────────────────────────────────────┘
-   │  │  │
-   │  │  │          ┌────────────────┐
-   │  │  └─────────►│ Transistor +   │
-   │  │             │ Relay 3        ├──► Valve2 Contactor (24V)
-   │  │             │ (Valve2)       │    (Mode 2 pulse)
-   │  │             └────────────────┘
-   │  │
-   │  │             ┌────────────────┐
-   │  └────────────►│ Transistor +   │
-   │                │ Relay 2        ├──► Valve1 Contactor (24V)
-   │                │ (Valve1)       │    (Mode 1 pulse)
-   │                └────────────────┘
+                    ┌──────────────────────────────────┐
+                    │       ESP32 DevKit V1            │
+                    │                                  │
+   ┌────────────────┤ GPIO 16 (Valves) + [10kΩ↓GND]   │
+   │  ┌─────────────┤ GPIO 19 (Pump)   + [10kΩ↓GND]   │
+   │  │  ┌──────────┤ GPIO 33 (Temp)   + [4.7kΩ↑3.3V] │
+   │  │  │          │                                  │
+   │  │  │          │ VIN/5V ◄── 5V from LM2596S       │
+   │  │  │          │ GND ◄──────────┬── Common GND    │
+   │  │  │          └────────────────┼─────────────────┘
+   │  │  │                           │
+   │  │  │          ┌────────────────┴─────────────┐
+   │  │  │          │  Dual Relay Module           │
+   │  │  │          │  VCC ◄── 5V                  │
+   │  └──┼─────────►│  IN1 (Valve Relay)           │
+   │     └─────────►│  IN2 (Pump Relay)            │
+   │                │  GND ◄── GND                 │
+   │                └──┬───────────┬───────────────┘
+   │                   │           │
+   │                   │           │ Relay 1 (IN1 - Valves)
+   │                   │           ├── COM ◄── 24V+
+   │                   │           ├── NO ──► NC valve(-) + NO valve(+)
+   │                   │           └── NC ──► NC valve(+) + NO valve(-)
+   │                   │
+   │                   │ Relay 2 (IN2 - Pump)
+   │                   ├── COM ◄── 220V Hot
+   │                   ├── NO ──► Pump motor hot
+   │                   └── NC (not used)
    │
-   │                ┌────────────────┐
-   └───────────────►│ Transistor +   │
-                    │ Relay 1        ├──► Pump Contactor (24V)
-                    │ (Pump)         │    (Toggle pulse)
-                    └────────────────┘
+   └► DS18B20 (yellow) with 4.7kΩ pull-up to 3.3V
+      DS18B20 red → 3.3V
+      DS18B20 black → GND
 
-        220V ──┬── ZMPT101B ──► ESP32 GPIO36
-               │
-           [PUMP MOTOR]
-               │
-        Neutral ┘
 
-        24V ──┬── DC Sensor ──► ESP32 GPIO39
-              │
-          [VALVES]
-              │
-         GND ─┘
+Pull-Down Resistors (prevent relay activation during ESP32 boot):
+  GPIO 16 ──[10kΩ]── GND
+  GPIO 19 ──[10kΩ]── GND
+
+Power Supply Chain:
+220V AC → 24V DC (5.5A) ─┬─► Pump (via relay)
+                         ├─► Valves (NC + NO)
+                         └─► LM2596S → 5V (2A) ─┬─► ESP32
+                                                 └─► Relay module
 ```
 
 ---
@@ -220,37 +253,67 @@ DC Sensor:
 ## Safety Considerations
 
 1. **High Voltage Isolation:**
-   - ZMPT101B provides galvanic isolation for 220V sensing
    - Never connect ESP32 GPIO directly to 220V
+   - Use proper gauge wire for pump motor (14 AWG minimum)
+   - Install GFCI/RCD protection on pump circuit
 
 2. **Relay Ratings:**
    - Songle SRD-05VDC-SL-C rated for 10A @ 250VAC
-   - Pump contactor coil is 24V (well within limits)
-   - Use appropriately sized wires for contactor coil circuit
+   - Verify pump motor current < 10A continuous
+   - 24V valve current typically 1-2A (well within limits)
 
-3. **Flyback Protection:**
-   - 1N4007 diodes across relay coils prevent voltage spikes
-   - Essential for ESP32 longevity
-
-4. **Enclosure:**
-   - Use IP65-rated enclosure for outdoor/wet environments
-   - Separate low-voltage (ESP32/5V) from high-voltage (220V) sections
+3. **Enclosure:**
+   - Use IP65-rated waterproof enclosure for outdoor installation
+   - Separate compartments for high-voltage (220V) and low-voltage (5V/24V)
    - Proper cable glands for all external connections
+   - Mount relay module securely to prevent vibration damage
+
+4. **Grounding:**
+   - Common ground for all DC circuits (ESP32, relays, sensors, power supplies)
+   - Pump motor chassis must be grounded to AC earth
+   - Use 3-wire cable with ground for all AC connections
 
 5. **Fusing:**
-   - Main pump circuit should have 10A circuit breaker
-   - 5V supply should have 2A fuse
+   - Main pump circuit: 15A circuit breaker
+   - 24V DC supply: 10A fuse
+   - 5V buck converter output: 3A fuse (optional)
+
+6. **Waterproofing:**
+   - DS18B20 must be in waterproof stainless steel probe
+   - Seal all wire entries with silicone or cable glands
+   - Mount enclosure above potential water line
 
 ---
 
 ## Installation Notes
 
-1. **Test on bench first** with LEDs before connecting real loads
-2. **Verify all GND connections** are common
-3. **Check relay coil polarity** (some relays are polarized)
-4. **Calibrate sensors** by reading known voltages
-5. **Label all wires** for future maintenance
-6. **Document actual contactor model numbers** for reference
+1. **Pre-installation Testing:**
+   - Test ESP32 + relay module on bench with LEDs before connecting loads
+   - Verify MQTT connectivity and dashboard control
+   - Check DS18B20 temperature readings
+
+2. **Wiring Checklist:**
+   - ✅ All GND connections common
+   - ✅ Relay module polarity correct (VCC/GND)
+   - ✅ GPIO 18/19 not swapped
+   - ✅ DS18B20 pull-up resistor installed (4.7kΩ to 3.3V)
+   - ✅ Manual override switches wired in parallel (if used)
+   - ✅ Pump motor ground wire connected
+
+3. **Power Supply Verification:**
+   - Measure 24V DC output under load (should be 23-25V)
+   - Verify LM2596S output = 5.0-5.2V DC
+   - Check ESP32 voltage at VIN = 5V (or 3.3V at 3.3V pin)
+
+4. **Relay Testing:**
+   - Listen for relay click when GPIO activates
+   - Verify contacts close with multimeter (continuity test)
+   - Check for proper Active HIGH/LOW behavior
+
+5. **Documentation:**
+   - Label all wires with tags (P+ = pump hot, V+ = valve 24V+, etc.)
+   - Take photos of completed wiring
+   - Note pump motor current draw (measure with clamp meter)
 
 ---
 
@@ -258,8 +321,59 @@ DC Sensor:
 
 | Symptom | Likely Cause | Solution |
 |---------|--------------|----------|
-| Relay clicks but contactor doesn't trigger | Parallel wiring incorrect | Check relay NO contacts in parallel with manual button |
-| ESP32 resets when relay activates | Insufficient power supply | Use 2A+ power supply, add capacitor |
-| Sensor always reads zero | No voltage present OR bad connection | Check sensor wiring, verify voltage with multimeter |
-| Sensor reads max value constantly | Sensor input reversed | Swap sensor input terminals |
-| Relay doesn't click | Transistor not switching | Check GPIO signal, transistor orientation, base resistor |
+| Relay clicks but pump doesn't start | Manual override switch open | Check switch position or bypass for testing |
+| ESP32 resets when relay activates | Insufficient power supply current | Upgrade to 3A+ power supply, check buck converter |
+| Temperature reads -127°C | DS18B20 not connected or wrong pin | Verify GPIO 21, check pull-up resistor, test sensor |
+| Temperature erratic/drops out | 47kΩ resistor (too high) | Replace with 4.7kΩ resistor |
+| Relay doesn't click at all | GPIO not configured or wrong logic | Check firmware, verify Active HIGH/LOW setting |
+| Valve stuck in one mode | Relay contacts welded or valve failure | Test relay with multimeter, check valve power |
+| WiFi disconnects frequently | Weak signal or power issue | Move router closer, check 5V supply stability |
+| MQTT connection fails | Wrong credentials or firewall | Verify secrets.h, check HiveMQ Cloud console |
+
+---
+
+## Maintenance
+
+### Weekly
+- Check dashboard connectivity
+- Verify temperature readings are reasonable
+- Test manual override switches (if installed)
+
+### Monthly  
+- Inspect relay module for signs of overheating or burning
+- Check all wire connections are tight
+- Verify pump motor current draw hasn't increased
+- Clean enclosure vents/filters
+
+### Annually
+- Replace relay module if >100,000 cycles (pump runs daily)
+- Test GFCI/RCD breaker
+- Inspect all wire insulation for damage
+- Update firmware if security patches available
+
+---
+
+## Upgrade Path
+
+### Future Enhancements
+- Add 12V LED strip control (GPIO 22 + relay or MOSFET)
+- Add water level sensor (GPIO 36/39 ADC)
+- Add flow meter for pump runtime verification  
+- Add second temperature sensor for ambient air
+- Implement OTA (Over-The-Air) firmware updates
+
+---
+
+## Resources
+
+- [ESP32 Pinout Reference](https://randomnerdtutorials.com/esp32-pinout-reference-gpios/)
+- [DS18B20 Datasheet](https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf)
+- [Songle SRD-05VDC-SL-C Datasheet](https://components101.com/switches/5v-relay-pinout-working-datasheet)
+- [LM2596 Buck Converter Guide](https://www.ti.com/lit/ds/symlink/lm2596.pdf)
+- [HiveMQ Cloud MQTT Broker](https://www.hivemq.com/mqtt-cloud-broker/)
+
+---
+
+**Document Version:** v3.0  
+**Last Updated:** December 30, 2025  
+**Hardware Revision:** Dual-relay standard control (no latching, no feedback sensors)

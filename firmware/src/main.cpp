@@ -34,7 +34,7 @@ static uint32_t timerRemaining = 0; // Tiempo restante en segundos
 static uint32_t timerLastUpdate = 0; // Último millis() para countdown
 
 // ==================== Temperature Sensor ====================
-// Setup OneWire on GPIO 21
+// Setup OneWire on GPIO 33
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature tempSensor(&oneWire);
 

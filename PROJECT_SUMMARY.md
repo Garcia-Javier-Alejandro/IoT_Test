@@ -85,9 +85,10 @@ Your ESP32 pool control system is now ready for implementation. All code has bee
   ```
 
 ### Phase 3: Breadboard Testing (2-3 hours)
-- [ ] Connect relay modules to ESP32 (GPIO 18 = pump, GPIO 19 = valve)
+- [ ] Connect relay modules to ESP32 (GPIO 16 = valve, GPIO 19 = pump)
+- [ ] Install 10kΩ pull-down resistors on GPIO 16 and GPIO 19
 - [ ] Test relay clicking with LED indicators
-- [ ] Connect DS18B20 temperature sensor to GPIO 21
+- [ ] Connect DS18B20 temperature sensor to GPIO 33
 - [ ] Verify 4.7kΩ pull-up resistor on DS18B20 data line
 - [ ] Verify temperature readings in serial monitor
 - [ ] Test relay control via MQTT commands
