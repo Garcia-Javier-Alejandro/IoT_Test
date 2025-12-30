@@ -775,6 +775,9 @@ const ProgramasModule = (() => {
       if (window.LogModule) {
         LogModule.append(`⚠️ Control manual activado - Programa "${currentlyExecuting.name}" pausado hasta mañana`);
       }
+      
+      // Stop the currently executing program
+      stopProgramExecution();
     }
   }
 

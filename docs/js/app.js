@@ -267,7 +267,7 @@ const AppModule = (() => {
         // Check if timer is active (must cancel timer to control pump manually)
         if (timerState.active) {
           const modeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
-          alert(`⚠️ Timer cancelado (${modeName}) - Control manual de bomba`);
+          alert(`⚠️ Conflicto con Timer (${modeName}) - Pasando a control manual.`);
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
         }
@@ -276,7 +276,7 @@ const AppModule = (() => {
         if (window.ProgramasModule) {
           const activeProgramName = ProgramasModule.getActiveProgramName();
           if (activeProgramName) {
-            alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
+            alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
             LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
             ProgramasModule.setManualOverride();
           }
@@ -310,7 +310,8 @@ const AppModule = (() => {
         
         // Check if timer is active (must cancel timer to change mode)
         if (timerState.active) {
-          alert("⚠️ Timer cancelado - Cambiando a modo Cascada");
+          const modeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
+          alert(`⚠️ Conflicto con Timer (${modeName}) - Pasando a control manual.`);
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
         }
@@ -319,7 +320,7 @@ const AppModule = (() => {
         if (window.ProgramasModule) {
           const activeProgramName = ProgramasModule.getActiveProgramName();
           if (activeProgramName) {
-            alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
+            alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
             LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
             ProgramasModule.setManualOverride();
           }
@@ -341,7 +342,8 @@ const AppModule = (() => {
         
         // Check if timer is active
         if (timerState.active) {
-          alert("⚠️ Timer cancelado - Cambiando a modo Eyectores");
+          const modeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
+          alert(`⚠️ Conflicto con Timer (${modeName}) - Pasando a control manual.`);
           LogModule.append("⚠️ Timer cancelado");
           stopTimer();
         }
@@ -350,7 +352,7 @@ const AppModule = (() => {
         if (window.ProgramasModule) {
           const activeProgramName = ProgramasModule.getActiveProgramName();
           if (activeProgramName) {
-            alert("⚠️ Conflicto con programa activo - Se retomará la tarea al día siguiente");
+            alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
             LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
             ProgramasModule.setManualOverride();
           }
