@@ -425,6 +425,11 @@ const ProgramasModule = (() => {
       const status = program.enabled ? 'activado' : 'desactivado';
       LogModule.append(`🔄 Programa "${program.name}" ${status}`);
     }
+    
+    // If program was just enabled, check if it should execute immediately
+    if (program.enabled) {
+      checkAndExecutePrograms();
+    }
   }
 
   /**

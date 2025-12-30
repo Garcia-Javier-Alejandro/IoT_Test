@@ -485,9 +485,9 @@ const AppModule = (() => {
 
     if (elements.pumpLabel) {
       if (state === "ON") {
-        elements.pumpLabel.textContent = "Bomba ON";
-      } else if (state === "OFF") {
         elements.pumpLabel.textContent = "Bomba OFF";
+      } else if (state === "OFF") {
+        elements.pumpLabel.textContent = "Bomba ON";
       } else {
         elements.pumpLabel.textContent = "Bomba ?";
       }
