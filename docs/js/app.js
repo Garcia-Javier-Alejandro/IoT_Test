@@ -848,6 +848,14 @@ const AppModule = (() => {
       (msg) => LogModule.append(msg)
     );
 
+    // Send command to ESP32 to stop the timer (duration: 0 stops the timer)
+    const stopCommand = JSON.stringify({ mode: timerState.mode || 1, duration: 0 });
+    MQTTModule.publish(
+      stopCommand,
+      window.APP_CONFIG.TOPIC_TIMER_CMD,
+      () => {} // Silent - no log needed
+    );
+
     // Reset state
     timerState.active = false;
     timerState.remaining = 0;
