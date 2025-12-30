@@ -631,8 +631,8 @@ const AppModule = (() => {
   /**
    * Update temperature display
    * Shows temperature with color-coded icon based on value:
-   * - Blue: < 20°C (cool)
-   * - Cyan: 20-25°C (comfortable)
+   * - Cyan: < 20°C (cold)
+   * - Blue: 20-25°C (comfortable)
    * - Orange: 26-30°C (warm)
    * - Red: > 30°C (hot)
    * 
@@ -651,9 +651,9 @@ const AppModule = (() => {
     if (elements.tempValue) elements.tempValue.textContent = `${temp.toFixed(1)}°C`;
     
     // Update icon color based on temperature
-    let iconColor = "text-blue-500";  // Default: cool
+    let iconColor = "text-cyan-500";  // Default: cold
     if (temp >= 20 && temp < 26) {
-      iconColor = "text-cyan-500";    // Comfortable
+      iconColor = "text-blue-500";    // Comfortable
     } else if (temp >= 26 && temp < 31) {
       iconColor = "text-orange-500";  // Warm
     } else if (temp >= 31) {
