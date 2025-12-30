@@ -259,9 +259,9 @@ const ProgramasModule = (() => {
     elements.createProgramScreen.classList.remove('translate-x-full');
     elements.createProgramScreen.classList.add('translate-x-0');
     
-    // Update header title
+    // Update header title (use <br> for two lines to prevent overlap)
     if (elements.headerTitle) {
-      elements.headerTitle.textContent = 'Crear Programa';
+      elements.headerTitle.innerHTML = 'Crear<br>Programa';
     }
   }
 

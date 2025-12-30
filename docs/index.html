@@ -94,6 +94,12 @@
     .timer-mode-btn.selected svg {
       color: white !important;
     }
+    /* Center icons in mode buttons */
+    .mode-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     /* Screen transitions */
     #main-screen, #timer-screen {
       transition: transform 0.3s ease-in-out;
@@ -141,7 +147,7 @@
         </button>
         <h1 class="text-3xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
           <img src="logo.png" alt="Logo" class="h-12">
-          <span id="header-title">Smart Pool</span>
+          <span id="header-title" class="text-center leading-tight text-2xl">Smart Pool</span>
         </h1>
       </div>
     </header>
