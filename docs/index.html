@@ -37,7 +37,7 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
   
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
   
   <!-- ==================== Tailwind CSS Configuration ==================== -->
@@ -52,7 +52,7 @@
             "primary-light": "#2B7EC5",
           },
           fontFamily: {
-            sans: ["Poppins", "sans-serif"],
+            sans: ["Quicksand", "sans-serif"],
           },
           borderRadius: {
             DEFAULT: "12px",
@@ -90,6 +90,9 @@
     }
     .timer-mode-btn.selected span {
       color: white !important;
+    }
+    .timer-mode-btn.selected img {
+      filter: brightness(0) saturate(100%) invert(100%) !important;
     }
     .timer-mode-btn.selected svg {
       color: white !important;
@@ -176,7 +179,7 @@
   <main class="w-full max-w-sm bg-white rounded-3xl shadow-xl border-2 border-slate-300 overflow-hidden relative flex flex-col max-h-[90vh]">
     
     <!-- ==================== Header Section ==================== -->
-    <header class="pt-8 pb-6 px-6 text-center border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+    <header class="pt-5 pb-4 px-6 text-center border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
       <div class="flex items-center justify-center gap-3">
         <button id="btn-back" class="absolute left-4 p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-all opacity-0 pointer-events-none">
           <span class="material-icons-round text-2xl">arrow_back</span>
@@ -190,7 +193,7 @@
 
     <!-- ==================== Main Screen ==================== -->
     <!-- Primary dashboard with pump/valve controls, status indicators, and event log -->
-    <div id="main-screen" class="p-6 space-y-8 flex-1 overflow-y-auto transition-transform duration-300">
+    <div id="main-screen" class="p-6 space-y-6 flex-1 overflow-y-auto transition-transform duration-300">
       
       <!-- Temperature Circle Display -->
       <div class="relative w-44 h-44 mx-auto rounded-full border-4 border-white shadow-xl bg-gradient-to-b from-orange-100 via-white to-cyan-100 circle-container">
@@ -265,7 +268,7 @@
               <img src="power-icon.png" alt="Power" class="w-10 h-10">
               <!-- Pump Label -->
               <div>
-                <div class="font-bold text-slate-900">Bomba</div>
+                <div class="font-bold text-slate-900 text-lg">Bomba</div>
               </div>
             </div>
             <!-- Toggle Switch -->
