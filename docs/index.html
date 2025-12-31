@@ -193,25 +193,23 @@
     <div id="main-screen" class="p-6 space-y-8 flex-1 overflow-y-auto transition-transform duration-300">
       
       <!-- Temperature Circle Display -->
-      <div class="bg-white rounded-3xl p-6 shadow-sm flex flex-col items-center justify-center relative">
-        <div class="relative w-52 h-52 rounded-full border-4 border-white shadow-xl bg-gradient-to-b from-orange-100 via-white to-cyan-100 circle-container">
-          <div class="wave-shape"></div>
-          <div class="wave-shape"></div>
-          <div class="wave-shape"></div>
-          <div class="absolute inset-0 flex flex-col items-center justify-between py-6 z-10 pointer-events-none">
-            <div class="flex flex-col items-center mt-3">
-              <div class="flex items-center gap-1.5 text-orange-500 mb-0.5">
-                <span id="weather-icon" class="material-icons-round text-lg">wb_sunny</span>
-                <span class="text-[11px] font-extrabold uppercase tracking-widest">Aire</span>
-              </div>
-              <span id="weather-temp" class="text-3xl font-black text-slate-800 tracking-tight leading-none">--</span>
+      <div class="relative w-44 h-44 mx-auto rounded-full border-4 border-white shadow-xl bg-gradient-to-b from-orange-100 via-white to-cyan-100 circle-container">
+        <div class="wave-shape"></div>
+        <div class="wave-shape"></div>
+        <div class="wave-shape"></div>
+        <div class="absolute inset-0 flex flex-col items-center justify-between py-5 z-10 pointer-events-none">
+          <div class="flex flex-col items-center mt-2">
+            <div class="flex items-center gap-1.5 text-orange-500 mb-0.5">
+              <span id="weather-icon" class="material-icons-round text-base">wb_sunny</span>
+              <span class="text-[10px] font-extrabold uppercase tracking-widest">Aire</span>
             </div>
-            <div class="flex flex-col items-center mb-1">
-              <span id="temp-value" class="text-4xl font-black text-white drop-shadow-md tracking-tight leading-none">--</span>
-              <div class="flex items-center gap-1.5 text-blue-50 mt-1">
-                <span id="temp-icon" class="material-icons-round text-lg">water_drop</span>
-                <span class="text-[11px] font-extrabold uppercase tracking-widest">Agua</span>
-              </div>
+            <span id="weather-temp" class="text-2xl font-black text-slate-800 tracking-tight leading-none">--</span>
+          </div>
+          <div class="flex flex-col items-center mb-1">
+            <span id="temp-value" class="text-3xl font-black text-white drop-shadow-md tracking-tight leading-none">--</span>
+            <div class="flex items-center gap-1.5 text-blue-50 mt-1">
+              <span id="temp-icon" class="material-icons-round text-base">water_drop</span>
+              <span class="text-[10px] font-extrabold uppercase tracking-widest">Agua</span>
             </div>
           </div>
         </div>
