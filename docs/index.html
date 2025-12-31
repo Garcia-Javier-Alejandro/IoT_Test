@@ -216,24 +216,7 @@
           <div class="flex items-center gap-4">
             <!-- Pump Icon -->
             <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-              <svg class="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                <!-- Motor housing (left semicircle) -->
-                <path d="M2 6 C2 4.3 3.3 3 5 3 L5 21 C3.3 21 2 19.7 2 18 Z"/>
-                <!-- Horizontal vents (middle section) -->
-                <rect x="5" y="5.5" width="8" height="1.2"/>
-                <rect x="5" y="8.2" width="8" height="1.2"/>
-                <rect x="5" y="10.9" width="8" height="1.2"/>
-                <rect x="5" y="13.6" width="8" height="1.2"/>
-                <rect x="5" y="16.3" width="8" height="1.2"/>
-                <!-- Shaft/connector -->
-                <rect x="13" y="10.5" width="1.5" height="3"/>
-                <!-- Pump body (right section) -->
-                <rect x="14.5" y="7" width="5" height="10" rx="0.5"/>
-                <!-- Top flange -->
-                <rect x="14.5" y="3" width="7" height="3"/>
-                <!-- Bottom flange -->
-                <rect x="14.5" y="18" width="7" height="3"/>
-              </svg>
+              <img src="pump-icon.png" alt="Pump" class="w-7 h-7">
             </div>
             <!-- Pump Label -->
             <div>
@@ -257,16 +240,7 @@
             id="btn-valve-1"
             disabled
             class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <!-- Falling water streams - all curves bend to the right -->
-              <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-              <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-              <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-              <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-              <!-- Wavy water pool -->
-              <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-              <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-            </svg>
+            <img src="waterfall-icon.png" alt="Cascada" class="w-8 h-8">
             <span>Cascada</span>
           </button>
           
@@ -274,7 +248,7 @@
             id="btn-valve-2"
             disabled
             class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <span class="material-icons-round text-3xl">air</span>
+            <img src="waterjet-icon.png" alt="Eyectores" class="w-8 h-8">
             <span>Eyectores</span>
           </button>
         </div>
@@ -373,22 +347,13 @@
           <button 
             id="timer-mode-1"
             class="timer-mode-btn py-4 px-4 rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2">
-            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <!-- Falling water streams - all curves bend to the right -->
-              <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-              <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-              <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-              <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-              <!-- Wavy water pool -->
-              <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-              <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-            </svg>
+            <img src="waterfall-icon.png" alt="Cascada" class="w-8 h-8">
             <span class="text-sm font-bold">Cascada</span>
           </button>
           <button 
             id="timer-mode-2"
             class="timer-mode-btn py-4 px-4 rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2">
-            <span class="material-icons-round text-3xl">air</span>
+            <img src="waterjet-icon.png" alt="Eyectores" class="w-8 h-8">
             <span class="text-sm font-bold">Eyectores</span>
           </button>
         </div>
@@ -627,17 +592,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -656,17 +614,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -685,17 +636,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -714,17 +658,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -743,17 +680,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -772,17 +702,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -801,17 +724,10 @@
                 <td class="py-2 px-1.5 text-center">
                   <div class="flex gap-1 justify-center">
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="1" disabled title="Cascada">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2 Q 8 4, 6 7 L 6 12"/>
-                        <path d="M10 2 Q 12 4, 10 7 L 10 12"/>
-                        <path d="M14 2 Q 16 4, 14 7 L 14 12"/>
-                        <path d="M18 2 Q 20 4, 18 7 L 18 12"/>
-                        <path d="M3 15 Q 4 14, 5 15 T 7 15 T 9 15 T 11 15 T 13 15 T 15 15 T 17 15 T 19 15 T 21 15"/>
-                        <path d="M3 18 Q 4 17, 5 18 T 7 18 T 9 18 T 11 18 T 13 18 T 15 18 T 17 18 T 19 18 T 21 18"/>
-                      </svg>
+                      <img src="waterfall-icon.png" alt="Cascada" class="w-3.5 h-3.5">
                     </button>
                     <button class="mode-btn w-7 h-7 rounded-lg border-2 border-slate-300 bg-white hover:bg-slate-50 transition-all disabled:opacity-30" data-mode="2" disabled title="Eyectores">
-                      <span class="material-icons-round text-xs">air</span>
+                      <img src="waterjet-icon.png" alt="Eyectores" class="w-3.5 h-3.5">
                     </button>
                   </div>
                 </td>
@@ -865,3 +781,5 @@
   <script src="/js/app.js"></script>          <!-- Main application controller -->
 </body>
 </html>
+
+
