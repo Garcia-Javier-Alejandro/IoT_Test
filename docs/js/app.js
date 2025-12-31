@@ -144,7 +144,8 @@ const AppModule = (() => {
       "pump-label": "pumpLabel",
       "pump-ring": "pumpRing",
       "pump-toggle-dot": "pumpToggleDot",
-      "pump-icon": "pumpIcon",
+      "waterfall-icon": "waterfallIcon",
+      "waterjet-icon": "waterjetIcon",
       "btn-valve-1": "btnValve1",
       "btn-valve-2": "btnValve2",
       "btn-timer": "btnTimer",
@@ -497,30 +498,18 @@ const AppModule = (() => {
         elements.btnPump.classList.add('bg-green-500');
         elements.pumpToggleDot.classList.remove('translate-x-1');
         elements.pumpToggleDot.classList.add('translate-x-7');
-        // Change pump icon to green
-        if (elements.pumpIcon) {
-          elements.pumpIcon.style.filter = 'brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)';
-        }
       } else if (state === "OFF") {
         // Grey background, dot on left
         elements.btnPump.classList.remove('bg-green-500');
         elements.btnPump.classList.add('bg-slate-300');
         elements.pumpToggleDot.classList.remove('translate-x-7');
         elements.pumpToggleDot.classList.add('translate-x-1');
-        // Reset pump icon color
-        if (elements.pumpIcon) {
-          elements.pumpIcon.style.filter = '';
-        }
       } else {
         // Unknown state - grey
         elements.btnPump.classList.remove('bg-green-500');
         elements.btnPump.classList.add('bg-slate-300');
         elements.pumpToggleDot.classList.remove('translate-x-7');
         elements.pumpToggleDot.classList.add('translate-x-1');
-        // Reset pump icon color
-        if (elements.pumpIcon) {
-          elements.pumpIcon.style.filter = '';
-        }
       }
     }
 
@@ -543,14 +532,35 @@ const AppModule = (() => {
         // Cascada active
         elements.btnValve1.className = "bg-primary hover:bg-primary-hover text-white font-bold text-base py-6 px-4 rounded-2xl border-2 border-primary shadow-lg transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
         elements.btnValve2.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
+        // Change waterfall icon to white, reset waterjet
+        if (elements.waterfallIcon) {
+          elements.waterfallIcon.style.filter = 'brightness(0) saturate(100%) invert(100%)';
+        }
+        if (elements.waterjetIcon) {
+          elements.waterjetIcon.style.filter = '';
+        }
       } else if (mode === "2") {
         // Eyectores active
         elements.btnValve1.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
         elements.btnValve2.className = "bg-primary hover:bg-primary-hover text-white font-bold text-base py-6 px-4 rounded-2xl border-2 border-primary shadow-lg transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
+        // Change waterjet icon to white, reset waterfall
+        if (elements.waterjetIcon) {
+          elements.waterjetIcon.style.filter = 'brightness(0) saturate(100%) invert(100%)';
+        }
+        if (elements.waterfallIcon) {
+          elements.waterfallIcon.style.filter = '';
+        }
       } else {
         // Unknown state
         elements.btnValve1.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
         elements.btnValve2.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
+        // Reset both icons
+        if (elements.waterfallIcon) {
+          elements.waterfallIcon.style.filter = '';
+        }
+        if (elements.waterjetIcon) {
+          elements.waterjetIcon.style.filter = '';
+        }
       }
     }
 
