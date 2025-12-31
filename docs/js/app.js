@@ -495,22 +495,22 @@ const AppModule = (() => {
     // Update toggle switch appearance
     if (elements.btnPump && elements.pumpToggleDot) {
       if (state === "ON") {
-        // Green background, dot moved to right with dark green color
+        // Blue background, dot moved to right with darker blue color
         elements.btnPump.classList.remove('bg-slate-300');
-        elements.btnPump.classList.add('bg-green-500');
+        elements.btnPump.classList.add('bg-primary');
         elements.pumpToggleDot.classList.remove('translate-x-1');
         elements.pumpToggleDot.classList.add('translate-x-7');
-        elements.pumpToggleDot.style.backgroundColor = '#187a33';
+        elements.pumpToggleDot.style.backgroundColor = '#001054';
       } else if (state === "OFF") {
         // Grey background, dot on left with white color
-        elements.btnPump.classList.remove('bg-green-500');
+        elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
         elements.pumpToggleDot.classList.remove('translate-x-7');
         elements.pumpToggleDot.classList.add('translate-x-1');
         elements.pumpToggleDot.style.backgroundColor = 'white';
       } else {
         // Unknown state - grey
-        elements.btnPump.classList.remove('bg-green-500');
+        elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
         elements.pumpToggleDot.classList.remove('translate-x-7');
         elements.pumpToggleDot.classList.add('translate-x-1');
