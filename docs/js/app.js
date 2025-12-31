@@ -144,6 +144,7 @@ const AppModule = (() => {
       "pump-label": "pumpLabel",
       "pump-ring": "pumpRing",
       "pump-toggle-dot": "pumpToggleDot",
+      "pump-icon": "pumpIcon",
       "btn-valve-1": "btnValve1",
       "btn-valve-2": "btnValve2",
       "btn-timer": "btnTimer",
@@ -496,18 +497,30 @@ const AppModule = (() => {
         elements.btnPump.classList.add('bg-green-500');
         elements.pumpToggleDot.classList.remove('translate-x-1');
         elements.pumpToggleDot.classList.add('translate-x-7');
+        // Change pump icon to green
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.filter = 'brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)';
+        }
       } else if (state === "OFF") {
         // Grey background, dot on left
         elements.btnPump.classList.remove('bg-green-500');
         elements.btnPump.classList.add('bg-slate-300');
         elements.pumpToggleDot.classList.remove('translate-x-7');
         elements.pumpToggleDot.classList.add('translate-x-1');
+        // Reset pump icon color
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.filter = '';
+        }
       } else {
         // Unknown state - grey
         elements.btnPump.classList.remove('bg-green-500');
         elements.btnPump.classList.add('bg-slate-300');
         elements.pumpToggleDot.classList.remove('translate-x-7');
         elements.pumpToggleDot.classList.add('translate-x-1');
+        // Reset pump icon color
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.filter = '';
+        }
       }
     }
 
