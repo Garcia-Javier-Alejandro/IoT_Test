@@ -363,30 +363,6 @@ All code files follow consistent structure with section separators:
 **HTML** (`index.html`):
 - Meta → Styles → Config → Header → Main Screen → Timer Screen → Programas Screen → Create Program Screen → Footer → Scripts
 
-### ESP32 Won't Connect to WiFi
-
-**Check:**
-- SSID/password correct in `secrets.h`?
-- WiFi signal strength (RSSI should be > -70 dBm)
-- Try all 3 configured networks in order
-
-### Temperature Sensor Not Reading
-
-**Check DS18B20:**
-- 4.7kΩ pull-up resistor between data line and 3.3V
-- Verify VCC (3.3V or 5V) and GND connections
-- Check GPIO 33 wiring
-- Serial Monitor should show: `[SENSOR] Dispositivos DS18B20 encontrados: 1`
-
-### Relay Doesn't Click
-
-**SONGLE SRD-5VDC-SL-C relay module:**
-- Verify 5V and GND connected to relay module
-- Check GPIO signal wires (19 for pump, 16 for valve)
-- Test with LED on GPIO pin to verify output
-- Relay should audibly click when GPIO goes HIGH
-- Verify 10kΩ pull-down resistors installed on GPIO 16 and 19
-
 ### ✅ Completed
 - ✅ **Automatic program execution** - 15-minute interval checking with conflict resolution
 - ✅ **Timer functionality** - Countdown with auto-shutoff and ESP32 sync
@@ -403,23 +379,15 @@ All code files follow consistent structure with section separators:
 
 ## 🚀 Future Enhancements
 
-- [ ] Hardware testing with actual ESP32 and relays
+- [ ] **WiFi Provisioning / Captive Portal** - Allow WiFi network selection at first boot without hard-coding credentials. ESP32 creates temporary access point, user connects and provides WiFi credentials through web interface
 - [ ] Temperature alert thresholds (low/high water temp)
 - [ ] OTA (Over-The-Air) firmware updates
-- [ ] Mobile app wrapper (Capacitor or PWA improvements)
 - [ ] Historical data visualization and analytics
 - [ ] Email/SMS notifications for critical events
 - [ ] Integration with Home Assistant / Google Home
 - [ ] Multiple device support (control multiple pools)
 - [ ] Relay health monitoring (click count tracking)
 
----
-
-## 🔄 Migration from Valve Control v1
-
-If upgrading from the original dual-valve control project:
-
-### What Changed
 
 ### What Changed
 
@@ -430,36 +398,6 @@ If upgrading from the original dual-valve control project:
 | No sensors | DS18B20 temperature sensor |
 | Separate ON/OFF buttons | Click-to-toggle cards |
 
-### Migration Steps
-
-1. **Backup old branch**:
-   ```bash
-   git checkout feature/electrovalve-control
-   git branch backup/electrovalve-v1
-   ```
-
-2. **Switch to pool control**:
-   ```bash
-   git checkout feature/pool-control
-   ```
-
-3. **Update hardware**: Replace old relays, add DS18B20 sensor (see GPIO table above)
-
-4. **Flash new firmware**: Follow "Getting Started" above
-
-5. **Deploy new dashboard**: Includes temperature monitoring widget
-
----
-
-## 🤝 Contributing
-
-This is a personal pool control project, but suggestions welcome!
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
 
 ---
 
