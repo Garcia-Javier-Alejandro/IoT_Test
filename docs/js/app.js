@@ -105,6 +105,10 @@ const AppModule = (() => {
 
     // Load stored credentials
     loadStoredCredentials();
+    
+    // Fetch weather temperature immediately and every 10 minutes
+    fetchWeatherTemperature();
+    setInterval(fetchWeatherTemperature, 10 * 60 * 1000); // Update every 10 minutes
 
     // Initialize UI state
     setPumpState("UNKNOWN");
@@ -671,8 +675,65 @@ const AppModule = (() => {
     }
     
     if (elements.tempIcon) {
-      elements.tempIcon.className = `material-icons-round ${iconColor} text-lg`;
+      elements.tempIcon.className = `material-icons-round ${iconColor} text-base`;
     }
+  }
+
+  /**
+   * Fetch and update weather temperature for Buenos Aires
+   * Uses Open-Meteo API (free, no API key required)
+   * Updates every 10 minutes
+   */
+  function fetchWeatherTemperature() {
+    // Buenos Aires coordinates
+    const latitude = -34.6037;
+    const longitude = -58.3816;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`;
+    
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        const temp = data.current.temperature_2m;
+        const weatherCode = data.current.weather_code;
+        
+        if (elements.weatherTemp) {
+          elements.weatherTemp.textContent = `${temp.toFixed(1)}°C`;
+        }
+        
+        // Update icon based on weather code
+        // 0 = clear, 1-3 = partly cloudy, 45-48 = fog, 51-67 = rain, 71-77 = snow, 80-99 = rain showers/thunderstorms
+        let icon = 'wb_sunny';
+        let color = 'text-amber-500';
+        
+        if (weatherCode === 0) {
+          icon = 'wb_sunny';
+          color = 'text-amber-500';
+        } else if (weatherCode >= 1 && weatherCode <= 3) {
+          icon = 'partly_cloudy_day';
+          color = 'text-slate-500';
+        } else if (weatherCode >= 45 && weatherCode <= 48) {
+          icon = 'foggy';
+          color = 'text-slate-400';
+        } else if ((weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)) {
+          icon = 'rainy';
+          color = 'text-blue-500';
+        } else if (weatherCode >= 71 && weatherCode <= 77) {
+          icon = 'ac_unit';
+          color = 'text-cyan-400';
+        } else if (weatherCode >= 95) {
+          icon = 'thunderstorm';
+          color = 'text-purple-600';
+        }
+        
+        if (elements.weatherIcon) {
+          elements.weatherIcon.className = `material-icons-round ${color} text-base`;
+          elements.weatherIcon.textContent = icon;
+        }
+      })
+      .catch(error => {
+        console.error('[WEATHER] Failed to fetch:', error);
+        if (elements.weatherTemp) elements.weatherTemp.textContent = 'Error';
+      });
   }
 
   // ==================== Credential Persistence ====================
