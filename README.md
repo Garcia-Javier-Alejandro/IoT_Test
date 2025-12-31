@@ -24,8 +24,7 @@ This system allows remote control of:
 - ✅ **Conflict detection** - Automatic handling of timer/program/manual conflicts
 - ✅ **WiFi status monitoring** - Real-time signal strength with color-coded indicators
 - ✅ **Event logging** - Collapsible log panel with timestamps
-- ✅ **Multi-network WiFi** - Automatic fallback to 3 configured networks
-- ✅ **Well-documented code** - Comprehensive inline comments and section separators
+
 
 ---
 
