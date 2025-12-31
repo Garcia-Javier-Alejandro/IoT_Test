@@ -256,43 +256,45 @@
 
       <!-- ========== Control Buttons ========== -->
       <div class="space-y-4">
-        <!-- Pump Toggle (Main control with toggle switch) -->
-        <div class="w-full bg-white rounded-2xl border-2 border-slate-300 p-5 flex items-center justify-between shadow-sm">
-          <div class="flex items-center gap-4">
-            <!-- Pump Icon -->
-            <img src="power-icon.png" alt="Power" class="w-12 h-12">
-            <!-- Pump Label -->
-            <div>
-              <div class="font-bold text-slate-900">Bomba</div>
+        <!-- Manual Controls Container -->
+        <div class="w-full bg-white rounded-2xl border-2 border-slate-300 p-5 shadow-sm space-y-4">
+          <!-- Pump Toggle -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div class="flex items-center gap-4">
+              <!-- Pump Icon -->
+              <img src="power-icon.png" alt="Power" class="w-10 h-10">
+              <!-- Pump Label -->
+              <div>
+                <div class="font-bold text-slate-900">Bomba</div>
+              </div>
             </div>
+            <!-- Toggle Switch -->
+            <button 
+              id="btn-pump"
+              disabled
+              class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300">
+              <span id="pump-toggle-dot" class="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 translate-x-1"></span>
+            </button>
           </div>
-          <!-- Toggle Switch -->
-          <button 
-            id="btn-pump"
-            disabled
-            class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300">
-            <span id="pump-toggle-dot" class="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 translate-x-1"></span>
-          </button>
-        </div>
 
-        <!-- Valve Mode Buttons (Cascada vs Eyectores) -->
-        <!-- Side by side layout with custom waterfall SVG icon -->
-        <div class="grid grid-cols-2 gap-3">
-          <button 
-            id="btn-valve-1"
-            disabled
-            class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <img id="waterfall-icon" src="waterfall-icon.png" alt="Cascada" class="w-8 h-8 transition-all duration-200">
-            <span>Cascada</span>
-          </button>
-          
-          <button 
-            id="btn-valve-2"
-            disabled
-            class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <img id="waterjet-icon" src="waterjet-icon.png" alt="Eyectores" class="w-8 h-8 transition-all duration-200">
-            <span>Eyectores</span>
-          </button>
+          <!-- Valve Mode Buttons (Cascada vs Eyectores) -->
+          <div class="grid grid-cols-2 gap-3">
+            <button 
+              id="btn-valve-1"
+              disabled
+              class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-sm py-4 px-3 rounded-xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              <img id="waterfall-icon" src="waterfall-icon.png" alt="Cascada" class="w-7 h-7 transition-all duration-200">
+              <span>Cascada</span>
+            </button>
+            
+            <button 
+              id="btn-valve-2"
+              disabled
+              class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-sm py-4 px-3 rounded-xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              <img id="waterjet-icon" src="waterjet-icon.png" alt="Eyectores" class="w-7 h-7 transition-all duration-200">
+              <span>Eyectores</span>
+            </button>
+          </div>
         </div>
 
         <!-- Timer and Programas Buttons -->
