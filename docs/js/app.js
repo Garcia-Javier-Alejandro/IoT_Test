@@ -143,6 +143,7 @@ const AppModule = (() => {
     const mapping = {
       "pump-label": "pumpLabel",
       "pump-ring": "pumpRing",
+      "pump-toggle-dot": "pumpToggleDot",
       "btn-valve-1": "btnValve1",
       "btn-valve-2": "btnValve2",
       "btn-timer": "btnTimer",
@@ -487,19 +488,27 @@ const AppModule = (() => {
   function setPumpState(state) {
     pumpState = state;
 
-    if (elements.pumpLabel) {
+    // Update toggle switch appearance
+    if (elements.btnPump && elements.pumpToggleDot) {
       if (state === "ON") {
-        elements.pumpLabel.textContent = "Bomba OFF";
+        // Green background, dot moved to right
+        elements.btnPump.classList.remove('bg-slate-300');
+        elements.btnPump.classList.add('bg-green-500');
+        elements.pumpToggleDot.classList.remove('translate-x-1');
+        elements.pumpToggleDot.classList.add('translate-x-7');
       } else if (state === "OFF") {
-        elements.pumpLabel.textContent = "Bomba ON";
+        // Grey background, dot on left
+        elements.btnPump.classList.remove('bg-green-500');
+        elements.btnPump.classList.add('bg-slate-300');
+        elements.pumpToggleDot.classList.remove('translate-x-7');
+        elements.pumpToggleDot.classList.add('translate-x-1');
       } else {
-        elements.pumpLabel.textContent = "Bomba ?";
+        // Unknown state - grey
+        elements.btnPump.classList.remove('bg-green-500');
+        elements.btnPump.classList.add('bg-slate-300');
+        elements.pumpToggleDot.classList.remove('translate-x-7');
+        elements.pumpToggleDot.classList.add('translate-x-1');
       }
-    }
-
-    // Update pump ring (removed animation)
-    if (elements.pumpRing) {
-      elements.pumpRing.className = "absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20";
     }
 
     updateButtonStates();

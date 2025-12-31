@@ -211,17 +211,31 @@
 
       <!-- ========== Control Buttons ========== -->
       <div class="space-y-4">
-        <!-- Pump Button (Main control with visual feedback) -->
-        <button 
-          id="btn-pump"
-          disabled
-          class="w-full bg-primary hover:bg-primary-hover text-white font-extrabold text-xl py-6 px-6 rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-between group border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
-          <span id="pump-label" class="text-left">Bomba OFF</span>
-          <div class="relative flex items-center justify-center">
-            <span id="pump-ring" class="absolute inline-flex h-12 w-12 rounded-full bg-white opacity-20"></span>
-            <span class="material-icons-round relative text-white text-4xl">power_settings_new</span>
+        <!-- Pump Toggle (Main control with toggle switch) -->
+        <div class="w-full bg-white rounded-2xl border-2 border-slate-300 p-5 flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-4">
+            <!-- Pump Icon -->
+            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="6"/>
+                <path d="M12 9 L12 15 M12 12 L10.5 10.5"/>
+                <path d="M3 12 L6 12 M18 12 L21 12"/>
+              </svg>
+            </div>
+            <!-- Pump Label -->
+            <div>
+              <div class="font-bold text-slate-900">Bomba</div>
+              <div class="text-xs text-slate-500">Manual Mode</div>
+            </div>
           </div>
-        </button>
+          <!-- Toggle Switch -->
+          <button 
+            id="btn-pump"
+            disabled
+            class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300">
+            <span id="pump-toggle-dot" class="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 translate-x-1"></span>
+          </button>
+        </div>
 
         <!-- Valve Mode Buttons (Cascada vs Eyectores) -->
         <!-- Side by side layout with custom waterfall SVG icon -->
