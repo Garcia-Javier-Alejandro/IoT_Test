@@ -165,19 +165,22 @@ The dashboard is automatically deployed via GitHub Actions to Cloudflare Pages:
 2. Enter MQTT credentials (same as in `secrets.h`)
 3. Click **"Conectar"**
 4. Wait for state synchronization
-5. Credentials are saved in localStorage for future sessionsser
-2. Enter MButton
-- **Large blue button** with power icon
-- Click to toggle pump ON/OFF
-- Animated ring appears when pump is running
-- Shows current state: "Bomba ON" or "Bomba OFF"
+5. Credentials are saved in localStorage for future sessions
+
+#### Pump Toggle Switch
+- **Blue toggle switch** with power icon labeled "Bomba"
+- Slide to toggle pump ON/OFF
+- Blue background (#001A72) when ON with light grey slider dot
+- Grey background when OFF with white slider dot
+- Combined with valve mode buttons in unified control panel
 - Automatically disabled during MQTT disconnection
 - Detects conflicts with active programs
 
 #### Valve Mode Buttons
-- **Two buttons side by side**: Cascada (waterfall icon) and Eyectores (air icon)
+- **Two compact buttons**: Cascada (waterfall icon) and Eyectores (water jet icon)
+- Located below pump toggle in same container
 - Click to switch between modes
-- Active mode highlighted in blue
+- Active mode highlighted in blue (#001A72) with white icon and text
 - Mode 1 (Cascada): Valve 1 energized
 - Mode 2 (Eyectores): Valve 2 energized
 - Switching modes automatically cancels active timer
