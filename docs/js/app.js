@@ -681,11 +681,7 @@ const AppModule = (() => {
 
   /**
    * Update temperature display
-   * Shows temperature with color-coded icon based on value:
-   * - Cyan: < 20°C (cold)
-   * - Blue: 20-25°C (comfortable)
-   * - Orange: 26-30°C (warm)
-   * - Red: > 30°C (hot)
+   * Shows pool water temperature in the circular display
    * 
    * @param {number|string} temperature - Temperature in Celsius
    */
@@ -693,27 +689,12 @@ const AppModule = (() => {
     const temp = parseFloat(temperature);
     
     if (isNaN(temp)) {
-      if (elements.tempValue) elements.tempValue.textContent = "Error";
-      if (elements.tempIcon) elements.tempIcon.className = "material-icons-round text-slate-400 text-lg";
+      if (elements.tempValue) elements.tempValue.textContent = "--";
       return;
     }
     
     // Update value display
     if (elements.tempValue) elements.tempValue.textContent = `${temp.toFixed(1)}°C`;
-    
-    // Update icon color based on temperature
-    let iconColor = "text-cyan-500";  // Default: cold
-    if (temp >= 20 && temp < 26) {
-      iconColor = "text-blue-500";    // Comfortable
-    } else if (temp >= 26 && temp < 31) {
-      iconColor = "text-orange-500";  // Warm
-    } else if (temp >= 31) {
-      iconColor = "text-red-600";     // Hot
-    }
-    
-    if (elements.tempIcon) {
-      elements.tempIcon.className = `material-icons-round ${iconColor} text-base`;
-    }
   }
 
   /**
@@ -762,10 +743,7 @@ const AppModule = (() => {
           color = 'text-purple-600';
         }
         
-        if (elements.weatherIcon) {
-          elements.weatherIcon.className = `material-icons-round ${color} text-base`;
-          elements.weatherIcon.textContent = icon;
-        }
+        // Icon is fixed in HTML circular design, no need to update
       })
       .catch(error => {
         console.error('[WEATHER] Failed to fetch:', error);
