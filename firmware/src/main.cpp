@@ -498,6 +498,11 @@ bool tryConnectToNetwork(const char* ssid, const char* password) {
   Serial.print("[WiFi] Conectando a ");
   Serial.println(ssid);
   
+  // Disconnect from any previous network and clear saved credentials
+  // This ensures a clean state before attempting new connection
+  WiFi.disconnect(true);
+  delay(100);  // Give WiFi stack time to fully disconnect
+  
   WiFi.begin(ssid, password);
   uint32_t start = millis();
   
