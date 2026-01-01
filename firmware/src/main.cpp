@@ -15,6 +15,7 @@
 // ==================== Timing Constants ====================
 #define VALVE_SWITCH_DELAY      500       // Tiempo para que las válvulas cambien completamente (ms)
 #define WIFI_CONNECT_TIMEOUT    15000     // Timeout para conexión WiFi (ms)
+#define WIFI_DISCONNECT_DELAY   100       // Delay after WiFi.disconnect() to let hardware settle (ms)
 #define NTP_SYNC_TIMEOUT        15000     // Timeout para sincronización NTP (ms)
 #define WIFI_STATE_INTERVAL     30000     // Intervalo para publicar estado WiFi (ms)
 #define TIMER_PUBLISH_INTERVAL  10000     // Intervalo para publicar estado del timer (ms)
@@ -501,7 +502,7 @@ bool tryConnectToNetwork(const char* ssid, const char* password) {
   // Disconnect from any previous network and clear saved credentials
   // This ensures a clean state before attempting new connection
   WiFi.disconnect(true);
-  delay(100);  // Give WiFi stack time to fully disconnect
+  delay(WIFI_DISCONNECT_DELAY);  // Give WiFi stack time to fully disconnect
   
   WiFi.begin(ssid, password);
   uint32_t start = millis();

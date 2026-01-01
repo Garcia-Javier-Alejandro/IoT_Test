@@ -2,7 +2,7 @@
 
 #define WIFI_SSID "1234"
 #define WIFI_PASS "0123456789"
-#define WIFI_SSID_2 "Fibertel "
+#define WIFI_SSID_2 "Fibertel "  // Note: Trailing space is part of the actual SSID name
 #define WIFI_PASS_2 "1234"
 #define WIFI_SSID_3 "Vhs2"
 #define WIFI_PASS_3 "VHS001248"
