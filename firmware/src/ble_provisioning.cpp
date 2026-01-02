@@ -99,22 +99,33 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
         }
       }
     }
+    else if (uuid == NETWORKS_CHAR_UUID) {
+      // Trigger WiFi scan when client writes to networks characteristic
+      Serial.println("[BLE] Networks scan triggered via write");
+      String json = scanWiFiNetworks();
+      
+      // Update the characteristic with scan results
+      pCharacteristic->setValue(json.c_str(), json.length());
+      Serial.print("[BLE] Networks characteristic updated, length: ");
+      Serial.println(json.length());
+      
+      // Notify client that new data is available
+      pCharacteristic->notify();
+    }
   }
   
   void onRead(NimBLECharacteristic* pCharacteristic) {
     std::string uuid = pCharacteristic->getUUID().toString();
     
-    // Trigger WiFi scan when networks characteristic is read
+    // Log when networks characteristic is read
     if (uuid == NETWORKS_CHAR_UUID) {
-      Serial.println("[BLE] Networks characteristic read - triggering WiFi scan");
-      String json = scanWiFiNetworks();
-      
-      // Set the value that will be returned to the client
-      pCharacteristic->setValue(json.c_str(), json.length());
-      Serial.print("[BLE] Characteristic value set, length: ");
-      Serial.println(json.length());
+      Serial.println("[BLE] Networks characteristic read");
     }
   }
+  
+  void onWrite(NimBLECharacteristic* pCharacteristic) {
+    std::string uuid = pCharacteristic->getUUID().toString();
+    std::string value = pCharacteristic->getValue();
 };
 
 // Forward declaration for scanWiFiNetworks
@@ -167,10 +178,10 @@ void initBLEProvisioning() {
   );
   pStatusCharacteristic->setValue("waiting");
   
-  // Create Networks Characteristic (Read - returns JSON scan results)
+  // Create Networks Characteristic (Read/Write - write triggers scan, read returns JSON)
   pNetworksCharacteristic = pService->createCharacteristic(
     NETWORKS_CHAR_UUID,
-    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
+    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
   );
   pNetworksCharacteristic->setCallbacks(new CharacteristicCallbacks());
   pNetworksCharacteristic->setValue("[]"); // Initial empty list

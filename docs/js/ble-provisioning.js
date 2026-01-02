@@ -107,18 +107,23 @@ const ESP32BLEProvisioning = {
     }
 
     try {
-      console.log('[BLE] Reading networks characteristic (will trigger ESP32 scan)...');
+      console.log('[BLE] Triggering network scan...');
       
-      // Small delay to let ESP32 process the read request and start scanning
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Write "scan" to trigger the ESP32 to perform a WiFi scan
+      const encoder = new TextEncoder();
+      await this.networksCharacteristic.writeValue(encoder.encode('scan'));
       
-      // Read the networks characteristic (ESP32 will perform scan and return JSON)
+      console.log('[BLE] Scan request sent, waiting for results...');
+      
+      // Wait for ESP32 to complete scan (2-3 seconds for WiFi scan)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Read the networks characteristic to get scan results
       const value = await this.networksCharacteristic.readValue();
       let json = new TextDecoder().decode(value);
       
       console.log('[BLE] Raw data length:', value.byteLength);
       console.log('[BLE] Raw data:', json);
-      console.log('[BLE] Char codes:', Array.from(new Uint8Array(value)).slice(0, 50).map(c => c.toString(16)).join(' '));
       
       // Clean the JSON string - trim whitespace and remove any trailing garbage
       json = json.trim();
