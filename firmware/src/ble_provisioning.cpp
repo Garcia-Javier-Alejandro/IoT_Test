@@ -15,6 +15,7 @@
 #define PASSWORD_CHAR_UUID  "cba1d466-344c-4be3-ab3f-189f80dd7518"
 #define STATUS_CHAR_UUID    "8d8218b6-97bc-4527-a8db-13094ac06b1d"
 #define NETWORKS_CHAR_UUID  "fa87c0d0-afac-11de-8a39-0800200c9a66"  // WiFi networks scan result
+#define COMMAND_CHAR_UUID   "0b9f1e80-0f88-4b68-9a09-9d1d6921d0d8"  // Remote commands (e.g., clear WiFi)
 
 // ==================== Global BLE Objects ====================
 static NimBLEServer* pServer = nullptr;
@@ -22,6 +23,7 @@ static NimBLECharacteristic* pSSIDCharacteristic = nullptr;
 static NimBLECharacteristic* pPasswordCharacteristic = nullptr;
 static NimBLECharacteristic* pStatusCharacteristic = nullptr;
 static NimBLECharacteristic* pNetworksCharacteristic = nullptr;
+static NimBLECharacteristic* pCommandCharacteristic = nullptr;
 
 // ==================== State Variables ====================
 static bool bleActive = false;
@@ -29,6 +31,7 @@ static bool newCredentialsReceived = false;
 static String receivedSSID = "";
 static String receivedPassword = "";
 static bool deviceConnected = false;
+static bool clearWiFiRequested = false;
 
 // ==================== BLE Callbacks ====================
 
@@ -112,6 +115,18 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
       // Notify client that new data is available
       pCharacteristic->notify();
     }
+    else if (uuid == COMMAND_CHAR_UUID) {
+      // Handle simple command verbs from dashboard
+      if (value == "clear_wifi") {
+        clearWiFiRequested = true;
+        Serial.println("[BLE] Clear WiFi command received via BLE");
+
+        if (pStatusCharacteristic) {
+          pStatusCharacteristic->setValue("clear_wifi_requested");
+          pStatusCharacteristic->notify();
+        }
+      }
+    }
   }
   
   void onRead(NimBLECharacteristic* pCharacteristic) {
@@ -136,7 +151,7 @@ void initBLEProvisioning() {
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
   char deviceName[32];
-  snprintf(deviceName, sizeof(deviceName), "ESP32-Pool-%02X%02X", mac[4], mac[5]);
+  snprintf(deviceName, sizeof(deviceName), "Controlador Smart Pool-%02X%02X", mac[4], mac[5]);
   
   Serial.print("[BLE] Device name: ");
   Serial.println(deviceName);
@@ -181,6 +196,14 @@ void initBLEProvisioning() {
   );
   pNetworksCharacteristic->setCallbacks(new CharacteristicCallbacks());
   pNetworksCharacteristic->setValue("[]"); // Initial empty list
+
+  // Create Command Characteristic (Write to request actions like clearing WiFi)
+  pCommandCharacteristic = pService->createCharacteristic(
+    COMMAND_CHAR_UUID,
+    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
+  );
+  pCommandCharacteristic->setCallbacks(new CharacteristicCallbacks());
+  pCommandCharacteristic->setValue("");
   
   // Start the service
   pService->start();
@@ -316,4 +339,12 @@ String scanWiFiNetworks() {
   Serial.println(json);
   
   return json;
+}
+
+bool isClearWiFiRequested() {
+  return clearWiFiRequested;
+}
+
+void resetClearWiFiRequest() {
+  clearWiFiRequested = false;
 }

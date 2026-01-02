@@ -365,7 +365,7 @@
         <!-- Add Device Button (BLE Provisioning) -->
         <button id="add-device-btn" onclick="provisionNewDevice()" class="w-full p-3 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold rounded-xl border border-slate-300 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
           <span class="material-icons-round text-slate-700 text-lg">add_circle</span>
-          <span class="text-sm font-semibold text-slate-900">Conectar dispositivo a WiFi</span>
+          <span class="text-sm font-semibold text-slate-900">Configurar conexión WiFi</span>
         </button>
 
         <!-- BLE Provisioning Modal (hidden by default) -->
@@ -375,7 +375,7 @@
               <!-- Scan Networks Button -->
               <button type="button" id="scan-networks-btn" class="w-full px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
                 <span class="material-icons-round text-sm">wifi_tethering</span>
-                Escanear redes WiFi
+                Buscar dispositivo y redes
               </button>
 
               <!-- Networks List (hidden initially) -->
@@ -913,9 +913,18 @@
       const statusDiv = document.getElementById('provision-status');
       statusDiv.classList.remove('hidden');
       statusDiv.className = 'text-xs text-blue-600';
-      statusDiv.textContent = 'Clearing site data...';
+      statusDiv.textContent = 'Borrando credenciales WiFi en el dispositivo...';
       
       try {
+        // Try to tell the ESP32 to erase stored WiFi so it re-enters provisioning
+        try {
+          await ESP32BLEProvisioning.clearWiFiCredentials();
+          statusDiv.textContent = '✓ WiFi borrado en el dispositivo. Limpiando datos del navegador...';
+        } catch (cmdError) {
+          console.warn('[BLE] No se pudo enviar clear_wifi:', cmdError);
+          statusDiv.textContent = 'No pude enviar comando al dispositivo. Limpiando datos del navegador...';
+        }
+
         // Clear all site data (localStorage, cookies, permissions)
         // This will unpair all BLE devices for this domain
         await navigator.clearSiteData?.('cookies', 'storage');
@@ -1088,7 +1097,7 @@
         networksContainer.innerHTML = `<div class="p-3 text-center text-xs text-red-600">Error: ${error.message}</div>`;
       } finally {
         scanBtn.disabled = false;
-        scanBtn.textContent = 'Escanear redes';
+        scanBtn.textContent = 'Buscar dispositivo y redes';
       }
     }
 

@@ -919,6 +919,21 @@ void loop() {
         }
       }
     }
+
+    // Handle dashboard request to clear WiFi credentials and stay in provisioning mode
+    if (isClearWiFiRequested()) {
+      Serial.println("[BLE] Clear WiFi requested from dashboard");
+
+      // Disconnect any existing WiFi session and wipe stored credentials
+      WiFi.disconnect(true /*wifioff*/, true /*erasePersistent*/);
+      clearWiFiCredentials();
+      clearBLECredentials();
+      resetClearWiFiRequest();
+      wifiProvisioned = false;
+
+      Serial.println("[BLE] WiFi credentials erased. Device will remain in provisioning mode.");
+      return;
+    }
     
     // If BLE is running, skip normal operations
     return;

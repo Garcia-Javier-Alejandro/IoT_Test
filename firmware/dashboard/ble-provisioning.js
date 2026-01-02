@@ -14,6 +14,8 @@ const ESP32BLEProvisioning = {
   SSID_CHAR_UUID: 'beb5483e-36e1-4688-b7f5-ea07361b26a8',
   PASSWORD_CHAR_UUID: 'cba1d466-344c-4be3-ab3f-189f80dd7518',
   STATUS_CHAR_UUID: '8d8218b6-97bc-4527-a8db-13094ac06b1d',
+  NETWORKS_CHAR_UUID: 'fa87c0d0-afac-11de-8a39-0800200c9a66',
+  COMMAND_CHAR_UUID: '0b9f1e80-0f88-4b68-9a09-9d1d6921d0d8',
 
   // State
   device: null,
@@ -22,6 +24,8 @@ const ESP32BLEProvisioning = {
   ssidCharacteristic: null,
   passwordCharacteristic: null,
   statusCharacteristic: null,
+  networksCharacteristic: null,
+  commandCharacteristic: null,
 
   /**
    * Check if Web Bluetooth is supported
@@ -72,6 +76,19 @@ const ESP32BLEProvisioning = {
       this.ssidCharacteristic = await this.service.getCharacteristic(this.SSID_CHAR_UUID);
       this.passwordCharacteristic = await this.service.getCharacteristic(this.PASSWORD_CHAR_UUID);
       this.statusCharacteristic = await this.service.getCharacteristic(this.STATUS_CHAR_UUID);
+      // Optional characteristics used by advanced flows (scan / clear commands)
+      try {
+        this.networksCharacteristic = await this.service.getCharacteristic(this.NETWORKS_CHAR_UUID);
+      } catch (err) {
+        console.warn('[BLE] Networks characteristic not found; WiFi scan over BLE will be disabled', err);
+      }
+
+      try {
+        this.commandCharacteristic = await this.service.getCharacteristic(this.COMMAND_CHAR_UUID);
+      } catch (err) {
+        console.warn('[BLE] Command characteristic not found; remote commands like clear_wifi will be disabled', err);
+      }
+
       console.log('[BLE] ✓ Got all characteristics');
 
       // Subscribe to status notifications
@@ -142,6 +159,8 @@ const ESP32BLEProvisioning = {
     this.ssidCharacteristic = null;
     this.passwordCharacteristic = null;
     this.statusCharacteristic = null;
+    this.networksCharacteristic = null;
+    this.commandCharacteristic = null;
   },
 
   /**
@@ -178,6 +197,28 @@ const ESP32BLEProvisioning = {
       console.error('[BLE] Provisioning failed:', error);
       this.disconnect();
       if (onError) onError(error);
+      throw error;
+    }
+  },
+
+  /**
+   * Request the device to forget its stored WiFi credentials
+   * This writes the "clear_wifi" verb to the command characteristic.
+   */
+  async clearWifiCredentials() {
+    if (!this.server || !this.server.connected) {
+      throw new Error('Not connected to device. Call connect() first.');
+    }
+
+    if (!this.commandCharacteristic) {
+      throw new Error(`Command characteristic ${this.COMMAND_CHAR_UUID} not available on this device.`);
+    }
+
+    try {
+      await this.commandCharacteristic.writeValue(new TextEncoder().encode('clear_wifi'));
+      console.log('[BLE] ✓ clear_wifi command sent');
+    } catch (error) {
+      console.error('[BLE] Failed to send clear_wifi command:', error);
       throw error;
     }
   }
