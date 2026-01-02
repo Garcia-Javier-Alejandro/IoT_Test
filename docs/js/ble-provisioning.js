@@ -14,6 +14,7 @@ const ESP32BLEProvisioning = {
   SSID_CHAR_UUID: 'beb5483e-36e1-4688-b7f5-ea07361b26a8',
   PASSWORD_CHAR_UUID: 'cba1d466-344c-4be3-ab3f-189f80dd7518',
   STATUS_CHAR_UUID: '8d8218b6-97bc-4527-a8db-13094ac06b1d',
+  NETWORKS_CHAR_UUID: 'fa87c0d0-afac-11de-8a39-0800200c9a66',
 
   // State
   device: null,
@@ -22,6 +23,7 @@ const ESP32BLEProvisioning = {
   ssidCharacteristic: null,
   passwordCharacteristic: null,
   statusCharacteristic: null,
+  networksCharacteristic: null,
 
   /**
    * Check if Web Bluetooth is supported
@@ -71,6 +73,7 @@ const ESP32BLEProvisioning = {
       // Get characteristics
       this.ssidCharacteristic = await this.service.getCharacteristic(this.SSID_CHAR_UUID);
       this.passwordCharacteristic = await this.service.getCharacteristic(this.PASSWORD_CHAR_UUID);
+      this.networksCharacteristic = await this.service.getCharacteristic(this.NETWORKS_CHAR_UUID);
       this.statusCharacteristic = await this.service.getCharacteristic(this.STATUS_CHAR_UUID);
       console.log('[BLE] ✓ Got all characteristics');
 
@@ -85,6 +88,34 @@ const ESP32BLEProvisioning = {
     } catch (error) {
       console.error('[BLE] Connection error:', error);
       this.cleanup();
+      throw error;
+    }
+  },
+
+  /**
+   * Scan for available WiFi networks
+   * Request scan from ESP32 and get results via networks characteristic
+   * @returns {Promise<Array>} Array of networks: [{ssid, rssi, open}, ...]
+   */
+  async scanNetworks() {
+    if (!this.server || !this.server.connected) {
+      throw new Error('Not connected to device. Call connect() first.');
+    }
+
+    if (!this.networksCharacteristic) {
+      throw new Error('Networks characteristic not found.');
+    }
+
+    try {
+      // Read the networks characteristic (ESP32 will perform scan and return JSON)
+      const value = await this.networksCharacteristic.readValue();
+      const json = new TextDecoder().decode(value);
+      console.log('[BLE] Networks: ' + json);
+      
+      const networks = JSON.parse(json);
+      return networks.sort((a, b) => b.rssi - a.rssi); // Sort by signal strength
+    } catch (error) {
+      console.error('[BLE] Scan error:', error);
       throw error;
     }
   },

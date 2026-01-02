@@ -343,8 +343,21 @@
 
         <!-- BLE Provisioning Modal (hidden by default) -->
         <div id="provision-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-          <div class="bg-white rounded-2xl p-6 max-w-sm w-11/12 shadow-2xl">
+          <div class="bg-white rounded-2xl p-6 max-w-sm w-11/12 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="space-y-3">
+              <!-- Scan Networks Button -->
+              <button type="button" id="scan-networks-btn" class="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+                <span class="material-icons-round text-sm">wifi_tethering</span>
+                Escanear redes
+              </button>
+
+              <!-- Networks List (hidden initially) -->
+              <div id="networks-list" class="hidden bg-slate-50 rounded-lg border border-slate-200 max-h-48 overflow-y-auto">
+                <div id="networks-loading" class="p-3 text-center text-xs text-slate-600">Buscando redes...</div>
+                <div id="networks-container" class="space-y-1 p-2"></div>
+              </div>
+
+              <!-- Manual SSID Input -->
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Red WiFi (SSID)</label>
                 <input type="text" id="provision-ssid" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Nombre de la red" autocomplete="off" />
@@ -972,6 +985,77 @@
       }
     }
 
+    async function scanNetworksHandler() {
+      const scanBtn = document.getElementById('scan-networks-btn');
+      const networksList = document.getElementById('networks-list');
+      const networksContainer = document.getElementById('networks-container');
+      const networksLoading = document.getElementById('networks-loading');
+      const statusDiv = document.getElementById('provision-status');
+
+      try {
+        // Check if connected to ESP32
+        if (!ESP32BLEProvisioning.server || !ESP32BLEProvisioning.server.connected) {
+          statusDiv.classList.remove('hidden');
+          statusDiv.className = 'text-xs text-red-600';
+          statusDiv.textContent = 'Primero conectate al dispositivo';
+          return;
+        }
+
+        // Show loading
+        scanBtn.disabled = true;
+        scanBtn.textContent = 'Buscando...';
+        networksList.classList.remove('hidden');
+        networksContainer.innerHTML = '';
+        networksLoading.style.display = 'block';
+
+        // Perform scan
+        const networks = await ESP32BLEProvisioning.scanNetworks();
+
+        // Hide loading
+        networksLoading.style.display = 'none';
+
+        if (networks.length === 0) {
+          networksContainer.innerHTML = '<div class="p-3 text-center text-xs text-slate-500">No se encontraron redes</div>';
+          return;
+        }
+
+        // Display networks
+        networks.forEach(network => {
+          const locked = !network.open ? '🔒' : '🔓';
+          const signalStrength = network.rssi >= -50 ? '▓▓▓' : network.rssi >= -60 ? '▓▓░' : network.rssi >= -70 ? '▓░░' : '░░░';
+          
+          const networkBtn = document.createElement('button');
+          networkBtn.type = 'button';
+          networkBtn.className = 'w-full text-left px-3 py-2 bg-white hover:bg-blue-50 border border-slate-200 rounded text-xs transition-colors';
+          networkBtn.innerHTML = `
+            <div class="flex items-center justify-between">
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-slate-900 truncate">${network.ssid}</div>
+                <div class="text-[10px] text-slate-500">${signalStrength} ${network.rssi}dBm</div>
+              </div>
+              <span class="ml-2">${locked}</span>
+            </div>
+          `;
+          
+          networkBtn.addEventListener('click', () => {
+            document.getElementById('provision-ssid').value = network.ssid;
+            document.getElementById('provision-password').focus();
+            networksList.classList.add('hidden');
+          });
+          
+          networksContainer.appendChild(networkBtn);
+        });
+
+      } catch (error) {
+        console.error('[BLE] Scan error:', error);
+        networksList.classList.remove('hidden');
+        networksContainer.innerHTML = `<div class="p-3 text-center text-xs text-red-600">Error: ${error.message}</div>`;
+      } finally {
+        scanBtn.disabled = false;
+        scanBtn.textContent = 'Escanear redes';
+      }
+    }
+
     // Setup event listeners when page loads
     document.addEventListener('DOMContentLoaded', () => {
       // Cancel button
@@ -982,6 +1066,9 @@
       
       // Unpair button
       document.getElementById('unpair-btn')?.addEventListener('click', unpairDevices);
+
+      // Scan Networks button
+      document.getElementById('scan-networks-btn')?.addEventListener('click', scanNetworksHandler);
       
       // Enter key to submit
       ['provision-ssid', 'provision-password'].forEach(id => {

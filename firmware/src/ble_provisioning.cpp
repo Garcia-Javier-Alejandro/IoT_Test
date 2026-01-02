@@ -13,12 +13,14 @@
 #define SSID_CHAR_UUID      "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define PASSWORD_CHAR_UUID  "cba1d466-344c-4be3-ab3f-189f80dd7518"
 #define STATUS_CHAR_UUID    "8d8218b6-97bc-4527-a8db-13094ac06b1d"
+#define NETWORKS_CHAR_UUID  "fa87c0d0-afac-11de-8a39-0800200c9a66"  // WiFi networks scan result
 
 // ==================== Global BLE Objects ====================
 static NimBLEServer* pServer = nullptr;
 static NimBLECharacteristic* pSSIDCharacteristic = nullptr;
 static NimBLECharacteristic* pPasswordCharacteristic = nullptr;
 static NimBLECharacteristic* pStatusCharacteristic = nullptr;
+static NimBLECharacteristic* pNetworksCharacteristic = nullptr;
 
 // ==================== State Variables ====================
 static bool bleActive = false;
@@ -146,6 +148,13 @@ void initBLEProvisioning() {
   );
   pStatusCharacteristic->setValue("waiting");
   
+  // Create Networks Characteristic (Read - returns JSON scan results)
+  pNetworksCharacteristic = pService->createCharacteristic(
+    NETWORKS_CHAR_UUID,
+    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
+  );
+  pNetworksCharacteristic->setValue("[]"); // Initial empty list
+  
   // Start the service
   pService->start();
   
@@ -205,6 +214,76 @@ bool getBLEWiFiPassword(char* password) {
   strncpy(password, receivedPassword.c_str(), 63);
   password[63] = '\0';
   return true;
+}
+
+void clearBLECredentials() {
+  newCredentialsReceived = false;
+  receivedSSID = "";
+  receivedPassword = "";
+}
+
+/**
+ * Scan available WiFi networks and return JSON array
+ * @return JSON string with network list: [{"ssid":"NETWORK1","rssi":-50,"open":false},...]
+ */
+String scanWiFiNetworks() {
+  Serial.println("[BLE] Scanning WiFi networks...");
+  
+  // Perform WiFi scan
+  int numNetworks = WiFi.scanNetworks();
+  
+  if (numNetworks == 0) {
+    Serial.println("[BLE] No networks found");
+    return "[]";
+  }
+  
+  Serial.print("[BLE] Found ");
+  Serial.print(numNetworks);
+  Serial.println(" networks");
+  
+  // Build JSON array
+  String json = "[";
+  
+  for (int i = 0; i < numNetworks; i++) {
+    if (i > 0) json += ",";
+    
+    String ssid = WiFi.SSID(i);
+    int rssi = WiFi.RSSI(i);
+    uint8_t encryption = WiFi.encryptionType(i);
+    bool open = (encryption == WIFI_AUTH_OPEN);
+    
+    // Escape SSID quotes
+    ssid.replace("\"", "\\\"");
+    
+    json += "{";
+    json += "\"ssid\":\"" + ssid + "\",";
+    json += "\"rssi\":" + String(rssi) + ",";
+    json += "\"open\":" + String(open ? "true" : "false");
+    json += "}";
+    
+    // Limit to 512 bytes to fit in BLE notification
+    if (json.length() > 480) {
+      Serial.println("[BLE] Network list too large, truncating");
+      break;
+    }
+  }
+  
+  json += "]";
+  
+  // Clean up
+  WiFi.scanDelete();
+  
+  Serial.print("[BLE] JSON size: ");
+  Serial.print(json.length());
+  Serial.println(" bytes");
+  
+  // Update characteristic for client to read
+  if (pNetworksCharacteristic) {
+    pNetworksCharacteristic->setValue(json.c_str());
+    pNetworksCharacteristic->notify();
+  }
+  
+  return json;
 }
 
 void clearBLECredentials() {

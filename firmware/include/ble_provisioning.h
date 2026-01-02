@@ -58,6 +58,13 @@ bool getBLEWiFiSSID(char* ssid);
 bool getBLEWiFiPassword(char* password);
 
 /**
+ * Scan available WiFi networks and return JSON array
+ * @return JSON string with network list: [{"ssid":"NETWORK1","rssi":-50,"open":false},...]
+ * Call this in response to a scan request from the dashboard
+ */
+String scanWiFiNetworks();
+
+/**
  * Clear the received credentials flag
  * Call this after successfully connecting to WiFi
  */
