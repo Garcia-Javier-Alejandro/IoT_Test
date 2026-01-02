@@ -28,7 +28,99 @@ This system allows remote control of:
 
 ---
 
-## 📁 Project Structure
+## 🏗️ System Architecture
+
+### Current Design (Single-Tenant)
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   Internet/WiFi                      │
+└────────────────────────┬─────────────────────────────┘
+                         │
+                         ▼
+            ┌────────────────────────┐
+            │   HiveMQ Cloud MQTT    │
+            │      Broker (TLS)      │
+            │   8883 (MQTT) / 8884   │
+            │  (WebSocket Secure)    │
+            └────────────┬───────────┘
+                    ┌────┴─────────┐
+                    │              │
+                    ▼              ▼
+        ┌──────────────────┐  ┌──────────────┐
+        │  Web Dashboard   │  │  ESP32       │
+        │  (Browser/HTTPS) │  │  (WiFi)      │
+        │  Pub: pump/set   │  │  Sub: */set  │
+        │  Sub: */state    │  │  Pub: */state│
+        └──────────────────┘  └──────────────┘
+                    ▲              │
+                    │              ▼
+                    │      ┌──────────────┐
+                    └─────→│   Pool HW    │
+                           │ (Pump+Valves)│
+                           └──────────────┘
+```
+
+### Key Characteristics
+
+| Aspect | Details |
+|--------|---------|
+| **Broker** | HiveMQ Cloud (external, managed) |
+| **Communication** | MQTT over TLS (port 8883) + WebSocket Secure (port 8884) |
+| **Dashboard** | Runs in browser, connects directly to MQTT |
+| **Credentials** | Hardcoded in `config.js` (dashboard) and `secrets.h` (firmware) |
+| **Scope** | Single pool, single device, single user |
+| **Deployment** | Cloudflare Pages (dashboard), ESP32 (firmware) |
+
+### Data Flow Example
+
+**User clicks pump ON:**
+
+1. **Dashboard** → `publish("devices/esp32-pool-01/pump/set", "ON")`
+2. **MQTT Broker** → Stores in topic
+3. **ESP32** ← `subscribe("devices/esp32-pool-01/pump/set")`
+4. **ESP32** → Receives "ON", activates relay GPIO 19
+5. **ESP32** → `publish("devices/esp32-pool-01/pump/state", "ON", retain=true)`
+6. **Dashboard** ← `subscribe("devices/esp32-pool-01/pump/state")`
+7. **Dashboard** → Updates UI to show pump ON
+
+**Real-time latency: ~100-500ms** (depending on WiFi)
+
+### Security Model
+
+✅ **TLS Encryption** - All MQTT traffic encrypted
+✅ **MQTT Username/Password** - Authentication with broker
+✅ **Device Isolation** - Topics scoped to `esp32-pool-01`
+
+⚠️ **Limitations** - Current single-tenant design:
+- Credentials visible in browser source code
+- No multi-device support
+- No user access control
+- Not suitable for commercial/multi-customer deployment
+
+---
+
+## 🚀 Scalability: Current vs. Future
+
+### Single-Tenant (Current ✅)
+- **Setup**: One MQTT broker + one dashboard = one pool
+- **For**: Personal use, single installation
+- **Cost**: ~$10-15/month (HiveMQ hobby tier)
+- **Complexity**: Low
+
+### Multi-Tenant (Future 🔄)
+- **Would need**: Backend proxy, credential storage, user management
+- **For**: Multiple customers, multiple pools per customer
+- **Cost**: Higher (backend server + scaling)
+- **Benefits**: 
+  - Secure credential storage
+  - User access control
+  - Usage tracking/billing
+  - Shared dashboard codebase
+
+**See [ARCHITECTURE_NOTES.md](ARCHITECTURE_NOTES.md) for detailed multi-tenant design proposal**
+
+---
 
 ```
 IoT/
@@ -379,7 +471,7 @@ All code files follow consistent structure with section separators:
 
 ## 🚀 Future Enhancements
 
-- [ ] **WiFi Provisioning / Captive Portal** - Allow WiFi network selection at first boot without hard-coding credentials. ESP32 creates temporary access point, user connects and provides WiFi credentials through web interface
+- [ ] **Critical** WiFi Provisioning / Captive Portal - Allow WiFi network selection at first boot without hard-coding credentials. ESP32 creates temporary access point, user connects and provides WiFi credentials through web interface
 - [ ] Temperature alert thresholds (low/high water temp)
 - [ ] OTA (Over-The-Air) firmware updates
 - [ ] Historical data visualization and analytics
@@ -387,31 +479,14 @@ All code files follow consistent structure with section separators:
 - [ ] Integration with Home Assistant / Google Home
 - [ ] Multiple device support (control multiple pools)
 - [ ] Relay health monitoring (click count tracking)
-
-
-### What Changed
-
-| Old System | New System |
-|------------|------------|
-| 2× Independent valves | Single relay → parallel NC+NO valves |
-| MOSFET control | SONGLE standard relays |
-| No sensors | DS18B20 temperature sensor |
-| Separate ON/OFF buttons | Click-to-toggle cards |
-
-
 ---
 
 ## 📄 License
 
 This project is provided as-is for personal use. No warranty. Use at your own risk.
 
-**Electrical work disclaimer**: Pool equipment control involves high voltage. Consult licensed electrician if unsure.
-
----
-
 ## 🙏 Credits
 
-- **Original valve control project**: Foundation for this pool system
 - **MQTT.js**: Client library for browser-based MQTT
 - **PubSubClient**: Arduino MQTT library
 - **HiveMQ Cloud**: Free tier MQTT broker with TLS
@@ -422,9 +497,8 @@ This project is provided as-is for personal use. No warranty. Use at your own ri
 ## 📧 Support
 
 For issues or questions:
-1. Check **Troubleshooting** section above
-2. Review **WIRING_DIAGRAM.md** for hardware questions
-3. Open GitHub issue with:
+1. Review **WIRING_DIAGRAM.md** for hardware questions
+2. Open GitHub issue with:
    - Serial monitor output
    - Photos of wiring (if hardware related)
    - Dashboard console errors (F12 in browser)
