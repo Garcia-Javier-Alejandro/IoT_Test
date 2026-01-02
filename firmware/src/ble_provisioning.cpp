@@ -108,11 +108,7 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
     if (uuid == NETWORKS_CHAR_UUID) {
       Serial.println("[BLE] Networks characteristic read - triggering WiFi scan");
       String json = scanWiFiNetworks();
-      
-      // Set the value that will be returned to the client
-      pCharacteristic->setValue(json.c_str(), json.length());
-      Serial.print("[BLE] Characteristic value set, length: ");
-      Serial.println(json.length());
+      pCharacteristic->setValue(json.c_str());
     }
   }
 };
@@ -248,7 +244,6 @@ void clearBLECredentials() {
  */
 String scanWiFiNetworks() {
   Serial.println("[BLE] Scanning WiFi networks...");
-  delay(100); // Give WiFi radio time to scan
   
   // Perform WiFi scan
   int numNetworks = WiFi.scanNetworks();
@@ -264,33 +259,25 @@ String scanWiFiNetworks() {
   
   // Build JSON array
   String json = "[";
-  int networkCount = 0;
   
   for (int i = 0; i < numNetworks; i++) {
+    if (i > 0) json += ",";
+    
     String ssid = WiFi.SSID(i);
     int rssi = WiFi.RSSI(i);
     uint8_t encryption = WiFi.encryptionType(i);
     bool open = (encryption == WIFI_AUTH_OPEN);
     
-    // Skip empty SSIDs
-    if (ssid.length() == 0) continue;
-    
-    if (networkCount > 0) json += ",";
-    
     // Escape SSID quotes
     ssid.replace("\"", "\\\"");
     
-    json += "{\"ssid\":\"";
-    json += ssid;
-    json += "\",\"rssi\":";
-    json += String(rssi);
-    json += ",\"open\":";
-    json += (open ? "true" : "false");
+    json += "{";
+    json += "\"ssid\":\"" + ssid + "\",";
+    json += "\"rssi\":" + String(rssi) + ",";
+    json += "\"open\":" + String(open ? "true" : "false");
     json += "}";
     
-    networkCount++;
-    
-    // Limit to 480 bytes to fit in BLE MTU (512 byte limit)
+    // Limit to 512 bytes to fit in BLE notification
     if (json.length() > 480) {
       Serial.println("[BLE] Network list too large, truncating");
       break;
@@ -309,10 +296,4 @@ String scanWiFiNetworks() {
   Serial.println(json);
   
   return json;
-}
-
-void clearBLECredentials() {
-  newCredentialsReceived = false;
-  receivedSSID = "";
-  receivedPassword = "";
 }
