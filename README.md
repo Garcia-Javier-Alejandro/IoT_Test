@@ -152,6 +152,8 @@ IoT/
 ```
 
 
+---
+
 ## ⚡ GPIO Pin Assignment
 ## 🧪 Testing & Development
 
