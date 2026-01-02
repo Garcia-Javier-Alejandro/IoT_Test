@@ -348,6 +348,12 @@
           </span>
         </div>
 
+
+        <!-- Add Device Button (BLE Provisioning) -->
+        <button id="add-device-btn" onclick="provisionNewDevice()" class="w-full p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl border-2 border-blue-400 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+          <span class="material-icons-round text-white text-lg">bluetooth</span>
+          <span class="text-sm font-bold text-white">Add Device</span>
+        </button>
       </div>
 
       <!-- ========== Event Log ========== -->
@@ -826,8 +832,53 @@
   <script src="/js/mqtt.js"></script>         <!-- MQTT client wrapper -->
   <script src="/js/programas.js"></script>    <!-- Schedule management -->
   <script src="/js/app.js"></script>          <!-- Main application controller -->
-  <script src="/js/ble-provisioning.js"></script>`n</body>
+  <script src="/js/ble-provisioning.js"></script>
+
+  <!-- BLE Provisioning Function -->
+  <script>
+    async function provisionNewDevice() {
+      const btn = document.getElementById('add-device-btn');
+      const originalText = btn.innerHTML;
+      
+      // Prompt for WiFi credentials
+      const ssid = prompt('Enter WiFi Network Name (SSID):');
+      if (!ssid) return;
+      
+      const password = prompt('Enter WiFi Password:');
+      if (!password) return;
+      
+      // Update button to show loading
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-icons-round text-white text-lg animate-spin">bluetooth_searching</span><span class="text-sm font-bold text-white">Scanning...</span>';
+      
+      try {
+        await ESP32BLEProvisioning.provision(ssid, password, {
+          onProgress: (msg) => {
+            console.log('[BLE]', msg);
+            btn.innerHTML = '<span class="material-icons-round text-white text-lg animate-pulse">bluetooth_connected</span><span class="text-sm font-bold text-white">' + msg + '</span>';
+          },
+          onSuccess: () => {
+            btn.innerHTML = '<span class="material-icons-round text-white text-lg">check_circle</span><span class="text-sm font-bold text-white">Device Connected!</span>';
+            setTimeout(() => {
+              btn.disabled = false;
+              btn.innerHTML = originalText;
+            }, 3000);
+          },
+          onError: (error) => {
+            alert('Provisioning failed: ' + error.message);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+          }
+        });
+      } catch (error) {
+        alert('Error: ' + error.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+  </script>`n</body>
 </html>
+
 
 
 
