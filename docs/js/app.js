@@ -113,6 +113,7 @@ const AppModule = (() => {
     // Initialize UI state
     setPumpState("UNKNOWN");
     setValveMode("UNKNOWN");
+    resetWiFiStatus();  // Reset WiFi status display
     disconnectUI();
 
     // Auto-connect if credentials are available
@@ -677,6 +678,18 @@ const AppModule = (() => {
     }
     
     if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
+  }
+
+  /**
+   * Reset WiFi status to disconnected state
+   * Used on page initialization to clear any cached WiFi data
+   */
+  function resetWiFiStatus() {
+    if (elements.wifiIcon) {
+      elements.wifiIcon.textContent = "wifi_off";
+      elements.wifiIcon.className = "material-icons-round text-slate-400 text-lg";
+    }
+    if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
   }
 
   /**
