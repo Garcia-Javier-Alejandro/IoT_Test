@@ -144,7 +144,7 @@ const ESP32BLEProvisioning = {
     this.statusCharacteristic = null;
   },
 
-  /**
+    /**
    * Complete provisioning flow (high-level API)
    * @param {string} ssid - WiFi network name
    * @param {string} password - WiFi password
@@ -163,20 +163,35 @@ const ESP32BLEProvisioning = {
       if (onProgress) onProgress('Sending WiFi credentials...');
       await this.sendCredentials(ssid, password);
 
-      // Step 3: Wait a moment for ESP32 to process
-      if (onProgress) onProgress('ESP32 connecting to WiFi...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Step 3: ESP32 will disconnect BLE after receiving credentials
+      // We consider this a success - the ESP32 is now connecting to WiFi
+      if (onProgress) onProgress('Credentials sent! ESP32 connecting to WiFi...');
 
-      // Step 4: Disconnect
-      this.disconnect();
+      // Give ESP32 a moment to start WiFi connection, then disconnect our side
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Disconnect (ESP32 might have already disconnected)
+      try {
+        this.disconnect();
+      } catch (e) {
+        // Ignore disconnect errors - ESP32 may have already disconnected
+        console.log('[BLE] Device already disconnected (expected)');
+      }
 
       if (onProgress) onProgress('Provisioning complete!');
       if (onSuccess) onSuccess();
 
-      console.log('[BLE] ✓ Provisioning completed successfully');
+      console.log('[BLE]  Provisioning completed successfully');
     } catch (error) {
       console.error('[BLE] Provisioning failed:', error);
-      this.disconnect();
+      
+      // Clean up on error
+      try {
+        this.disconnect();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      
       if (onError) onError(error);
       throw error;
     }
@@ -187,3 +202,4 @@ const ESP32BLEProvisioning = {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ESP32BLEProvisioning;
 }
+
