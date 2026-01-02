@@ -105,7 +105,7 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
       String json = scanWiFiNetworks();
       
       // Update the characteristic with scan results
-      pCharacteristic->setValue((uint8_t*)json.c_str(), json.length());
+      pCharacteristic->setValue(json.c_str(), json.length());
       Serial.print("[BLE] Networks characteristic updated, length: ");
       Serial.println(json.length());
       
@@ -122,6 +122,10 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
       Serial.println("[BLE] Networks characteristic read");
     }
   }
+  
+  void onWrite(NimBLECharacteristic* pCharacteristic) {
+    std::string uuid = pCharacteristic->getUUID().toString();
+    std::string value = pCharacteristic->getValue();
 };
 
 // Forward declaration for scanWiFiNetworks
@@ -136,7 +140,7 @@ void initBLEProvisioning() {
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
   char deviceName[32];
-  snprintf(deviceName, sizeof(deviceName), "ESP32-Pool-%02X%02X", mac[4], mac[5]);
+  snprintf(deviceName, sizeof(deviceName), "Controlador Smart Pool %02X%02X", mac[4], mac[5]);
   
   Serial.print("[BLE] Device name: ");
   Serial.println(deviceName);
@@ -316,4 +320,10 @@ String scanWiFiNetworks() {
   Serial.println(json);
   
   return json;
+}
+
+void clearBLECredentials() {
+  newCredentialsReceived = false;
+  receivedSSID = "";
+  receivedPassword = "";
 }

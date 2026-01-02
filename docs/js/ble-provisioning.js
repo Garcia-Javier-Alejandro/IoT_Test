@@ -48,11 +48,13 @@ const ESP32BLEProvisioning = {
     }
 
     try {
-      console.log('[BLE] Scanning for ESP32 Pool devices...');
+      console.log('[BLE] Scanning for Smart Pool devices...');
 
       // Request device with our service UUID filter
       this.device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
+        filters: [
+          { namePrefix: 'Controlador Smart Pool' }
+        ],
         optionalServices: [this.SERVICE_UUID]
       });
 
