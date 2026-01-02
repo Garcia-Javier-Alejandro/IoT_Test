@@ -884,85 +884,49 @@
       const statusDiv = document.getElementById('provision-status');
       statusDiv.classList.remove('hidden');
       statusDiv.className = 'text-xs text-blue-600';
+      statusDiv.textContent = 'Clearing site data...';
       
-      // Check if getDevices() API is available
-      if (!navigator.bluetooth.getDevices) {
-        // Fallback: Show device picker so user can see what's paired
-        statusDiv.textContent = 'Opening device selector...';
-        
-        try {
-          const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: 'ESP32-Pool' }],
-            optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
-          });
-          
-          statusDiv.className = 'text-xs text-orange-600';
-          statusDiv.innerHTML = `⚠️ Found: <strong>${device.name}</strong><br>To unpair: Chrome menu (⋮) → Settings → Privacy and security → Site Settings → View permissions and data stored across sites → Search "iot-5wo" → Bluetooth → Remove`;
-          
-        } catch (err) {
-          if (err.message.includes('User cancelled')) {
-            statusDiv.classList.add('hidden');
-          } else {
-            statusDiv.className = 'text-xs text-slate-600';
-            statusDiv.textContent = 'ℹ️ No devices found or operation cancelled';
-          }
-        }
-        return;
-      }
-      
-      // Modern approach with getDevices()
       try {
-        statusDiv.textContent = 'Checking for paired devices...';
-        const devices = await navigator.bluetooth.getDevices();
+        // Clear all site data (localStorage, cookies, permissions)
+        // This will unpair all BLE devices for this domain
+        await navigator.clearSiteData?.('cookies', 'storage');
         
-        if (devices.length === 0) {
-          statusDiv.className = 'text-xs text-slate-600';
-          statusDiv.textContent = '✓ No paired devices found';
-          setTimeout(() => statusDiv.classList.add('hidden'), 2000);
-          return;
-        }
-        
-        // Filter for ESP32-Pool devices
-        const esp32Devices = devices.filter(d => d.name && d.name.startsWith('ESP32-Pool'));
-        
-        if (esp32Devices.length === 0) {
-          statusDiv.className = 'text-xs text-slate-600';
-          statusDiv.textContent = `ℹ️ Found ${devices.length} paired device(s), but none are ESP32-Pool`;
-          setTimeout(() => statusDiv.classList.add('hidden'), 3000);
-          return;
-        }
-        
-        // Forget all ESP32-Pool devices
-        statusDiv.textContent = `Forgetting ${esp32Devices.length} device(s)...`;
-        
-        let successCount = 0;
-        for (const device of esp32Devices) {
-          try {
-            await device.forget();
-            console.log(`[BLE] ✓ Forgot device: ${device.name}`);
-            successCount++;
-          } catch (err) {
-            console.error(`[BLE] ✗ Failed to forget ${device.name}:`, err);
+        // Fallback if clearSiteData not available
+        if (!navigator.clearSiteData) {
+          // Clear localStorage manually
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Try to use getDevices() if available
+          if (navigator.bluetooth.getDevices) {
+            const devices = await navigator.bluetooth.getDevices();
+            const esp32Devices = devices.filter(d => d.name && d.name.startsWith('ESP32-Pool'));
+            
+            for (const device of esp32Devices) {
+              try {
+                await device.forget();
+                console.log(`[BLE] Forgot: ${device.name}`);
+              } catch (e) {
+                console.error(`[BLE] Forget failed:`, e);
+              }
+            }
           }
         }
         
-        if (successCount > 0) {
-          statusDiv.className = 'text-xs text-green-600';
-          statusDiv.textContent = `✓ Successfully unpaired ${successCount} device(s)`;
-        } else {
-          statusDiv.className = 'text-xs text-red-600';
-          statusDiv.textContent = '✗ Failed to unpair devices';
-        }
+        statusDiv.className = 'text-xs text-green-600';
+        statusDiv.innerHTML = `✓ <strong>Site data cleared!</strong><br>All paired devices unpaired.<br>Reload page to test provisioning fresh.`;
         
         setTimeout(() => {
-          statusDiv.classList.add('hidden');
-        }, 3000);
+          // Auto-reload after 2 seconds
+          window.location.reload();
+        }, 2000);
         
       } catch (error) {
-        console.error('[BLE] Unpair error:', error);
-        statusDiv.className = 'text-xs text-red-600';
-        statusDiv.textContent = '✗ Error accessing paired devices';
-        setTimeout(() => statusDiv.classList.add('hidden'), 3000);
+        console.error('[BLE] Clear error:', error);
+        
+        // If clearSiteData not available, show manual instructions
+        statusDiv.className = 'text-xs text-orange-600';
+        statusDiv.innerHTML = `⚠️ <strong>Manual Clear:</strong><br>1. Press F12 (Dev Tools)<br>2. Application → Storage<br>3. Click "Clear site data" button<br>4. Reload page`;
       }
     }
 
