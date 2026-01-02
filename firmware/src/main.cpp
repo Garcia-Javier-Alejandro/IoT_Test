@@ -522,8 +522,17 @@ bool initWiFiProvisioning() {
   // Configurar callbacks
   wm.setAPCallback(onWiFiAPStart);
   
+  // OPTIONAL: Uncomment to reset saved WiFi credentials for testing
+  // wm.resetSettings();
+  // Serial.println("[WiFi] Credenciales de WiFi reseteadas. Abriendo portal cautivo...");
+  
   // Configurar portal (3 minutos timeout, auto-reset si falla)
   wm.setConfigPortalTimeout(180);  // 3 minutos
+  
+  // Enable specific features for better captive portal
+  wm.setWebServerCallback([]() {
+    Serial.println("[WiFi] Servidor web iniciado en 192.168.4.1");
+  });
   
   // Auto-conectar con credenciales guardadas
   // Si no tiene credenciales, abre el portal cautivo
