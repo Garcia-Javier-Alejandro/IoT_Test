@@ -6,6 +6,7 @@
 #include "ble_provisioning.h"
 #include <NimBLEDevice.h>
 #include <Preferences.h>
+#include <WiFi.h>
 
 // ==================== BLE UUIDs ====================
 // Custom UUIDs for Pool Controller WiFi Provisioning Service
@@ -284,10 +285,4 @@ String scanWiFiNetworks() {
   }
   
   return json;
-}
-
-void clearBLECredentials() {
-  newCredentialsReceived = false;
-  receivedSSID = "";
-  receivedPassword = "";
 }
