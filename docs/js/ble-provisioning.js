@@ -109,10 +109,25 @@ const ESP32BLEProvisioning = {
     try {
       // Read the networks characteristic (ESP32 will perform scan and return JSON)
       const value = await this.networksCharacteristic.readValue();
-      const json = new TextDecoder().decode(value);
-      console.log('[BLE] Networks: ' + json);
+      let json = new TextDecoder().decode(value);
+      
+      console.log('[BLE] Raw data length:', value.byteLength);
+      console.log('[BLE] Raw data:', json);
+      console.log('[BLE] Char codes:', Array.from(new Uint8Array(value)).slice(0, 50).map(c => c.toString(16)).join(' '));
+      
+      // Clean the JSON string - trim whitespace and remove any trailing garbage
+      json = json.trim();
+      
+      // Find the end of valid JSON (last closing bracket)
+      const lastBracket = json.lastIndexOf(']');
+      if (lastBracket !== -1) {
+        json = json.substring(0, lastBracket + 1);
+      }
+      
+      console.log('[BLE] Cleaned JSON:', json);
       
       const networks = JSON.parse(json);
+      console.log('[BLE] Parsed networks:', networks);
       return networks.sort((a, b) => b.rssi - a.rssi); // Sort by signal strength
     } catch (error) {
       console.error('[BLE] Scan error:', error);
