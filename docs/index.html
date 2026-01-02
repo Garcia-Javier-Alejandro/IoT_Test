@@ -335,26 +335,10 @@
           </span>
         </div>
 
-        <!-- MQTT Status (broker connection with animated indicator) -->
-        <div id="conn-status" class="p-3 bg-slate-100 rounded-xl border border-slate-300 flex items-center justify-between min-h-[52px]">
-          <div class="flex items-center gap-2">
-            <div class="relative flex h-2 w-2" id="conn-indicator">
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
-            </div>
-            <span id="conn-text" class="text-xs font-bold text-slate-700">Desconectado</span>
-          </div>
-          <span class="px-2 py-0.5 rounded-md bg-white border border-slate-300 text-[10px] font-bold font-mono text-slate-600">
-            MQTT
-          </span>
-        </div>
-
-
         <!-- Add Device Button (BLE Provisioning) -->
-        <button id="add-device-btn" onclick="provisionNewDevice()" class="w-full p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl border-2 border-blue-400 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
-          <span class="material-icons-round text-white text-lg">bluetooth</span>
-          <span class="text-sm font-bold text-white">Add Device</span>
-
-
+        <button id="add-device-btn" onclick="provisionNewDevice()" class="w-full p-3 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold rounded-xl border border-slate-300 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+          <span class="material-icons-round text-slate-700 text-lg">add_circle</span>
+          <span class="text-sm font-semibold text-slate-900">Conectar dispositivo a WiFi</span>
         </button>
 
         <!-- BLE Provisioning Modal (hidden by default) -->
@@ -363,19 +347,19 @@
             <h3 class="text-lg font-bold mb-4 text-slate-800">Add Pool Controller</h3>
             <div class="space-y-3">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">WiFi Network (SSID)</label>
-                <input type="text" id="provision-ssid" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Enter WiFi name" autocomplete="off" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Red WiFi (SSID)</label>
+                <input type="text" id="provision-ssid" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Nombre de la red" autocomplete="off" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">WiFi Password</label>
-                <input type="password" id="provision-password" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Enter password" autocomplete="off" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña WiFi</label>
+                <input type="password" id="provision-password" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Contraseña" autocomplete="off" />
               </div>
               <div id="provision-status" class="text-xs text-blue-600 hidden"></div>
               <div class="flex gap-2 mt-4">
-                <button type="button" id="cancel-btn" class="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-sm font-semibold transition-colors">Cancel</button>
-                <button type="button" id="connect-btn" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg text-sm font-semibold transition-colors">Connect</button>
+                <button type="button" id="cancel-btn" class="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
+                <button type="button" id="connect-btn" class="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-semibold transition-colors">Conectar</button>
               </div>
-              <button type="button" id="unpair-btn" class="w-full px-3 py-1.5 mt-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-semibold transition-colors">🗑️ Unpair Previously Paired Devices</button>
+              <button type="button" id="unpair-btn" class="w-full px-3 py-1.5 mt-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-lg text-xs font-semibold transition-colors">🗑️ Desconectar dispositivos</button>
             </div>
           </div>
         </div>
