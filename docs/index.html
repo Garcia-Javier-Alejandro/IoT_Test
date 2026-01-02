@@ -271,32 +271,39 @@
                 <div class="font-bold text-slate-900 text-lg">Bomba</div>
               </div>
             </div>
-            <!-- Toggle Switch -->
-            <button 
-              id="btn-pump"
-              disabled
-              class="relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300">
-              <span id="pump-toggle-dot" class="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 translate-x-1"></span>
-            </button>
           </div>
 
-          <!-- Valve Mode Buttons (Cascada vs Eyectores) -->
-          <div class="grid grid-cols-2 gap-3">
-            <button 
-              id="btn-valve-1"
-              disabled
-              class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-sm py-4 px-3 rounded-xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              <img id="waterfall-icon" src="waterfall-icon.png" alt="Cascada" class="w-7 h-7 transition-all duration-200">
-              <span>Cascada</span>
-            </button>
-            
-            <button 
-              id="btn-valve-2"
-              disabled
-              class="bg-white hover:bg-slate-50 text-slate-900 font-bold text-sm py-4 px-3 rounded-xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              <img id="waterjet-icon" src="waterjet-icon.png" alt="Eyectores" class="w-7 h-7 transition-all duration-200">
-              <span>Eyectores</span>
-            </button>
+          <!-- Vertical Pump Toggle and Valve Mode Toggle -->
+          <div class="flex justify-between items-end gap-6 h-64 px-4">
+            <!-- Pump Toggle (Vertical) -->
+            <div class="flex flex-col items-center justify-between h-full">
+              <span class="text-xs font-semibold text-slate-600 mb-2">ON</span>
+              <button 
+                id="btn-pump"
+                disabled
+                class="relative inline-flex h-48 w-12 flex-col items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300">
+                <span id="pump-toggle-dot" class="absolute inline-block h-10 w-10 rounded-full bg-white shadow-lg transition-all duration-200 top-1"></span>
+              </button>
+              <span class="text-xs font-semibold text-slate-600 mt-2">OFF</span>
+            </div>
+
+            <!-- Valve Mode Toggle (Vertical) -->
+            <div class="flex flex-col items-center justify-between h-full">
+              <div class="flex items-center justify-center gap-2 mb-2">
+                <img id="waterfall-icon" src="waterfall-icon.png" alt="Cascada" class="w-6 h-6 transition-all duration-200 opacity-50">
+                <span class="text-xs font-semibold text-slate-600">Cascada</span>
+              </div>
+              <button 
+                id="btn-valve-toggle"
+                disabled
+                class="relative inline-flex h-48 w-12 flex-col items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300">
+                <span id="valve-toggle-dot" class="absolute inline-block h-10 w-10 rounded-full bg-white shadow-lg transition-all duration-200 top-1"></span>
+              </button>
+              <div class="flex items-center justify-center gap-2 mt-2">
+                <img id="waterjet-icon" src="waterjet-icon.png" alt="Eyectores" class="w-6 h-6 transition-all duration-200 opacity-50">
+                <span class="text-xs font-semibold text-slate-600">Eyectores</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -848,12 +855,12 @@
 
   <!-- ==================== Application Modules ==================== -->
   <!-- Load order: config → log → mqtt → programas → app -->
-  <script src="/config.js"></script>           <!-- App configuration (topics, broker URL) -->
-  <script src="/js/log.js"></script>          <!-- Event logging module -->
-  <script src="/js/mqtt.js"></script>         <!-- MQTT client wrapper -->
-  <script src="/js/programas.js"></script>    <!-- Schedule management -->
-  <script src="/js/app.js"></script>          <!-- Main application controller -->
-  <script src="/js/ble-provisioning.js"></script>
+  <script src="config.js"></script>           <!-- App configuration (topics, broker URL) -->
+  <script src="js/log.js"></script>          <!-- Event logging module -->
+  <script src="js/mqtt.js"></script>         <!-- MQTT client wrapper -->
+  <script src="js/programas.js"></script>    <!-- Schedule management -->
+  <script src="js/app.js"></script>          <!-- Main application controller -->
+  <script src="js/ble-provisioning.js"></script>
 
   
   
