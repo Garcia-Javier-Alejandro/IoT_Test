@@ -345,8 +345,8 @@
         <div id="provision-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
           <div class="bg-white rounded-2xl p-6 max-w-sm w-11/12 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="space-y-3">
-              <!-- Scan Networks Button -->
-              <button type="button" id="scan-networks-btn" class="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+              <!-- Scan Networks Button (initially hidden, shown as fallback) -->
+              <button type="button" id="scan-networks-btn" class="hidden w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
                 <span class="material-icons-round text-sm">wifi_tethering</span>
                 Escanear redes
               </button>
@@ -859,12 +859,45 @@
   
   <!-- BLE Provisioning Functions -->
   <script>
-    function provisionNewDevice() {
-      document.getElementById('provision-modal').style.display = 'flex';
+    async function provisionNewDevice() {
+      const modal = document.getElementById('provision-modal');
+      const statusDiv = document.getElementById('provision-status');
+      const scanBtn = document.getElementById('scan-networks-btn');
+      
+      modal.style.display = 'flex';
       document.getElementById('provision-ssid').value = '';
       document.getElementById('provision-password').value = '';
-      document.getElementById('provision-status').classList.add('hidden');
-      document.getElementById('provision-ssid').focus();
+      statusDiv.classList.add('hidden');
+      
+      // Auto-connect to BLE and scan networks
+      try {
+        statusDiv.classList.remove('hidden');
+        statusDiv.className = 'text-xs text-blue-600';
+        statusDiv.textContent = 'Conectando a ESP32...';
+        
+        // Connect to ESP32
+        await ESP32BLEProvisioning.connect();
+        
+        statusDiv.textContent = 'Conectado! Escaneando redes...';
+        
+        // Automatically trigger network scan
+        await scanNetworksHandler();
+        
+        statusDiv.classList.add('hidden');
+        
+      } catch (error) {
+        console.error('[BLE] Auto-connect error:', error);
+        statusDiv.className = 'text-xs text-orange-600';
+        
+        if (error.message.includes('User cancelled')) {
+          statusDiv.textContent = 'Conexión cancelada. Usa el formulario manual abajo.';
+        } else {
+          statusDiv.textContent = 'No se pudo conectar. Usa el formulario manual abajo.';
+        }
+        
+        // Show scan button as fallback
+        scanBtn.classList.remove('hidden');
+      }
     }
 
     function closeProvisionModal() {
