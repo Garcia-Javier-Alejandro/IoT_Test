@@ -13,6 +13,8 @@ This system allows remote control of:
 
 ### Key Features
 
+- ✅ **BLE WiFi Provisioning** - No-code WiFi setup via Web Bluetooth from any Chrome/Edge browser
+- ✅ **WiFi Network Scanner** - Automatic network discovery during provisioning (no manual SSID entry)
 - ✅ **Standard relay control** - Continuous HIGH/LOW for SONGLE SRD-5VDC-SL-C relays
 - ✅ **Temperature monitoring** - DS18B20 OneWire sensor with 1-minute update intervals
 - ✅ **Manual override compatibility** - SPDT switches wired in parallel with ESP32 relays
@@ -24,6 +26,7 @@ This system allows remote control of:
 - ✅ **Conflict detection** - Automatic handling of timer/program/manual conflicts
 - ✅ **WiFi status monitoring** - Real-time signal strength with color-coded indicators
 - ✅ **Event logging** - Collapsible log panel with timestamps
+- ✅ **Localized interface** - Complete Spanish translation
 
 
 ---
@@ -33,19 +36,23 @@ This system allows remote control of:
 ```
 IoT/
 ├── firmware/                    # ESP32 firmware (PlatformIO)
-│   ├── src/main.cpp            # Main control logic
+│   ├── src/
+│   │   ├── main.cpp            # Main control logic
+│   │   └── ble_provisioning.cpp # BLE WiFi provisioning implementation
 │   ├── include/
 │   │   ├── config.h            # GPIO pins, MQTT topics, thresholds
 │   │   ├── secrets.h           # WiFi/MQTT credentials (not committed)
+│   │   ├── ble_provisioning.h  # BLE provisioning API
 │   │   └── ca_cert.h           # TLS certificate
 │   └── platformio.ini          # PlatformIO configuration
 │
 ├── docs/                        # Web dashboard (PWA-ready)
-│   ├── index.html              # Main dashboard (NEW unified design!)
+│   ├── index.html              # Main dashboard (unified design)
 │   ├── config.js               # MQTT topics and device ID
 │   ├── js/
 │   │   ├── app.js              # Main application controller
 │   │   ├── mqtt.js             # MQTT client wrapper
+│   │   ├── ble-provisioning.js # Web Bluetooth provisioning client
 │   │   ├── programas.js        # Schedule management module
 │   │   ├── log.js              # Event logging module
 │   │   └── history.js          # Historical data (optional)
@@ -53,7 +60,8 @@ IoT/
 │   └── _routes.json            # Deployment routes config
 │
 ├── WIRING_DIAGRAM.md           # Complete hardware wiring guide
-└── README_POOL.md              # This file
+├── WIFI_PROVISIONING.md        # BLE provisioning technical documentation
+└── README.md                   # This file
 ```
 
 
@@ -98,6 +106,14 @@ IoT/
 
 ### 2. Firmware Configuration
 
+**Option A: BLE WiFi Provisioning (Recommended - No Code Changes Required)**
+
+1. Flash firmware with default settings (no WiFi credentials needed)
+2. ESP32 boots into BLE provisioning mode automatically
+3. Use dashboard to provision WiFi (see "BLE WiFi Provisioning" section below)
+
+**Option B: Hard-Code WiFi Credentials (Traditional)**
+
 1. **Copy secrets template**:
    ```bash
    cd firmware/include
@@ -124,26 +140,75 @@ pio run --target upload
 pio device monitor  # View serial output
 ```
 
-**Expected boot sequence**:
+**Expected boot sequence (without WiFi credentials)**:
 ```
 ========================================
    ESP32 Pool Control System v2.0
 ========================================
-[WiFi] Conectando a YourWiFi
-.....
-[WiFi] ✓ CONECTADO
-[WiFi] SSID: YourWiFi
-[WiFi] IP: 192.168.1.100
-[NTP] ✓ OK epoch: 1735...
-[MQTT] ✓ CONECTADO
-[MQTT] Subscribed: devices/esp32-pool-01/pump/set
-[MQTT] Subscribed: devices/esp32-pool-01/valve/set
-[SENSOR] Dispositivos DS18B20 encontrados: 1
-[SENSOR] Temperatura: 22.5°C
+[WiFi] Starting WiFi provisioning...
+[NVS] No WiFi credentials stored
+[WiFi] No valid credentials - starting BLE provisioning...
+[BLE] Initializing BLE provisioning...
+[BLE] Device name: Controlador Smart Pool 5A00
+[BLE] ✓ Provisioning service started
+[BLE] Waiting for dashboard connection...
 ========================================
-   Sistema listo
+   Waiting for BLE provisioning...
+   Open dashboard to provision device
 ========================================
 ```
+
+---
+
+## 📱 BLE WiFi Provisioning
+
+The system includes **zero-configuration WiFi provisioning** via Web Bluetooth. No need to hard-code credentials or recompile firmware!
+
+### How It Works
+
+1. **ESP32 boots without WiFi** → Starts BLE provisioning mode
+2. **Advertises as**: `Controlador Smart Pool XXXX` (XXXX = last 4 hex digits of MAC)
+3. **Dashboard connects via Web Bluetooth** → Scans available WiFi networks
+4. **User selects network** → Enters password → ESP32 saves credentials to NVS
+5. **ESP32 reboots** → Connects to WiFi automatically → BLE stops
+6. **Credentials persist** → No provisioning needed on subsequent boots
+
+### Provisioning Flow (User Perspective)
+
+1. **Open dashboard** (https://iot-5wo.pages.dev) on Chrome/Edge browser
+2. Click **"Conectar dispositivo a WiFi"** button
+3. Click **"Escanear redes WiFi"** 
+4. **Browser pairing dialog appears** → Select "Controlador Smart Pool XXXX" → Pair
+5. **Network list appears automatically** → Select your WiFi network
+6. **Enter WiFi password** → Click "Conectar"
+7. **ESP32 connects to WiFi** → BLE provisioning stops → Dashboard connects via MQTT
+
+### Technical Details
+
+**BLE GATT Service**:
+- **Service UUID**: `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
+- **Characteristics**:
+  - `SSID_CHAR` (R/W): WiFi network name
+  - `PASSWORD_CHAR` (W): WiFi password (write-only for security)
+  - `STATUS_CHAR` (R/Notify): Provisioning status updates
+  - `NETWORKS_CHAR` (R/W/Notify): WiFi scan results (JSON array)
+
+**Network Scanning**:
+- Dashboard writes `"scan"` to `NETWORKS_CHAR` → Triggers ESP32 WiFi scan
+- ESP32 scans networks → Returns JSON: `[{"ssid":"NetworkName","rssi":-45,"open":false},...]`
+- Dashboard displays sorted list (strongest signal first) with lock icons
+
+**Browser Requirements**:
+- **Chrome 56+** or **Edge 79+** (Web Bluetooth API required)
+- **Bluetooth adapter** on device (PC/laptop/phone)
+- **Bluetooth enabled** in OS settings
+- **HTTPS connection** (required for Web Bluetooth - Cloudflare Pages provides this)
+
+**Fallback**: If Web Bluetooth is unavailable (iOS Safari, Firefox, etc.), credentials must be hard-coded in `secrets.h`
+
+**See**: `WIFI_PROVISIONING.md` for implementation details and architecture
+
+---
 
 ### 4. Deploy Dashboard
 
@@ -153,19 +218,26 @@ pio device monitor  # View serial output
 
 #### Production Deployment
 The dashboard is automatically deployed via GitHub Actions to Cloudflare Pages:
-- **Live URL**: https://iot-pool.pages.dev
+- **Live URL**: https://iot-5wo.pages.dev
 - **Deployment**: Automatic on push to main branch
 - **Custom domain**: Can be configured in Cloudflare
+- **Auto-deploy from**: `docs/` folder
 
 **Or deploy to any static hosting** (GitHub Pages, Netlify, Vercel, etc.)
 
-### 5. Configure Dashboard
+### 5. Configure Dashboard & Provision Device
 
-1. Open dashboard in browser
-2. Enter MQTT credentials (same as in `secrets.h`)
-3. Click **"Conectar"**
-4. Wait for state synchronization
-5. Credentials are saved in localStorage for future sessions
+**First Time Setup**:
+1. Open dashboard (https://iot-5wo.pages.dev) in Chrome/Edge
+2. Click **"Conectar dispositivo a WiFi"** → Provision ESP32 via BLE (see "BLE WiFi Provisioning" section above)
+3. After ESP32 connects to WiFi, click main **"Conectar"** button for MQTT
+4. Enter MQTT credentials (same as in firmware)
+5. Credentials saved in localStorage for future sessions
+
+**Subsequent Usage**:
+- Dashboard auto-connects to MQTT on page load
+- No provisioning needed unless WiFi credentials change
+- Click **"Desconectar dispositivos"** to unpair BLE and start fresh
 
 #### Pump Toggle Switch
 - **Blue toggle switch** with power icon labeled "Bomba"
@@ -364,6 +436,8 @@ All code files follow consistent structure with section separators:
 - Meta → Styles → Config → Header → Main Screen → Timer Screen → Programas Screen → Create Program Screen → Footer → Scripts
 
 ### ✅ Completed
+- ✅ **BLE WiFi Provisioning** - Web Bluetooth-based WiFi setup (no code changes needed)
+- ✅ **WiFi Network Scanner** - Automatic network discovery via BLE GATT characteristic
 - ✅ **Automatic program execution** - 15-minute interval checking with conflict resolution
 - ✅ **Timer functionality** - Countdown with auto-shutoff and ESP32 sync
 - ✅ **Manual override detection** - Pauses programs when user takes manual control
@@ -374,12 +448,13 @@ All code files follow consistent structure with section separators:
 - ✅ **Program scheduling** - Up to 3 weekly programs with per-day configuration
 - ✅ **Conflict handling** - Timer cancellation, program priority, manual override
 - ✅ **Signal strength monitoring** - Color-coded WiFi indicators
+- ✅ **Spanish localization** - Complete UI translation
 
 ### 🚧 TODO / Future Enhancements
 
 ## 🚀 Future Enhancements
 
-- [ ] **WiFi Provisioning / Captive Portal** - Allow WiFi network selection at first boot without hard-coding credentials. ESP32 creates temporary access point, user connects and provides WiFi credentials through web interface
+- [ ] **iOS Support for Provisioning** - Detect iOS browsers and show WiFiManager fallback instructions (Web Bluetooth not supported on iOS)
 - [ ] Temperature alert thresholds (low/high water temp)
 - [ ] OTA (Over-The-Air) firmware updates
 - [ ] Historical data visualization and analytics
@@ -387,6 +462,7 @@ All code files follow consistent structure with section separators:
 - [ ] Integration with Home Assistant / Google Home
 - [ ] Multiple device support (control multiple pools)
 - [ ] Relay health monitoring (click count tracking)
+- [ ] **WiFiManager Fallback UI** - Auto-switch to AP mode instructions for devices without Bluetooth
 
 
 ### What Changed
