@@ -211,9 +211,13 @@ const ESP32BLEProvisioning = {
     const { onProgress, onSuccess, onError } = callbacks;
 
     try {
-      // Step 1: Connect to device
-      if (onProgress) onProgress('Buscando dispositivo ESP32...');
-      await this.connect();
+      // Step 1: Connect to device (if not already connected)
+      if (!this.server || !this.server.connected) {
+        if (onProgress) onProgress('Buscando dispositivo ESP32...');
+        await this.connect();
+      } else {
+        if (onProgress) onProgress('Usando conexión existente...');
+      }
 
       // Step 2: Send credentials
       if (onProgress) onProgress('Enviando credenciales WiFi...');
