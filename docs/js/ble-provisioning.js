@@ -156,16 +156,16 @@ const ESP32BLEProvisioning = {
 
     try {
       // Step 1: Connect to device
-      if (onProgress) onProgress('Scanning for ESP32 devices...');
+      if (onProgress) onProgress('Buscando dispositivo ESP32...');
       await this.connect();
 
       // Step 2: Send credentials
-      if (onProgress) onProgress('Sending WiFi credentials...');
+      if (onProgress) onProgress('Enviando credenciales WiFi...');
       await this.sendCredentials(ssid, password);
 
       // Step 3: ESP32 will disconnect BLE after receiving credentials
       // We consider this a success - the ESP32 is now connecting to WiFi
-      if (onProgress) onProgress('Credentials sent! ESP32 connecting to WiFi...');
+      if (onProgress) onProgress('¡Credenciales enviadas! ESP32 conectando a WiFi...');
 
       // Give ESP32 a moment to start WiFi connection, then disconnect our side
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -178,7 +178,7 @@ const ESP32BLEProvisioning = {
         console.log('[BLE] Device already disconnected (expected)');
       }
 
-      if (onProgress) onProgress('Provisioning complete!');
+      if (onProgress) onProgress('¡Configuración completada!');
       if (onSuccess) onSuccess();
 
       console.log('[BLE]  Provisioning completed successfully');

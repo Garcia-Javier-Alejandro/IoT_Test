@@ -909,7 +909,7 @@
         
         // If clearSiteData not available, show manual instructions
         statusDiv.className = 'text-xs text-orange-600';
-        statusDiv.innerHTML = `⚠️ <strong>Manual Clear:</strong><br>1. Press F12 (Dev Tools)<br>2. Application → Storage<br>3. Click "Clear site data" button<br>4. Reload page`;
+        statusDiv.innerHTML = `⚠️ <strong>Borrado Manual:</strong><br>1. Presiona F12 (Dev Tools)<br>2. Application → Storage<br>3. Haz clic en "Clear site data"<br>4. Recarga la página`;
       }
     }
 
@@ -920,14 +920,14 @@
       const connectBtn = document.getElementById('connect-btn');
 
       if (!ssid || !password) {
-        statusDiv.textContent = ' Please enter both SSID and password';
+        statusDiv.textContent = 'Ingresá SSID y contraseña';
         statusDiv.classList.remove('hidden');
         statusDiv.className = 'text-xs text-red-600';
         return;
       }
 
       connectBtn.disabled = true;
-      connectBtn.textContent = 'Scanning...';
+      connectBtn.textContent = 'Buscando...';
       statusDiv.classList.remove('hidden');
       statusDiv.className = 'text-xs text-blue-600';
 
@@ -939,8 +939,8 @@
           },
           onSuccess: () => {
             statusDiv.className = 'text-xs text-green-600 font-semibold';
-            statusDiv.textContent = ' Device connected! Check your ESP32 serial monitor.';
-            connectBtn.textContent = 'Success!';
+            statusDiv.textContent = '✓ ¡Dispositivo conectado! Configuración completada.';
+            connectBtn.textContent = '¡Listo!';
             setTimeout(() => {
               closeProvisionModal();
             }, 3000);
@@ -951,24 +951,24 @@
             
             let errorMsg = error.message;
             if (errorMsg.includes('No Characteristics')) {
-              errorMsg = 'Device found but BLE service not ready. Make sure ESP32 is in provisioning mode (no WiFi saved).';
+              errorMsg = 'Dispositivo encontrado pero servicio BLE no está listo. Asegúrate que el ESP32 esté en modo provisioning.';
             } else if (errorMsg.includes('User cancelled')) {
-              errorMsg = 'Device selection cancelled';
+              errorMsg = 'Selección cancelada';
             } else if (errorMsg.includes('GATT Server')) {
-              errorMsg = 'Connection failed. Try: 1) Unpair device, 2) Restart ESP32, 3) Retry';
+              errorMsg = 'Conexión fallida. Intenta: 1) Desconectar dispositivo, 2) Reiniciar ESP32, 3) Reintentar';
             }
             
-            statusDiv.textContent = ' ' + errorMsg;
+            statusDiv.textContent = errorMsg;
             connectBtn.disabled = false;
-            connectBtn.textContent = 'Retry';
+            connectBtn.textContent = 'Reintentar';
           }
         });
       } catch (error) {
         console.error('[BLE] Provisioning error:', error);
         statusDiv.className = 'text-xs text-red-600';
-        statusDiv.textContent = ' ' + error.message;
+        statusDiv.textContent = error.message;
         connectBtn.disabled = false;
-        connectBtn.textContent = 'Retry';
+        connectBtn.textContent = 'Reintentar';
       }
     }
 
