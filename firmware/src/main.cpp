@@ -498,6 +498,10 @@ bool tryConnectToNetwork(const char* ssid, const char* password) {
   Serial.print("[WiFi] Conectando a ");
   Serial.println(ssid);
   
+  // Desconectar de cualquier red anterior para limpiar el estado
+  WiFi.disconnect(true);  // true = apagar WiFi radio
+  delay(500);             // Dar tiempo para que se limpie el estado
+  
   WiFi.begin(ssid, password);
   uint32_t start = millis();
   
