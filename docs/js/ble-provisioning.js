@@ -107,6 +107,11 @@ const ESP32BLEProvisioning = {
     }
 
     try {
+      console.log('[BLE] Reading networks characteristic (will trigger ESP32 scan)...');
+      
+      // Small delay to let ESP32 process the read request and start scanning
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Read the networks characteristic (ESP32 will perform scan and return JSON)
       const value = await this.networksCharacteristic.readValue();
       let json = new TextDecoder().decode(value);
