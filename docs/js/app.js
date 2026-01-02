@@ -198,11 +198,14 @@ const AppModule = (() => {
   function cacheElements() {
     const mapping = {
       "pump-label": "pumpLabel",
+      "pump-icon": "pumpIcon",
       "pump-ring": "pumpRing",
       "pump-toggle-dot": "pumpToggleDot",
       "valve-toggle-dot": "valveToggleDot",
       "waterfall-icon": "waterfallIcon",
+      "waterfall-label": "waterfallLabel",
       "waterjet-icon": "waterjetIcon",
+      "waterjet-label": "waterjetLabel",
       "btn-valve-toggle": "btnValveToggle",
       "btn-timer": "btnTimer",
       "btn-programas": "btnProgramas",
@@ -528,26 +531,35 @@ const AppModule = (() => {
     // Update vertical toggle switch appearance
     if (elements.btnPump && elements.pumpToggleDot) {
       if (state === "ON") {
-        // Blue background, dot moved to top
+        // Blue background, dot at top, icon at full opacity
         elements.btnPump.classList.remove('bg-slate-300');
         elements.btnPump.classList.add('bg-primary');
-        elements.pumpToggleDot.classList.remove('top-1');
-        elements.pumpToggleDot.classList.add('top-1');
+        elements.pumpToggleDot.style.top = '2px';
+        elements.pumpToggleDot.style.bottom = 'auto';
         elements.pumpToggleDot.style.backgroundColor = '#e2e8f0';
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.opacity = '1';
+        }
       } else if (state === "OFF") {
-        // Grey background, dot at bottom
+        // Grey background, dot at bottom, icon greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
-        elements.pumpToggleDot.style.bottom = '4px';
+        elements.pumpToggleDot.style.bottom = '2px';
         elements.pumpToggleDot.style.top = 'auto';
         elements.pumpToggleDot.style.backgroundColor = 'white';
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.opacity = '0.3';
+        }
       } else {
-        // Unknown state - grey
+        // Unknown state - grey, icon greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
-        elements.pumpToggleDot.style.bottom = '4px';
+        elements.pumpToggleDot.style.bottom = '2px';
         elements.pumpToggleDot.style.top = 'auto';
         elements.pumpToggleDot.style.backgroundColor = 'white';
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.opacity = '0.3';
+        }
       }
     }
 
@@ -557,7 +569,7 @@ const AppModule = (() => {
   /**
    * Update valve mode display
    * Changes vertical toggle slider position to highlight active mode
-   * Top = Cascada (waterfall), Bottom = Eyectores (jets)
+   * Top = Mode 1 (Cascada), Bottom = Mode 2 (Eyectores)
    * 
    * @param {string} mode - "1" | "2" | "UNKNOWN"
    */
@@ -567,46 +579,64 @@ const AppModule = (() => {
     // Update vertical toggle slider based on active mode
     if (elements.btnValveToggle && elements.valveToggleDot) {
       if (mode === "1") {
-        // Cascada active - dot at top
+        // Cascada (Mode 1) active - dot at bottom
         elements.btnValveToggle.classList.remove('bg-slate-300');
         elements.btnValveToggle.classList.add('bg-primary');
-        elements.valveToggleDot.style.bottom = 'auto';
-        elements.valveToggleDot.style.top = '4px';
+        elements.valveToggleDot.style.bottom = '2px';
+        elements.valveToggleDot.style.top = 'auto';
         elements.valveToggleDot.style.backgroundColor = '#e2e8f0';
-        // Highlight Cascada label
+        // Highlight Cascada icon and label
         if (elements.waterfallIcon) {
           elements.waterfallIcon.style.opacity = '1';
+        }
+        if (elements.waterfallLabel) {
+          elements.waterfallLabel.style.opacity = '1';
         }
         if (elements.waterjetIcon) {
           elements.waterjetIcon.style.opacity = '0.3';
         }
+        if (elements.waterjetLabel) {
+          elements.waterjetLabel.style.opacity = '0.3';
+        }
       } else if (mode === "2") {
-        // Eyectores active - dot at bottom
+        // Eyectores (Mode 2) active - dot at top
         elements.btnValveToggle.classList.remove('bg-slate-300');
         elements.btnValveToggle.classList.add('bg-primary');
-        elements.valveToggleDot.style.bottom = '4px';
-        elements.valveToggleDot.style.top = 'auto';
+        elements.valveToggleDot.style.top = '2px';
+        elements.valveToggleDot.style.bottom = 'auto';
         elements.valveToggleDot.style.backgroundColor = '#e2e8f0';
-        // Highlight Eyectores label
+        // Highlight Eyectores icon and label
         if (elements.waterjetIcon) {
           elements.waterjetIcon.style.opacity = '1';
         }
+        if (elements.waterjetLabel) {
+          elements.waterjetLabel.style.opacity = '1';
+        }
         if (elements.waterfallIcon) {
           elements.waterfallIcon.style.opacity = '0.3';
+        }
+        if (elements.waterfallLabel) {
+          elements.waterfallLabel.style.opacity = '0.3';
         }
       } else {
         // Unknown state
         elements.btnValveToggle.classList.remove('bg-primary');
         elements.btnValveToggle.classList.add('bg-slate-300');
-        elements.valveToggleDot.style.bottom = '4px';
+        elements.valveToggleDot.style.bottom = '2px';
         elements.valveToggleDot.style.top = 'auto';
         elements.valveToggleDot.style.backgroundColor = 'white';
-        // Reset both icons
+        // Reset both icons and labels
         if (elements.waterfallIcon) {
           elements.waterfallIcon.style.opacity = '0.3';
         }
+        if (elements.waterfallLabel) {
+          elements.waterfallLabel.style.opacity = '0.3';
+        }
         if (elements.waterjetIcon) {
           elements.waterjetIcon.style.opacity = '0.3';
+        }
+        if (elements.waterjetLabel) {
+          elements.waterjetLabel.style.opacity = '0.3';
         }
       }
     }
