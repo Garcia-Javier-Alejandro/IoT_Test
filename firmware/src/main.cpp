@@ -623,8 +623,8 @@ bool initWiFiProvisioning() {
   Serial.println("[WiFi] Starting WiFi provisioning...");
   
   // OPTIONAL: Uncomment to clear credentials for testing
-  // clearWiFiCredentials();
-  // Serial.println("[WiFi] Credentials cleared for testing");
+  clearWiFiCredentials();
+  Serial.println("[WiFi] Credentials cleared for testing");
   
   // Step 1: Try to load credentials from NVS
   char ssid[33];
