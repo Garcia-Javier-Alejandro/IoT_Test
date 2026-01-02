@@ -2,6 +2,7 @@
 
 #include <WiFi.h>              // WiFi del ESP32
 #include <WiFiClientSecure.h>  // Cliente TLS (HTTPS/MQTTS)
+#include <WiFiManager.h>       // WiFiManager for captive portal provisioning
 #include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
 #include <time.h>              // Para NTP (hora del sistema)
 #include <OneWire.h>           // OneWire protocol for DS18B20
@@ -25,6 +26,7 @@
 static bool pumpState = false;     // Estado lógico de la bomba (ON/OFF)
 static int valveMode = 1;          // Modo de válvulas: 1 o 2
 static float currentTemperature = 0.0; // Temperatura actual en °C
+static bool wifiProvisioned = false;   // Flag para saber si se completó provisioning
 
 // ==================== Timer State ====================
 static bool timerActive = false;   // Timer está corriendo
@@ -477,85 +479,65 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 }
 
 
-// ==================== WiFi Connection ====================
+// ==================== WiFi Connection (Provisioning) ====================
 
 /**
- * Estructura para definir redes WiFi
+ * Callback para when WiFiManager se conecta exitosamente
  */
-struct WiFiNetwork {
-  const char* ssid;
-  const char* password;
-};
-
-/**
- * Helper: Intenta conectar a una red WiFi específica
- * @param ssid SSID de la red
- * @param password Contraseña de la red
- * @return true si se conectó exitosamente, false si timeout
- */
-bool tryConnectToNetwork(const char* ssid, const char* password) {
-  Serial.println();
-  Serial.print("[WiFi] Conectando a ");
-  Serial.println(ssid);
-  
-  // Desconectar de cualquier red anterior para limpiar el estado
-  WiFi.disconnect(true);  // true = apagar WiFi radio
-  delay(500);             // Dar tiempo para que se limpie el estado
-  
-  WiFi.begin(ssid, password);
-  uint32_t start = millis();
-  
-  while (WiFi.status() != WL_CONNECTED && (millis() - start) < WIFI_CONNECT_TIMEOUT) {
-    Serial.print(".");
-    delay(500);
-  }
-  Serial.println();
-  
-  return (WiFi.status() == WL_CONNECTED);
+void onWiFiConnect() {
+  Serial.println("[WiFi] ✓ CONECTADO vía WiFiManager");
+  Serial.print("[WiFi] SSID: ");
+  Serial.println(WiFi.SSID());
+  Serial.print("[WiFi] IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("[WiFi] RSSI: ");
+  Serial.print(WiFi.RSSI());
+  Serial.println(" dBm");
+  wifiProvisioned = true;
 }
 
 /**
- * Conecta a WiFi probando múltiples redes en orden de prioridad
- * Intenta conectar a 3 redes definidas en secrets.h
- * @return true si logró conectar a alguna red, false si todas fallaron
+ * Callback para cuando WiFiManager entra en AP mode (provisioning)
  */
-bool connectWiFi() {
-  WiFi.mode(WIFI_STA);
+void onWiFiAPStart(WiFiManager* wm) {
+  Serial.println("[WiFi] Modo AP iniciado - Captive Portal activo");
+  Serial.print("[WiFi] Conectate a: ");
+  Serial.println(wm->getConfigPortalSSID());
+  Serial.println("[WiFi] Abre tu navegador a: http://192.168.4.1");
+}
+
+/**
+ * Inicializa WiFi con WiFiManager (Captive Portal + Auto-Connect)
+ * - Si no hay credenciales guardadas: abre portal cautivo
+ * - Si hay credenciales guardadas: conecta automáticamente
+ * - Timeout de 3 minutos para el portal (luego entra en reinicio)
+ * @return true si se conectó a WiFi, false si falló
+ */
+bool initWiFiProvisioning() {
+  Serial.println("[WiFi] Inicializando WiFiManager...");
   
-  // Definir array de redes a intentar (en orden de prioridad)
-  WiFiNetwork networks[] = {
-    {WIFI_SSID, WIFI_PASS},
-    {WIFI_SSID_2, WIFI_PASS_2},
-    {WIFI_SSID_3, WIFI_PASS_3}
-  };
-  const int numNetworks = 3;
+  // Crear instancia de WiFiManager
+  WiFiManager wm;
   
-  // Intentar conectar a cada red
-  for (int i = 0; i < numNetworks; i++) {
-    if (tryConnectToNetwork(networks[i].ssid, networks[i].password)) {
-      // Conexión exitosa
-      Serial.println("[WiFi] ✓ CONECTADO");
-      Serial.print("[WiFi] SSID: ");
-      Serial.println(WiFi.SSID());
-      Serial.print("[WiFi] IP: ");
-      Serial.println(WiFi.localIP());
-      Serial.print("[WiFi] RSSI: ");
-      Serial.print(WiFi.RSSI());
-      Serial.println(" dBm");
-      return true;
-    }
-    
-    // Si no es la última red, informar y continuar
-    if (i < numNetworks - 1) {
-      Serial.print("[WiFi] ERROR: timeout con red ");
-      Serial.print(i + 1);
-      Serial.println(". Intentando siguiente...");
-    }
+  // Configurar callbacks
+  wm.setAPCallback(onWiFiAPStart);
+  wm.setSTAGotIPCallback(onWiFiConnect);
+  
+  // Configurar portal (3 minutos timeout, auto-reset si falla)
+  wm.setConfigPortalTimeout(180);  // 3 minutos
+  
+  // Auto-conectar con credenciales guardadas
+  // Si no tiene credenciales, abre el portal cautivo
+  bool connected = wm.autoConnect("ESP32-Pool-Setup", "");
+  
+  if (!connected) {
+    Serial.println("[WiFi] TIMEOUT: No se ingresaron credenciales en el portal");
+    // El ESP32 se reiniciará automáticamente después del timeout
+    return false;
   }
   
-  // Todas las redes fallaron
-  Serial.println("[WiFi] ERROR: timeout conectando a todas las redes WiFi.");
-  return false;
+  return true;
+}
 }
 
 // ==================== NTP Time Synchronization ====================
@@ -708,8 +690,8 @@ void setup() {
   valveMode = 1;
   currentTemperature = 0.0;
 
-  // 1) Conectar WiFi
-  connectWiFi();
+  // 1) Inicializar WiFi con provisioning (Captive Portal)
+  initWiFiProvisioning();
 
   // 2) Sincronizar hora para TLS
   syncTimeNTP();
@@ -756,10 +738,14 @@ void loop() {
     }
   }
   
-  // Si se cae WiFi, intentamos recuperar
+  // Si se cae WiFi, WiFiManager intentará reconectar automáticamente
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Conexión perdida, reconectando...");
-    connectWiFi();
+    Serial.println("[WiFi] Conexión perdida, intentando recuperar...");
+    // WiFiManager maneja la reconexión automáticamente
+    // pero podemos forzar un intento con timeout corto
+    WiFiManager wm;
+    wm.setConfigPortalTimeout(30);  // 30 segundos para reconectar
+    wm.autoConnect();  // Si falla, reinicia después de timeout
     if (mqtt.connected()) publishWiFiState();
   }
 
