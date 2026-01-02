@@ -10,16 +10,16 @@
 
 // =================== Project Includes ====================
 #include "config.h"    // host/puertos/topics/device_id (NO secretos)
-#include "secrets.h"   // wifi y mqtt user/pass (SECRETO, no va a GitHub)
+#include "secrets.h"   // wifi y mqtt user/pass (SECRETO)
 #include "ca_cert.h"   // certificado Root CA (público)
 
 // ==================== Timing Constants ====================
-#define VALVE_SWITCH_DELAY      500       // Tiempo para que las válvulas cambien completamente (ms)
-#define WIFI_CONNECT_TIMEOUT    15000     // Timeout para conexión WiFi (ms)
-#define NTP_SYNC_TIMEOUT        15000     // Timeout para sincronización NTP (ms)
-#define WIFI_STATE_INTERVAL     30000     // Intervalo para publicar estado WiFi (ms)
-#define TIMER_PUBLISH_INTERVAL  10000     // Intervalo para publicar estado del timer (ms)
-#define TEMP_PUBLISH_INTERVAL   60000     // Intervalo para publicar temperatura (ms) - 1 minuto
+#define VALVE_SWITCH_DELAY      500       // Delay for valve switching (ms)
+#define WIFI_CONNECT_TIMEOUT    15000     // Timeout for WiFi connection (ms)
+#define NTP_SYNC_TIMEOUT        15000     // Timeout for NTP synchronization (ms)
+#define WIFI_STATE_INTERVAL     30000     // Interval to publish WiFi state (ms)
+#define TIMER_PUBLISH_INTERVAL  10000     // Interval to publish timer state (ms)
+#define TEMP_PUBLISH_INTERVAL   60000     // Interval to publish temperature (ms) - 1 minute
 #define MIN_VALID_EPOCH         1700000000L // Época mínima válida para NTP (Nov 2023)
 
 // ==================== Hardware State ====================
@@ -523,8 +523,8 @@ bool initWiFiProvisioning() {
   wm.setAPCallback(onWiFiAPStart);
   
   // OPTIONAL: Uncomment to reset saved WiFi credentials for testing
-  // wm.resetSettings();
-  // Serial.println("[WiFi] Credenciales de WiFi reseteadas. Abriendo portal cautivo...");
+  wm.resetSettings();
+  Serial.println("[WiFi] Credenciales de WiFi reseteadas. Abriendo portal cautivo...");
   
   // Configurar portal (3 minutos timeout, auto-reset si falla)
   wm.setConfigPortalTimeout(180);  // 3 minutos
