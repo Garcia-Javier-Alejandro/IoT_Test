@@ -353,6 +353,28 @@
         <button id="add-device-btn" onclick="provisionNewDevice()" class="w-full p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl border-2 border-blue-400 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]">
           <span class="material-icons-round text-white text-lg">bluetooth</span>
           <span class="text-sm font-bold text-white">Add Device</span>
+
+        <!-- BLE Provisioning Modal (hidden by default) -->
+        <div id="provision-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+          <div class="bg-white rounded-2xl p-6 max-w-sm w-11/12 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4 text-slate-800">Add Pool Controller</h3>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">WiFi Network (SSID)</label>
+                <input type="text" id="provision-ssid" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Enter WiFi name" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">WiFi Password</label>
+                <input type="password" id="provision-password" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Enter password" />
+              </div>
+              <div id="provision-status" class="text-xs text-blue-600 hidden"></div>
+              <div class="flex gap-2 mt-4">
+                <button onclick="closeProvisionModal()" class="flex-1 px-4 py-2 bg-slate-200 rounded-lg text-sm font-semibold">Cancel</button>
+                <button onclick="startProvisioning()" id="provision-start-btn" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm font-semibold">Connect</button>
+              </div>
+            </div>
+          </div>
+        </div>
         </button>
       </div>
 
@@ -834,50 +856,83 @@
   <script src="/js/app.js"></script>          <!-- Main application controller -->
   <script src="/js/ble-provisioning.js"></script>
 
-  <!-- BLE Provisioning Function -->
+  
+  <!-- BLE Provisioning Functions -->
   <script>
-    async function provisionNewDevice() {
-      const btn = document.getElementById('add-device-btn');
-      const originalText = btn.innerHTML;
-      
-      // Prompt for WiFi credentials
-      const ssid = prompt('Enter WiFi Network Name (SSID):');
-      if (!ssid) return;
-      
-      const password = prompt('Enter WiFi Password:');
-      if (!password) return;
-      
-      // Update button to show loading
-      btn.disabled = true;
-      btn.innerHTML = '<span class="material-icons-round text-white text-lg animate-spin">bluetooth_searching</span><span class="text-sm font-bold text-white">Scanning...</span>';
-      
+    function provisionNewDevice() {
+      // Show modal to collect credentials
+      document.getElementById('provision-modal').style.display = 'flex';
+      document.getElementById('provision-ssid').focus();
+    }
+
+    function closeProvisionModal() {
+      document.getElementById('provision-modal').style.display = 'none';
+      document.getElementById('provision-ssid').value = '';
+      document.getElementById('provision-password').value = '';
+      document.getElementById('provision-status').classList.add('hidden');
+      document.getElementById('provision-start-btn').disabled = false;
+      document.getElementById('provision-start-btn').textContent = 'Connect';
+    }
+
+    async function startProvisioning() {
+      const ssid = document.getElementById('provision-ssid').value.trim();
+      const password = document.getElementById('provision-password').value;
+      const statusDiv = document.getElementById('provision-status');
+      const startBtn = document.getElementById('provision-start-btn');
+
+      if (!ssid || !password) {
+        statusDiv.textContent = 'Please enter both SSID and password';
+        statusDiv.classList.remove('hidden');
+        statusDiv.className = 'text-xs text-red-600';
+        return;
+      }
+
+      // Disable button and show status
+      startBtn.disabled = true;
+      startBtn.textContent = 'Scanning...';
+      statusDiv.classList.remove('hidden');
+      statusDiv.className = 'text-xs text-blue-600';
+
       try {
         await ESP32BLEProvisioning.provision(ssid, password, {
           onProgress: (msg) => {
             console.log('[BLE]', msg);
-            btn.innerHTML = '<span class="material-icons-round text-white text-lg animate-pulse">bluetooth_connected</span><span class="text-sm font-bold text-white">' + msg + '</span>';
+            statusDiv.textContent = msg;
           },
           onSuccess: () => {
-            btn.innerHTML = '<span class="material-icons-round text-white text-lg">check_circle</span><span class="text-sm font-bold text-white">Device Connected!</span>';
+            statusDiv.className = 'text-xs text-green-600 font-semibold';
+            statusDiv.textContent = ' Device connected successfully!';
+            startBtn.textContent = 'Success!';
             setTimeout(() => {
-              btn.disabled = false;
-              btn.innerHTML = originalText;
-            }, 3000);
+              closeProvisionModal();
+            }, 2000);
           },
           onError: (error) => {
-            alert('Provisioning failed: ' + error.message);
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            statusDiv.className = 'text-xs text-red-600';
+            statusDiv.textContent = ' Error: ' + error.message;
+            startBtn.disabled = false;
+            startBtn.textContent = 'Retry';
           }
         });
       } catch (error) {
-        alert('Error: ' + error.message);
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        statusDiv.className = 'text-xs text-red-600';
+        statusDiv.textContent = ' Failed: ' + error.message;
+        startBtn.disabled = false;
+        startBtn.textContent = 'Retry';
       }
     }
+
+    // Allow Enter key to submit
+    document.addEventListener('DOMContentLoaded', () => {
+      ['provision-ssid', 'provision-password'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') startProvisioning();
+        });
+      });
+    });
   </script>`n</body>
 </html>
+
 
 
 
