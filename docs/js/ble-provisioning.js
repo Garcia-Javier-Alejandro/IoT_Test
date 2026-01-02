@@ -52,9 +52,7 @@ const ESP32BLEProvisioning = {
 
       // Request device with our service UUID filter
       this.device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { namePrefix: 'ESP32-Pool' }
-        ],
+        acceptAllDevices: true,
         optionalServices: [this.SERVICE_UUID]
       });
 
