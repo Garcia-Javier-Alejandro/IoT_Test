@@ -521,7 +521,6 @@ bool initWiFiProvisioning() {
   
   // Configurar callbacks
   wm.setAPCallback(onWiFiAPStart);
-  wm.setSTAGotIPCallback(onWiFiConnect);
   
   // Configurar portal (3 minutos timeout, auto-reset si falla)
   wm.setConfigPortalTimeout(180);  // 3 minutos
@@ -536,8 +535,10 @@ bool initWiFiProvisioning() {
     return false;
   }
   
+  // Callback manual para cuando se conecta
+  onWiFiConnect();
+  
   return true;
-}
 }
 
 // ==================== NTP Time Synchronization ====================
