@@ -884,15 +884,41 @@
       const statusDiv = document.getElementById('provision-status');
       statusDiv.classList.remove('hidden');
       statusDiv.className = 'text-xs text-blue-600';
-      statusDiv.textContent = 'Checking for paired devices...';
       
+      // Check if getDevices() API is available
+      if (!navigator.bluetooth.getDevices) {
+        // Fallback: Show device picker so user can see what's paired
+        statusDiv.textContent = 'Opening device selector...';
+        
+        try {
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: 'ESP32-Pool' }],
+            optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
+          });
+          
+          statusDiv.className = 'text-xs text-orange-600';
+          statusDiv.innerHTML = `⚠️ Found: <strong>${device.name}</strong><br>To unpair: Chrome menu (⋮) → Settings → Privacy and security → Site Settings → View permissions and data stored across sites → Search "iot-5wo" → Bluetooth → Remove`;
+          
+        } catch (err) {
+          if (err.message.includes('User cancelled')) {
+            statusDiv.classList.add('hidden');
+          } else {
+            statusDiv.className = 'text-xs text-slate-600';
+            statusDiv.textContent = 'ℹ️ No devices found or operation cancelled';
+          }
+        }
+        return;
+      }
+      
+      // Modern approach with getDevices()
       try {
-        // Use getDevices() API to list previously paired devices
+        statusDiv.textContent = 'Checking for paired devices...';
         const devices = await navigator.bluetooth.getDevices();
         
         if (devices.length === 0) {
           statusDiv.className = 'text-xs text-slate-600';
-          statusDiv.textContent = 'ℹ️ No paired ESP32 devices found';
+          statusDiv.textContent = '✓ No paired devices found';
+          setTimeout(() => statusDiv.classList.add('hidden'), 2000);
           return;
         }
         
@@ -901,24 +927,32 @@
         
         if (esp32Devices.length === 0) {
           statusDiv.className = 'text-xs text-slate-600';
-          statusDiv.textContent = `ℹ️ Found ${devices.length} paired device(s), but none are ESP32-Pool devices`;
+          statusDiv.textContent = `ℹ️ Found ${devices.length} paired device(s), but none are ESP32-Pool`;
+          setTimeout(() => statusDiv.classList.add('hidden'), 3000);
           return;
         }
         
         // Forget all ESP32-Pool devices
         statusDiv.textContent = `Forgetting ${esp32Devices.length} device(s)...`;
         
+        let successCount = 0;
         for (const device of esp32Devices) {
           try {
             await device.forget();
-            console.log(`[BLE] Forgot device: ${device.name}`);
+            console.log(`[BLE] ✓ Forgot device: ${device.name}`);
+            successCount++;
           } catch (err) {
-            console.error(`[BLE] Failed to forget ${device.name}:`, err);
+            console.error(`[BLE] ✗ Failed to forget ${device.name}:`, err);
           }
         }
         
-        statusDiv.className = 'text-xs text-green-600';
-        statusDiv.textContent = `✓ Successfully forgot ${esp32Devices.length} ESP32 device(s)`;
+        if (successCount > 0) {
+          statusDiv.className = 'text-xs text-green-600';
+          statusDiv.textContent = `✓ Successfully unpaired ${successCount} device(s)`;
+        } else {
+          statusDiv.className = 'text-xs text-red-600';
+          statusDiv.textContent = '✗ Failed to unpair devices';
+        }
         
         setTimeout(() => {
           statusDiv.classList.add('hidden');
@@ -926,8 +960,9 @@
         
       } catch (error) {
         console.error('[BLE] Unpair error:', error);
-        statusDiv.className = 'text-xs text-orange-600';
-        statusDiv.textContent = 'ℹ️ To unpair: Chrome Settings → Privacy → Site Settings → Bluetooth';
+        statusDiv.className = 'text-xs text-red-600';
+        statusDiv.textContent = '✗ Error accessing paired devices';
+        setTimeout(() => statusDiv.classList.add('hidden'), 3000);
       }
     }
 
