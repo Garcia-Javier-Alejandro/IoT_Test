@@ -6,6 +6,7 @@
 #include "ble_provisioning.h"
 #include <NimBLEDevice.h>
 #include <Preferences.h>
+#include <WiFi.h>
 
 // ==================== BLE UUIDs ====================
 // Custom UUIDs for Pool Controller WiFi Provisioning Service
@@ -99,7 +100,21 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
       }
     }
   }
+  
+  void onRead(NimBLECharacteristic* pCharacteristic) {
+    std::string uuid = pCharacteristic->getUUID().toString();
+    
+    // Trigger WiFi scan when networks characteristic is read
+    if (uuid == NETWORKS_CHAR_UUID) {
+      Serial.println("[BLE] Networks characteristic read - triggering WiFi scan");
+      String json = scanWiFiNetworks();
+      pCharacteristic->setValue(json.c_str());
+    }
+  }
 };
+
+// Forward declaration for scanWiFiNetworks
+String scanWiFiNetworks();
 
 // ==================== Public Functions ====================
 
@@ -153,6 +168,7 @@ void initBLEProvisioning() {
     NETWORKS_CHAR_UUID,
     NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
   );
+  pNetworksCharacteristic->setCallbacks(new CharacteristicCallbacks());
   pNetworksCharacteristic->setValue("[]"); // Initial empty list
   
   // Start the service
@@ -276,12 +292,8 @@ String scanWiFiNetworks() {
   Serial.print("[BLE] JSON size: ");
   Serial.print(json.length());
   Serial.println(" bytes");
-  
-  // Update characteristic for client to read
-  if (pNetworksCharacteristic) {
-    pNetworksCharacteristic->setValue(json.c_str());
-    pNetworksCharacteristic->notify();
-  }
+  Serial.print("[BLE] JSON: ");
+  Serial.println(json);
   
   return json;
 }
