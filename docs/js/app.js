@@ -29,6 +29,52 @@ const AppModule = (() => {
   const STORAGE_KEY_USER = 'mqtt_user';      // localStorage key for MQTT username
   const STORAGE_KEY_PASS = 'mqtt_pass';      // localStorage key for MQTT password
   
+  // ==================== Credential Provider ====================
+  /**
+   * Get MQTT credentials for authentication
+   * 
+   * PHASE 1 (Current): Returns hardcoded credentials for single-user mode
+   * PHASE 2 (Future): Fetch from backend API after user authentication
+   * 
+   * This abstraction allows easy migration to multi-user without changing
+   * the connection logic throughout the application.
+   * 
+   * @returns {Promise<{user: string, pass: string}>} MQTT credentials
+   */
+  async function getMQTTCredentials() {
+    // PHASE 1: Single-user hardcoded credentials
+    // TODO: Move these to config.js or environment variables
+    return {
+      user: 'User-dashboard-01',
+      pass: 'Manzana1'
+    };
+    
+    /* PHASE 2: Multi-user authentication (uncomment when backend ready)
+    try {
+      const response = await fetch('/api/auth/mqtt-credentials', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`, // JWT or session token
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch MQTT credentials');
+      }
+      
+      const credentials = await response.json();
+      return {
+        user: credentials.mqttUser,
+        pass: credentials.mqttPass
+      };
+    } catch (error) {
+      console.error('[Auth] Failed to get MQTT credentials:', error);
+      throw new Error('Authentication failed. Please login again.');
+    }
+    */
+  }
+  
   // ==================== Application State ====================
   // UI state
   let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
@@ -116,15 +162,24 @@ const AppModule = (() => {
     resetWiFiStatus();  // Reset WiFi status display
     disconnectUI();
 
-    // Auto-connect if credentials are available
-    if (elements.userInput.value && elements.passInput.value) {
-      connectMQTT(
-        elements.userInput.value.trim(),
-        elements.passInput.value,
-        MQTT_WSS_URL
-      );
-    } else {
-      LogModule.append("Ingresá credenciales MQTT y presioná Conectar");
+    // Hide login card in single-user mode (PHASE 1)
+    // In PHASE 2 (multi-user), remove this to show login UI
+    if (elements.loginCard) {
+      elements.loginCard.style.display = 'none';
+    }
+
+    // Auto-connect to MQTT on page load (single-user mode)
+    try {
+      LogModule.append('Conectando automáticamente...');
+      const credentials = await getMQTTCredentials();
+      connectMQTT(credentials.user, credentials.pass, MQTT_WSS_URL);
+    } catch (error) {
+      console.error('[Auth] Auto-connect failed:', error);
+      LogModule.append('Error de autenticación');
+      // Show login card if auto-connect fails (fallback to manual login)
+      if (elements.loginCard) {
+        elements.loginCard.style.display = 'block';
+      }
     }
 
     // Cleanup on page unload
@@ -164,10 +219,10 @@ const AppModule = (() => {
       "log-container": "logContainer",
       "log-toggle-icon": "logToggleIcon",
       "log-timestamp": "logTimestamp",
+      "login-card": "loginCard",
       "mqtt-user": "userInput",
       "mqtt-pass": "passInput",
       "btn-connect": "btnConnect",
-      "login-card": "loginCard",
       "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
       "main-screen": "mainScreen",
@@ -257,17 +312,15 @@ const AppModule = (() => {
    * - Program scheduling interface
    */
   function wireUIEvents() {
-    // Connect button
+    // Connect button (hidden in single-user mode, kept for future multi-user)
     if (elements.btnConnect) {
-      elements.btnConnect.addEventListener("click", () => {
-        const u = elements.userInput.value.trim();
-        const p = elements.passInput.value;
-        if (!u || !p) {
-          LogModule.append("Completá username y password");
-          return;
+      elements.btnConnect.addEventListener("click", async () => {
+        try {
+          const credentials = await getMQTTCredentials();
+          connectMQTT(credentials.user, credentials.pass, window.APP_CONFIG.MQTT_WSS_URL);
+        } catch (error) {
+          LogModule.append(`Error de autenticación: ${error.message}`);
         }
-        saveStoredCredentials(u, p);
-        connectMQTT(u, p, window.APP_CONFIG.MQTT_WSS_URL);
       });
     }
 

@@ -441,14 +441,10 @@ All code files follow consistent structure with section separators:
 - ✅ **Automatic program execution** - 15-minute interval checking with conflict resolution
 - ✅ **Timer functionality** - Countdown with auto-shutoff and ESP32 sync
 - ✅ **Manual override detection** - Pauses programs when user takes manual control
-- ✅ **Code refactoring** - Comprehensive documentation and section separators
-- ✅ **WiFi multi-network** - Automatic fallback to 3 configured networks
-- ✅ **Custom waterfall icon** - SVG icon for Cascada mode
 - ✅ **Responsive UI polish** - Smaller table sizes, improved spacing
 - ✅ **Program scheduling** - Up to 3 weekly programs with per-day configuration
 - ✅ **Conflict handling** - Timer cancellation, program priority, manual override
 - ✅ **Signal strength monitoring** - Color-coded WiFi indicators
-- ✅ **Spanish localization** - Complete UI translation
 
 ### 🚧 TODO / Future Enhancements
 
@@ -465,18 +461,6 @@ All code files follow consistent structure with section separators:
 - [ ] **WiFiManager Fallback UI** - Auto-switch to AP mode instructions for devices without Bluetooth
 
 
-### What Changed
-
-| Old System | New System |
-|------------|------------|
-| 2× Independent valves | Single relay → parallel NC+NO valves |
-| MOSFET control | SONGLE standard relays |
-| No sensors | DS18B20 temperature sensor |
-| Separate ON/OFF buttons | Click-to-toggle cards |
-
-
----
-
 ## 📄 License
 
 This project is provided as-is for personal use. No warranty. Use at your own risk.
@@ -488,19 +472,22 @@ This project is provided as-is for personal use. No warranty. Use at your own ri
 ## 🙏 Credits
 
 - **Original valve control project**: Foundation for this pool system
+**Developed by**: [Javier Alejandro Garcia](https://github.com/Garcia-Javier-Alejandro)
+
+**Built with**:
 - **MQTT.js**: Client library for browser-based MQTT
-- **PubSubClient**: Arduino MQTT library
+- **PubSubClient**: Arduino MQTT library  
+- **NimBLE-Arduino**: Lightweight Bluetooth Low Energy stack
 - **HiveMQ Cloud**: Free tier MQTT broker with TLS
 - **PlatformIO**: ESP32 development environment
-
+- **Tailwind CSS**: Utility-first CSS framework
 ---
 
 ## 📧 Support
 
 For issues or questions:
-1. Check **Troubleshooting** section above
-2. Review **WIRING_DIAGRAM.md** for hardware questions
-3. Open GitHub issue with:
+1. Review **WIRING_DIAGRAM.md** for hardware questions
+2. Open GitHub issue with:
    - Serial monitor output
    - Photos of wiring (if hardware related)
    - Dashboard console errors (F12 in browser)
