@@ -1,0 +1,214 @@
+/**
+ * @file ble_provisioning.cpp
+ * @brief BLE Provisioning implementation for ESP32 Pool Controller
+ */
+
+#include "ble_provisioning.h"
+#include <NimBLEDevice.h>
+#include <Preferences.h>
+
+// ==================== BLE UUIDs ====================
+// Custom UUIDs for Pool Controller WiFi Provisioning Service
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SSID_CHAR_UUID      "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define PASSWORD_CHAR_UUID  "cba1d466-344c-4be3-ab3f-189f80dd7518"
+#define STATUS_CHAR_UUID    "8d8218b6-97bc-4527-a8db-13094ac06b1d"
+
+// ==================== Global BLE Objects ====================
+static NimBLEServer* pServer = nullptr;
+static NimBLECharacteristic* pSSIDCharacteristic = nullptr;
+static NimBLECharacteristic* pPasswordCharacteristic = nullptr;
+static NimBLECharacteristic* pStatusCharacteristic = nullptr;
+
+// ==================== State Variables ====================
+static bool bleActive = false;
+static bool newCredentialsReceived = false;
+static String receivedSSID = "";
+static String receivedPassword = "";
+static bool deviceConnected = false;
+
+// ==================== BLE Callbacks ====================
+
+/**
+ * Server callback - handles client connect/disconnect events
+ */
+class ServerCallbacks : public NimBLEServerCallbacks {
+  void onConnect(NimBLEServer* pServer) {
+    deviceConnected = true;
+    Serial.println("[BLE] Client connected");
+    
+    // Update status characteristic
+    if (pStatusCharacteristic) {
+      pStatusCharacteristic->setValue("connected");
+      pStatusCharacteristic->notify();
+    }
+  }
+
+  void onDisconnect(NimBLEServer* pServer) {
+    deviceConnected = false;
+    Serial.println("[BLE] Client disconnected");
+    
+    // Restart advertising so others can connect
+    NimBLEDevice::startAdvertising();
+    Serial.println("[BLE] Advertising restarted");
+  }
+};
+
+/**
+ * Characteristic callbacks - handles write events for WiFi credentials
+ */
+class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic* pCharacteristic) {
+    std::string uuid = pCharacteristic->getUUID().toString();
+    std::string value = pCharacteristic->getValue();
+    
+    if (uuid == SSID_CHAR_UUID) {
+      receivedSSID = String(value.c_str());
+      Serial.print("[BLE] SSID received: ");
+      Serial.println(receivedSSID);
+      
+      // Update status
+      if (pStatusCharacteristic) {
+        pStatusCharacteristic->setValue("ssid_received");
+        pStatusCharacteristic->notify();
+      }
+    } 
+    else if (uuid == PASSWORD_CHAR_UUID) {
+      receivedPassword = String(value.c_str());
+      Serial.print("[BLE] Password received (");
+      Serial.print(receivedPassword.length());
+      Serial.println(" chars)");
+      
+      // Update status
+      if (pStatusCharacteristic) {
+        pStatusCharacteristic->setValue("password_received");
+        pStatusCharacteristic->notify();
+      }
+      
+      // Both credentials received
+      if (receivedSSID.length() > 0 && receivedPassword.length() > 0) {
+        newCredentialsReceived = true;
+        Serial.println("[BLE] ✓ WiFi credentials complete");
+        
+        if (pStatusCharacteristic) {
+          pStatusCharacteristic->setValue("credentials_ready");
+          pStatusCharacteristic->notify();
+        }
+      }
+    }
+  }
+};
+
+// ==================== Public Functions ====================
+
+void initBLEProvisioning() {
+  Serial.println("[BLE] Initializing BLE provisioning...");
+  
+  // Generate device name with MAC address suffix
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  char deviceName[32];
+  snprintf(deviceName, sizeof(deviceName), "ESP32-Pool-%02X%02X", mac[4], mac[5]);
+  
+  Serial.print("[BLE] Device name: ");
+  Serial.println(deviceName);
+  
+  // Initialize NimBLE
+  NimBLEDevice::init(deviceName);
+  
+  // Create BLE Server
+  pServer = NimBLEDevice::createServer();
+  pServer->setCallbacks(new ServerCallbacks());
+  
+  // Create BLE Service
+  NimBLEService* pService = pServer->createService(SERVICE_UUID);
+  
+  // Create SSID Characteristic (Read/Write)
+  pSSIDCharacteristic = pService->createCharacteristic(
+    SSID_CHAR_UUID,
+    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
+  );
+  pSSIDCharacteristic->setCallbacks(new CharacteristicCallbacks());
+  pSSIDCharacteristic->setValue(""); // Initial empty value
+  
+  // Create Password Characteristic (Write only for security)
+  pPasswordCharacteristic = pService->createCharacteristic(
+    PASSWORD_CHAR_UUID,
+    NIMBLE_PROPERTY::WRITE
+  );
+  pPasswordCharacteristic->setCallbacks(new CharacteristicCallbacks());
+  pPasswordCharacteristic->setValue("");
+  
+  // Create Status Characteristic (Read/Notify)
+  pStatusCharacteristic = pService->createCharacteristic(
+    STATUS_CHAR_UUID,
+    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
+  );
+  pStatusCharacteristic->setValue("waiting");
+  
+  // Start the service
+  pService->start();
+  
+  // Start advertising
+  NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);  // Apple connection parameter
+  pAdvertising->setMaxPreferred(0x12);
+  
+  NimBLEDevice::startAdvertising();
+  
+  bleActive = true;
+  
+  Serial.println("[BLE] ✓ Provisioning service started");
+  Serial.println("[BLE] Waiting for dashboard connection...");
+  Serial.print("[BLE] Service UUID: ");
+  Serial.println(SERVICE_UUID);
+}
+
+void stopBLEProvisioning() {
+  if (!bleActive) return;
+  
+  Serial.println("[BLE] Stopping provisioning service...");
+  
+  NimBLEDevice::stopAdvertising();
+  
+  // deinit() automatically disconnects all clients
+  NimBLEDevice::deinit(true);
+  
+  bleActive = false;
+  deviceConnected = false;
+  pServer = nullptr;
+  
+  Serial.println("[BLE] ✓ Provisioning stopped");
+}
+
+bool isBLEProvisioningActive() {
+  return bleActive;
+}
+
+bool hasNewWiFiCredentials() {
+  return newCredentialsReceived;
+}
+
+bool getBLEWiFiSSID(char* ssid) {
+  if (receivedSSID.length() == 0) return false;
+  
+  strncpy(ssid, receivedSSID.c_str(), 32);
+  ssid[32] = '\0';
+  return true;
+}
+
+bool getBLEWiFiPassword(char* password) {
+  if (receivedPassword.length() == 0) return false;
+  
+  strncpy(password, receivedPassword.c_str(), 63);
+  password[63] = '\0';
+  return true;
+}
+
+void clearBLECredentials() {
+  newCredentialsReceived = false;
+  receivedSSID = "";
+  receivedPassword = "";
+}

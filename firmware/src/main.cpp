@@ -2,24 +2,28 @@
 
 #include <WiFi.h>              // WiFi del ESP32
 #include <WiFiClientSecure.h>  // Cliente TLS (HTTPS/MQTTS)
-#include <WiFiManager.h>       // WiFiManager for captive portal provisioning
+#include <WiFiManager.h>       // WiFiManager for captive portal provisioning (fallback)
 #include <PubSubClient.h>      // MQTT client (usa un Client por debajo)
 #include <time.h>              // Para NTP (hora del sistema)
 #include <OneWire.h>           // OneWire protocol for DS18B20
 #include <DallasTemperature.h> // DS18B20 temperature sensor library
+#include <Preferences.h>       // NVS storage for WiFi credentials
 
 // =================== Project Includes ====================
 #include "config.h"    // host/puertos/topics/device_id (NO secretos)
 #include "secrets.h"   // wifi y mqtt user/pass (SECRETO)
 #include "ca_cert.h"   // certificado Root CA (público)
+#include "ble_provisioning.h"  // BLE provisioning for WiFi credentials
 
 // ==================== Timing Constants ====================
 #define VALVE_SWITCH_DELAY      500       // Delay for valve switching (ms)
 #define WIFI_CONNECT_TIMEOUT    15000     // Timeout for WiFi connection (ms)
+#define WIFI_RECONNECT_INTERVAL 10000     // Check WiFi status every 10 seconds
 #define NTP_SYNC_TIMEOUT        15000     // Timeout for NTP synchronization (ms)
 #define WIFI_STATE_INTERVAL     30000     // Interval to publish WiFi state (ms)
 #define TIMER_PUBLISH_INTERVAL  10000     // Interval to publish timer state (ms)
 #define TEMP_PUBLISH_INTERVAL   60000     // Interval to publish temperature (ms) - 1 minute
+#define BLE_CHECK_INTERVAL      1000      // Check for BLE credentials every 1 second
 #define MIN_VALID_EPOCH         1700000000L // Época mínima válida para NTP (Nov 2023)
 
 // ==================== Hardware State ====================
@@ -481,6 +485,103 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 
 // ==================== WiFi Connection (Provisioning) ====================
 
+// NVS storage instance for WiFi credentials
+Preferences preferences;
+
+/**
+ * Load WiFi credentials from NVS (non-volatile storage)
+ * @param ssid Buffer for SSID (min 33 bytes)
+ * @param password Buffer for password (min 64 bytes)
+ * @return true if credentials exist in NVS, false otherwise
+ */
+bool loadWiFiCredentials(char* ssid, char* password) {
+  preferences.begin("wifi", true); // read-only
+  
+  String savedSSID = preferences.getString("ssid", "");
+  String savedPassword = preferences.getString("password", "");
+  
+  preferences.end();
+  
+  if (savedSSID.length() == 0) {
+    Serial.println("[NVS] No WiFi credentials stored");
+    return false;
+  }
+  
+  strncpy(ssid, savedSSID.c_str(), 32);
+  ssid[32] = '\0';
+  strncpy(password, savedPassword.c_str(), 63);
+  password[63] = '\0';
+  
+  Serial.print("[NVS] ✓ Loaded WiFi credentials for: ");
+  Serial.println(ssid);
+  return true;
+}
+
+/**
+ * Save WiFi credentials to NVS (non-volatile storage)
+ * @param ssid WiFi SSID
+ * @param password WiFi password
+ */
+void saveWiFiCredentials(const char* ssid, const char* password) {
+  preferences.begin("wifi", false); // read-write
+  
+  preferences.putString("ssid", ssid);
+  preferences.putString("password", password);
+  
+  preferences.end();
+  
+  Serial.print("[NVS] ✓ Saved WiFi credentials for: ");
+  Serial.println(ssid);
+}
+
+/**
+ * Clear WiFi credentials from NVS
+ * Useful for testing or factory reset
+ */
+void clearWiFiCredentials() {
+  preferences.begin("wifi", false);
+  preferences.clear();
+  preferences.end();
+  Serial.println("[NVS] WiFi credentials cleared");
+}
+
+/**
+ * Connect to WiFi using stored credentials
+ * @param ssid WiFi SSID
+ * @param password WiFi password
+ * @return true if connected successfully, false otherwise
+ */
+bool connectWiFi(const char* ssid, const char* password) {
+  Serial.print("[WiFi] Connecting to: ");
+  Serial.println(ssid);
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  uint32_t startTime = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_CONNECT_TIMEOUT) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("[WiFi] ✓ CONNECTED");
+    Serial.print("[WiFi] SSID: ");
+    Serial.println(WiFi.SSID());
+    Serial.print("[WiFi] IP: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("[WiFi] RSSI: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
+    wifiProvisioned = true;
+    return true;
+  } else {
+    Serial.println("[WiFi] ✗ Connection FAILED");
+    return false;
+  }
+}
+
 /**
  * Callback para when WiFiManager se conecta exitosamente
  */
@@ -507,24 +608,60 @@ void onWiFiAPStart(WiFiManager* wm) {
 }
 
 /**
- * Inicializa WiFi con WiFiManager (Captive Portal + Auto-Connect)
- * - Si no hay credenciales guardadas: abre portal cautivo
- * - Si hay credenciales guardadas: conecta automáticamente
- * - Timeout de 3 minutos para el portal (luego entra en reinicio)
- * @return true si se conectó a WiFi, false si falló
+ * Initialize WiFi with BLE Provisioning (primary) + WiFiManager fallback
+ * 
+ * Provisioning flow:
+ * 1. Try to load WiFi credentials from NVS
+ * 2. If credentials exist, connect to WiFi directly
+ * 3. If no credentials, start BLE provisioning
+ * 4. Wait for credentials from Web Bluetooth dashboard
+ * 5. If BLE times out or fails, fall back to WiFiManager captive portal
+ * 
+ * @return true if connected to WiFi, false if provisioning is in progress
  */
 bool initWiFiProvisioning() {
-  Serial.println("[WiFi] Inicializando WiFiManager...");
+  Serial.println("[WiFi] Starting WiFi provisioning...");
+  
+  // OPTIONAL: Uncomment to clear credentials for testing
+  // clearWiFiCredentials();
+  // Serial.println("[WiFi] Credentials cleared for testing");
+  
+  // Step 1: Try to load credentials from NVS
+  char ssid[33];
+  char password[64];
+  
+  if (loadWiFiCredentials(ssid, password)) {
+    // Step 2: Try to connect with saved credentials
+    if (connectWiFi(ssid, password)) {
+      return true;  // Success!
+    }
+    
+    // Credentials exist but connection failed - clear and re-provision
+    Serial.println("[WiFi] Saved credentials failed, clearing...");
+    clearWiFiCredentials();
+  }
+  
+  // Step 3: No credentials or connection failed - start BLE provisioning
+  Serial.println("[WiFi] No valid credentials - starting BLE provisioning...");
+  initBLEProvisioning();
+  
+  // BLE provisioning is non-blocking - credentials will be received in loop()
+  return false;
+}
+
+/**
+ * Fallback: Use WiFiManager captive portal if BLE provisioning fails
+ * This provides backwards compatibility and alternative provisioning method
+ * @return true if connected to WiFi, false if failed
+ */
+bool initWiFiManagerFallback() {
+  Serial.println("[WiFi] Starting WiFiManager fallback...");
   
   // Crear instancia de WiFiManager
   WiFiManager wm;
   
   // Configurar callbacks
   wm.setAPCallback(onWiFiAPStart);
-  
-  // OPTIONAL: Uncomment to reset saved WiFi credentials for testing
-  wm.resetSettings();
-  Serial.println("[WiFi] Credenciales de WiFi reseteadas. Abriendo portal cautivo...");
   
   // Configurar portal (3 minutos timeout, auto-reset si falla)
   wm.setConfigPortalTimeout(180);  // 3 minutos
@@ -543,6 +680,9 @@ bool initWiFiProvisioning() {
     // El ESP32 se reiniciará automáticamente después del timeout
     return false;
   }
+  
+  // Save credentials to NVS for next boot
+  saveWiFiCredentials(WiFi.SSID().c_str(), WiFi.psk().c_str());
   
   // Callback manual para cuando se conecta
   onWiFiConnect();
@@ -700,19 +840,28 @@ void setup() {
   valveMode = 1;
   currentTemperature = 0.0;
 
-  // 1) Inicializar WiFi con provisioning (Captive Portal)
-  initWiFiProvisioning();
-
-  // 2) Sincronizar hora para TLS
-  syncTimeNTP();
-
-  // 3) Configurar y conectar MQTT
-  setupMqtt();
-  connectMqtt();
+  // 1) Inicializar WiFi con provisioning (BLE primary, WiFiManager fallback)
+  bool wifiConnected = initWiFiProvisioning();
   
-  Serial.println("========================================");
-  Serial.println("   Sistema listo");
-  Serial.println("========================================");
+  if (wifiConnected) {
+    // WiFi connected immediately (had saved credentials)
+    // 2) Sincronizar hora para TLS
+    syncTimeNTP();
+
+    // 3) Configurar y conectar MQTT
+    setupMqtt();
+    connectMqtt();
+    
+    Serial.println("========================================");
+    Serial.println("   Sistema listo");
+    Serial.println("========================================");
+  } else {
+    // BLE provisioning started - waiting for credentials
+    Serial.println("========================================");
+    Serial.println("   Waiting for BLE provisioning...");
+    Serial.println("   Open dashboard to provision device");
+    Serial.println("========================================");
+  }
 }
 
 /**
@@ -726,6 +875,84 @@ void setup() {
  * 6. Procesar mensajes MQTT entrantes (mqtt.loop)
  */
 void loop() {
+  // ===== BLE Provisioning Check =====
+  // If BLE is active, check for new credentials from dashboard
+  static uint32_t lastBLECheck = 0;
+  if (isBLEProvisioningActive() && millis() - lastBLECheck > BLE_CHECK_INTERVAL) {
+    lastBLECheck = millis();
+    
+    if (hasNewWiFiCredentials()) {
+      char ssid[33];
+      char password[64];
+      
+      if (getBLEWiFiSSID(ssid) && getBLEWiFiPassword(password)) {
+        Serial.println("[BLE] ✓ Credentials received from dashboard");
+        
+        // Stop BLE to free resources
+        stopBLEProvisioning();
+        
+        // Try to connect with BLE credentials
+        if (connectWiFi(ssid, password)) {
+          // Save to NVS for future boots
+          saveWiFiCredentials(ssid, password);
+          clearBLECredentials();
+          
+          // Complete system initialization
+          Serial.println("[System] Completing initialization...");
+          syncTimeNTP();
+          setupMqtt();
+          connectMqtt();
+          
+          Serial.println("========================================");
+          Serial.println("   Sistema listo (via BLE)");
+          Serial.println("========================================");
+        } else {
+          // Connection failed - restart BLE or try WiFiManager fallback
+          Serial.println("[WiFi] BLE credentials failed - trying WiFiManager fallback...");
+          clearBLECredentials();
+          
+          if (initWiFiManagerFallback()) {
+            syncTimeNTP();
+            setupMqtt();
+            connectMqtt();
+          }
+        }
+      }
+    }
+    
+    // If BLE is running, skip normal operations
+    return;
+  }
+  
+  // ===== Normal Operations (only when WiFi connected) =====
+  // Check WiFi status periodically, not every loop (prevents spam)
+  static uint32_t lastWiFiCheck = 0;
+  if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > WIFI_RECONNECT_INTERVAL) {
+    lastWiFiCheck = millis();
+    
+    // WiFi disconnected - try to reconnect
+    Serial.println("[WiFi] Conexión perdida, intentando recuperar...");
+    
+    char ssid[33];
+    char password[64];
+    if (loadWiFiCredentials(ssid, password)) {
+      connectWiFi(ssid, password);
+    } else {
+      // No credentials - restart BLE provisioning (only if not already active)
+      if (!isBLEProvisioningActive()) {
+        Serial.println("[WiFi] No credentials - starting BLE provisioning...");
+        initBLEProvisioning();
+      }
+    }
+    return;
+  }
+  
+  // If WiFi not connected and BLE not active, just wait
+  if (WiFi.status() != WL_CONNECTED) {
+    delay(100);
+    return;
+  }
+  
   // Actualizar timer si está activo
   updateTimer();
   
@@ -748,17 +975,6 @@ void loop() {
     }
   }
   
-  // Si se cae WiFi, WiFiManager intentará reconectar automáticamente
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Conexión perdida, intentando recuperar...");
-    // WiFiManager maneja la reconexión automáticamente
-    // pero podemos forzar un intento con timeout corto
-    WiFiManager wm;
-    wm.setConfigPortalTimeout(30);  // 30 segundos para reconectar
-    wm.autoConnect();  // Si falla, reinicia después de timeout
-    if (mqtt.connected()) publishWiFiState();
-  }
-
   // Si se cae MQTT, reconectamos
   if (!mqtt.connected()) {
     Serial.println("[MQTT] Conexión perdida, reconectando...");
