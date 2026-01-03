@@ -1,6 +1,6 @@
-# ESP32 Pool Control System v2.0
+# ESP32 Pool Control System v2.5
 
-IoT-based swimming pool control system using ESP32, MQTT, and DS18B20 temperature sensor. Controls a 220V pump and 24V electrovalves with manual override capability and automated scheduling.
+IoT-based swimming pool control system using ESP32, MQTT, and DS18B20 temperature sensor. Controls a 220V pump and 24V electrovalves with manual override capability, automated scheduling, and BLE WiFi provisioning.
 
 ## 🏊 Project Overview
 
@@ -15,19 +15,21 @@ This system allows remote control of:
 
 - ✅ **BLE WiFi Provisioning** - No-code WiFi setup via Web Bluetooth from any Chrome/Edge browser
 - ✅ **WiFi Network Scanner** - Automatic network discovery during provisioning (no manual SSID entry)
+- ✅ **Remote WiFi Clearing** - MQTT command to clear credentials and force provisioning mode
+- ✅ **MQTT Last Will and Testament** - Automatic "disconnected" status on connection loss
 - ✅ **Standard relay control** - Continuous HIGH/LOW for SONGLE SRD-5VDC-SL-C relays
 - ✅ **Temperature monitoring** - DS18B20 OneWire sensor with 1-minute update intervals
 - ✅ **Manual override compatibility** - SPDT switches wired in parallel with ESP32 relays
 - ✅ **Blind control** - No feedback sensors, simple command-based operation
-- ✅ **MQTT over TLS** - Secure communication via HiveMQ Cloud
+- ✅ **MQTT over TLS** - Secure communication via HiveMQ Cloud (port 8883)
 - ✅ **Modern responsive dashboard** - Mobile-first design with Tailwind CSS
 - ✅ **Countdown timer** - Set duration and mode for automatic pump shutoff
 - ✅ **Program scheduling** - Up to 3 weekly schedules with automatic execution
 - ✅ **Conflict detection** - Automatic handling of timer/program/manual conflicts
 - ✅ **WiFi status monitoring** - Real-time signal strength with color-coded indicators
 - ✅ **Event logging** - Collapsible log panel with timestamps
-- ✅ **Localized interface** - Complete Spanish translation
-
+- ✅ **Localized interface** - Spanish translation throughout dashboard UI
+- ✅ **Resource optimization** - BLE stops after WiFi connects (saves 30-50KB RAM)
 
 ---
 
@@ -83,10 +85,130 @@ IoT/
 | `devices/esp32-pool-01/timer/set` | Dashboard → ESP32 | `{"mode":1,"duration":3600}` | Timer start command (JSON) |
 | `devices/esp32-pool-01/timer/state` | ESP32 → Dashboard | `{"active":true,"remaining":3420,...}` | Timer state updates (retained) |
 | `devices/esp32-pool-01/wifi/state` | ESP32 → Dashboard | `{"status":"connected","ssid":"...","rssi":-45,...}` | WiFi status with signal strength (retained) |
+| `devices/esp32-pool-01/wifi/clear` | Dashboard → ESP32 | `clear` | Clear WiFi credentials, force provisioning mode |
 | `devices/esp32-pool-01/pump/state` | ESP32 → Dashboard | `ON`, `OFF` | Pump actual state (retained) |
 | `devices/esp32-pool-01/valve/set` | Dashboard → ESP32 | `1`, `2`, `TOGGLE` | Valve mode commands |
 | `devices/esp32-pool-01/valve/state` | ESP32 → Dashboard | `1`, `2` | Valve actual mode (retained) |
 | `devices/esp32-pool-01/temperature/state` | ESP32 → Dashboard | `25.3` | Pool water temperature in °C (retained, updates every 60s) |
+| `devices/esp32-pool-01/status` | ESP32 → Dashboard (LWT) | `online`, `disconnected` | Device connection status (Last Will and Testament) |
+
+**Note:** The ESP32 uses MQTT Last Will and Testament (LWT) to automatically publish `disconnected` to the `status` topic when it loses connection to the broker. On successful connection, it publishes `online`.
+
+---
+
+## 🔵 BLE WiFi Provisioning
+
+### Overview
+
+The system includes **BLE provisioning** for WiFi configuration without needing to switch networks or use insecure HTTP. Configuration is done directly from the HTTPS dashboard using the Web Bluetooth API.
+
+### How It Works
+
+#### First Boot (No WiFi Credentials)
+1. ESP32 starts **BLE advertising** as `ESP32-Pool-XXXX` (XX = last 2 MAC digits)
+2. User visits https://iot-5wo.pages.dev → clicks blue "Add Device" button
+3. Modal appears asking for WiFi credentials
+4. User enters SSID and password → clicks "Connect"
+5. Browser shows BLE device picker → user selects ESP32-Pool-XXXX
+6. Dashboard sends credentials via encrypted BLE
+7. ESP32 saves credentials to **NVS** (Non-Volatile Storage)
+8. ESP32 connects to WiFi → connects to MQTT
+9. BLE shuts down automatically (saves ~30-50KB RAM and CPU cycles)
+10. Modal shows "✓ Device connected!" and auto-closes
+
+#### Subsequent Boots (WiFi Saved)
+1. ESP32 loads credentials from NVS
+2. Auto-connects to WiFi directly (no BLE overhead)
+3. Connects to MQTT immediately
+4. Fast boot (~5 seconds)
+
+#### Remote WiFi Credential Clearing
+1. User clicks "Disconnect devices" button in dashboard
+2. Dashboard publishes `clear` message to MQTT topic `devices/esp32-pool-01/wifi/clear`
+3. ESP32 receives command, publishes `disconnected` status, erases NVS credentials
+4. ESP32 automatically restarts
+5. On restart without credentials, returns to BLE provisioning mode
+6. User can re-configure WiFi from dashboard
+
+**Important:** WiFi clearing uses MQTT, NOT BLE. This allows remote device disconnection without physical proximity.
+
+### BLE Service UUIDs
+
+**Primary Service UUID:** `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
+
+| Characteristic | UUID | R/W | Description |
+|----------------|------|-----|-------------|
+| SSID | `beb5483e-36e1-4688-b7f5-ea07361b26a8` | Write | WiFi network name
+| Password | `1c95d5e3-d8f7-413a-bf3d-7a2e5d7be87e` | Write | WiFi password
+| Networks | `d3a6f5c8-2b1e-4a9c-8f7d-6e5c4b3a2d1e` | Read | Available networks list (JSON)
+| Status | `a1b2c3d4-e5f6-7890-1234-567890abcdef` | Read | Provisioning status
+| Command | `8b9d68c4-57b8-4b02-bf19-6fd94b62f709` | Write | Special commands (deprecated, use MQTT)
+
+### Automatic Network Scanning
+
+During provisioning, the ESP32 automatically scans available WiFi networks and displays them in the dashboard. The list is optimized for BLE transmission:
+
+- **Size limit:** JSON <400 bytes (avoids BLE MTU issues)
+- **Format:** `[{"ssid":"MyWiFi","rssi":-45,"auth":3}, ...]`
+- **Filtering:** Duplicates and networks without SSID removed
+- **Sorting:** By signal strength (RSSI) descending
+
+**Example network JSON:**
+```json
+[
+  {"ssid":"Casa_WiFi","rssi":-42,"auth":3},
+  {"ssid":"Vecino_5G","rssi":-68,"auth":4}
+]
+```
+
+### Browser Compatibility
+
+| Browser | Desktop | Android | iOS |
+|---------|---------|---------|-----|
+| Chrome  | ✅ Working | ✅ Working | ❌ Not Supported |
+| Edge    | ✅ Working | ✅ Working | ❌ Not Supported |
+| Opera   | ✅ Working | ✅ Working | ❌ Not Supported |
+| Safari  | ❌ No Web Bluetooth | ❌ No Web Bluetooth | ❌ No Web Bluetooth |
+| Firefox | ❌ Disabled by default | ❌ Disabled by default | ❌ Not Supported |
+
+**iOS Users:** Use WiFiManager captive portal fallback (connect to `ESP32-Pool-Setup` AP → http://192.168.4.1)
+
+### Resource Optimization
+
+**RAM Savings:**
+- BLE automatically stops after WiFi successfully connects
+- Typical savings: **30-50KB of RAM**
+- CPU cycle savings by not processing unnecessary BLE events
+
+**Rationale:**
+- Keeping BLE active after WiFi connection is resource waste
+- WiFi clear command moved to MQTT (more efficient than BLE)
+- BLE only needed during initial provisioning
+
+### BLE Troubleshooting
+
+**"No Characteristics matching UUID" error:**
+- ESP32 already has WiFi saved (not in provisioning mode)
+- Solution: Click "Disconnect devices" (clears WiFi via MQTT), restart ESP32
+
+**"User cancelled" error:**
+- User cancelled device selection
+- Solution: Click "Retry" and select the device
+
+**"GATT Server disconnected" error:**
+- Browser pairing cache issue
+- Solution: 
+  1. Chrome Settings → Privacy & Security → Site Settings → Bluetooth → Remove device
+  2. Restart ESP32
+  3. Retry provisioning
+
+**Truncated or incomplete network JSON:**
+- BLE MTU limited to ~512 bytes
+- Automatic solution: Firmware limits JSON to 400 bytes, only shows strongest networks
+
+**BLE and WiFi interfere with each other:**
+- ESP32 has shared 2.4GHz radio
+- Implemented solution: `WiFi.mode(WIFI_STA)` before scanning networks
 
 ---
 
@@ -446,11 +568,11 @@ All code files follow consistent structure with section separators:
 - ✅ **Conflict handling** - Timer cancellation, program priority, manual override
 - ✅ **Signal strength monitoring** - Color-coded WiFi indicators
 
-### 🚧 TODO / Future Enhancements
-
 ## 🚀 Future Enhancements
 
 - [ ] **iOS Support for Provisioning** - Detect iOS browsers and show WiFiManager fallback instructions (Web Bluetooth not supported on iOS)
+- [ ] **QR Code Provisioning** - Scan QR codes for quick WiFi setup
+- [ ] **Multi-device Provisioning** - Provision multiple ESP32 devices in sequence
 - [ ] Temperature alert thresholds (low/high water temp)
 - [ ] OTA (Over-The-Air) firmware updates
 - [ ] Historical data visualization and analytics
@@ -459,7 +581,30 @@ All code files follow consistent structure with section separators:
 - [ ] Multiple device support (control multiple pools)
 - [ ] Relay health monitoring (click count tracking)
 - [ ] **WiFiManager Fallback UI** - Auto-switch to AP mode instructions for devices without Bluetooth
+- [ ] Progress bar during provisioning
+- [ ] Device nickname/labeling
+- [ ] Bluetooth pairing PIN for extra security
 
+## 📝 Changelog v2.5
+
+### New Features
+- ✅ **MQTT Last Will and Testament (LWT)**: Automatic connection status updates
+- ✅ **Remote WiFi Clearing**: MQTT `wifi/clear` command to erase credentials without BLE
+- ✅ **RAM Optimization**: BLE stops after WiFi connects (saves 30-50KB)
+- ✅ **Full Localization**: All user-facing messages changed to "Controlador Smart Pool" in Spanish
+- ✅ **Automatic Network Scanning**: Dashboard displays available WiFi networks during provisioning
+
+### Technical Improvements
+- ✅ Fixed: BLE command characteristic UUID corrected (`8b9d68c4-57b8-4b02-bf19-6fd94b62f709`)
+- ✅ Fixed: WiFi network JSON limited to <400 bytes to avoid BLE MTU issues
+- ✅ Fixed: `WiFi.mode(WIFI_STA)` before scanning to avoid BLE/WiFi conflicts
+- ✅ Fixed: `unpairDevices()` function now uses MQTT instead of BLE
+- ✅ Fixed: MQTT LWT configured in `connectMqtt()` with topic `devices/esp32-pool-01/status`
+
+### Architecture Decisions
+- Decision: Changed WiFi clearing from BLE to MQTT (more efficient, no BLE overhead)
+- Decision: BLE only for initial provisioning, stops after WiFi connected
+- Rationale: Avoid resource waste keeping BLE active unnecessarily
 
 ## 📄 License
 
@@ -472,7 +617,7 @@ This project is provided as-is for personal use. No warranty. Use at your own ri
 ## 🙏 Credits
 
 - **Original valve control project**: Foundation for this pool system
-**Developed by**: [Javier Alejandro Garcia](https://github.com/Garcia-Javier-Alejandro)
+- **Developed by**: [Javier Alejandro Garcia](https://github.com/Garcia-Javier-Alejandro)
 
 **Built with**:
 - **MQTT.js**: Client library for browser-based MQTT
@@ -481,13 +626,15 @@ This project is provided as-is for personal use. No warranty. Use at your own ri
 - **HiveMQ Cloud**: Free tier MQTT broker with TLS
 - **PlatformIO**: ESP32 development environment
 - **Tailwind CSS**: Utility-first CSS framework
+
 ---
 
 ## 📧 Support
 
 For issues or questions:
 1. Review **WIRING_DIAGRAM.md** for hardware questions
-2. Open GitHub issue with:
+2. Review **WIFI_PROVISIONING.md** for BLE provisioning technical details
+3. Open GitHub issue with:
    - Serial monitor output
    - Photos of wiring (if hardware related)
    - Dashboard console errors (F12 in browser)
@@ -495,3 +642,4 @@ For issues or questions:
 ---
 
 **Built with ☕ in 2025**
+

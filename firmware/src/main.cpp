@@ -51,6 +51,9 @@ WiFiClientSecure tlsClient;
 // Cliente MQTT que viaja por el tlsClient
 PubSubClient mqtt(tlsClient);
 
+// ==================== Forward Declarations ====================
+void clearWiFiCredentials();
+
 // ==================== Helper Functions ====================
 
 /**
@@ -480,6 +483,27 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     }
     return;
   }
+
+  // ===== WiFi Clear Command =====
+  if (t == TOPIC_WIFI_CLEAR) {
+    Serial.println("[MQTT] WiFi clear command received from dashboard");
+    
+    // Publish disconnected state before dropping connection
+    mqtt.publish(TOPIC_WIFI_STATE, "{\"status\":\"disconnected\"}", true /*retain*/);
+    delay(100); // Let message send
+    mqtt.disconnect();
+    
+    // Disconnect WiFi and erase credentials
+    WiFi.disconnect(true /*wifioff*/, true /*erasePersistent*/);
+    clearWiFiCredentials();
+    
+    Serial.println("[WiFi] Credentials erased. Restarting in 2 seconds...");
+    delay(2000);
+    
+    // Restart ESP32 to cleanly enter BLE provisioning mode
+    ESP.restart();
+    return;
+  }
 }
 
 
@@ -761,14 +785,24 @@ bool connectMqtt() {
   // DEVICE_ID viene de config.h
   const char* clientId = DEVICE_ID;
 
+  // Configure Last Will and Testament (LWT)
+  // If connection drops unexpectedly, broker publishes this message automatically
+  const char* lwt_topic = TOPIC_WIFI_STATE;
+  const char* lwt_message = "{\"status\":\"disconnected\"}";
+  uint8_t lwt_qos = 0;
+  boolean lwt_retain = true;
+
   // MQTT_USER / MQTT_PASS vienen de secrets.h
-  bool ok = mqtt.connect(clientId, MQTT_USER, MQTT_PASS);
+  // connect(clientId, user, pass, willTopic, willQoS, willRetain, willMessage)
+  bool ok = mqtt.connect(clientId, MQTT_USER, MQTT_PASS, lwt_topic, lwt_qos, lwt_retain, lwt_message);
 
   if (!ok) {
     Serial.print("[MQTT] ERROR connect rc=");
     Serial.println(mqtt.state()); // código de error de PubSubClient
     return false;
   }
+
+  Serial.println("[MQTT] ✓ CONECTADO (con Last Will configurado)");
 
   Serial.println("[MQTT] ✓ CONECTADO");
 
@@ -784,6 +818,10 @@ bool connectMqtt() {
   mqtt.subscribe(TOPIC_TIMER_SET);
   Serial.print("[MQTT] Subscribed: ");
   Serial.println(TOPIC_TIMER_SET);
+
+  mqtt.subscribe(TOPIC_WIFI_CLEAR);
+  Serial.print("[MQTT] Subscribed: ");
+  Serial.println(TOPIC_WIFI_CLEAR);
 
   // Publicar estado inicial
   publishPumpState();
@@ -878,64 +916,55 @@ void loop() {
   // ===== BLE Provisioning Check =====
   // If BLE is active, check for new credentials from dashboard
   static uint32_t lastBLECheck = 0;
-  if (isBLEProvisioningActive() && millis() - lastBLECheck > BLE_CHECK_INTERVAL) {
-    lastBLECheck = millis();
+  if (isBLEProvisioningActive()) {
+    // Give BLE stack time to process events (writes, notifications, etc.)
+    delay(10);
     
-    if (hasNewWiFiCredentials()) {
-      char ssid[33];
-      char password[64];
+    if (millis() - lastBLECheck > BLE_CHECK_INTERVAL) {
+      lastBLECheck = millis();
       
-      if (getBLEWiFiSSID(ssid) && getBLEWiFiPassword(password)) {
-        Serial.println("[BLE] ✓ Credentials received from dashboard");
+      if (hasNewWiFiCredentials()) {
+        char ssid[33];
+        char password[64];
         
-        // Stop BLE to free resources
-        stopBLEProvisioning();
-        
-        // Try to connect with BLE credentials
-        if (connectWiFi(ssid, password)) {
-          // Save to NVS for future boots
-          saveWiFiCredentials(ssid, password);
-          clearBLECredentials();
+        if (getBLEWiFiSSID(ssid) && getBLEWiFiPassword(password)) {
+          Serial.println("[BLE] ✓ Credentials received from dashboard");
           
-          // Complete system initialization
-          Serial.println("[System] Completing initialization...");
-          syncTimeNTP();
-          setupMqtt();
-          connectMqtt();
+          // Stop BLE to free resources (~30-50KB RAM, CPU cycles)
+          // Dashboard can use MQTT to clear credentials remotely
+          stopBLEProvisioning();
           
-          Serial.println("========================================");
-          Serial.println("   Sistema listo (via BLE)");
-          Serial.println("========================================");
-        } else {
-          // Connection failed - restart BLE or try WiFiManager fallback
-          Serial.println("[WiFi] BLE credentials failed - trying WiFiManager fallback...");
-          clearBLECredentials();
-          
-          if (initWiFiManagerFallback()) {
+          // Try to connect with BLE credentials
+          if (connectWiFi(ssid, password)) {
+            // Save to NVS for future boots
+            saveWiFiCredentials(ssid, password);
+            clearBLECredentials();
+            
+            // Complete system initialization
+            Serial.println("[System] Completing initialization...");
             syncTimeNTP();
             setupMqtt();
             connectMqtt();
+            
+            Serial.println("========================================");
+            Serial.println("   Sistema listo (via BLE)");
+            Serial.println("========================================");
+          } else {
+            // Connection failed - restart BLE or try WiFiManager fallback
+            Serial.println("[WiFi] BLE credentials failed - trying WiFiManager fallback...");
+            clearBLECredentials();
+            
+            if (initWiFiManagerFallback()) {
+              syncTimeNTP();
+              setupMqtt();
+              connectMqtt();
+            }
           }
         }
       }
     }
-
-    // Handle dashboard request to clear WiFi credentials and stay in provisioning mode
-    if (isClearWiFiRequested()) {
-      Serial.println("[BLE] Clear WiFi requested from dashboard");
-
-      // Disconnect any existing WiFi session and wipe stored credentials
-      WiFi.disconnect(true /*wifioff*/, true /*erasePersistent*/);
-      clearWiFiCredentials();
-      clearBLECredentials();
-      resetClearWiFiRequest();
-      wifiProvisioned = false;
-
-      Serial.println("[BLE] WiFi credentials erased. Device will remain in provisioning mode.");
-      return;
-    }
     
-    // If BLE is running, skip normal operations
+    // If BLE is running, skip normal operations (WiFi reconnection, MQTT, etc.)
     return;
   }
   

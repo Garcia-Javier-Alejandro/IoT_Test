@@ -22,6 +22,7 @@ window.APP_CONFIG = {
 
   // Topic para estado WiFi
   TOPIC_WIFI_STATE: "devices/esp32-pool-01/wifi/state",   // ESP32 -> dashboard (JSON con ssid, ip, rssi, quality)
+  TOPIC_WIFI_CLEAR: "devices/esp32-pool-01/wifi/clear",   // dashboard -> ESP32 (comando para borrar credenciales)
 
   // Topics para Timer
   TOPIC_TIMER_CMD: "devices/esp32-pool-01/timer/set",     // dashboard -> ESP32 (JSON: {mode, duration})

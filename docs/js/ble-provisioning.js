@@ -1,5 +1,5 @@
 /**
- * ESP32 Pool Controller - BLE Provisioning Module
+ * Controlador Smart Pool - BLE Provisioning Module
  * Web Bluetooth API integration for WiFi credential provisioning
  * 
  * Usage:
@@ -9,7 +9,7 @@
  */
 
 const ESP32BLEProvisioning = {
-  // BLE Service & Characteristic UUIDs (must match ESP32 firmware)
+  // BLE Service & Characteristic UUIDs (must match firmware)
   SERVICE_UUID: '4fafc201-1fb5-459e-8fcc-c5c9c331914b',
   SSID_CHAR_UUID: 'beb5483e-36e1-4688-b7f5-ea07361b26a8',
   PASSWORD_CHAR_UUID: 'cba1d466-344c-4be3-ab3f-189f80dd7518',
@@ -76,7 +76,16 @@ const ESP32BLEProvisioning = {
       this.passwordCharacteristic = await this.service.getCharacteristic(this.PASSWORD_CHAR_UUID);
       this.networksCharacteristic = await this.service.getCharacteristic(this.NETWORKS_CHAR_UUID);
       this.statusCharacteristic = await this.service.getCharacteristic(this.STATUS_CHAR_UUID);
-      this.commandCharacteristic = await this.service.getCharacteristic(this.COMMAND_CHAR_UUID);
+      
+      // Command characteristic is optional (for backwards compatibility with old firmware)
+      try {
+        this.commandCharacteristic = await this.service.getCharacteristic(this.COMMAND_CHAR_UUID);
+        console.log('[BLE] ✓ Got command characteristic (clear WiFi supported)');
+      } catch (e) {
+        console.warn('[BLE] Command characteristic not available (old firmware or cached GATT)');
+        this.commandCharacteristic = null;
+      }
+      
       console.log('[BLE] ✓ Got all characteristics');
 
       // Subscribe to status notifications
@@ -212,8 +221,12 @@ const ESP32BLEProvisioning = {
     }
 
     // Ensure we are connected and have the command characteristic
-    if (!this.server || !this.server.connected || !this.commandCharacteristic) {
+    if (!this.server || !this.server.connected) {
       await this.connect();
+    }
+    
+    if (!this.commandCharacteristic) {
+      throw new Error('Comando no soportado. Actualiza el firmware del ESP32 o borra el dispositivo desde Configuración de Windows → Bluetooth para refrescar la caché.');
     }
 
     const encoder = new TextEncoder();

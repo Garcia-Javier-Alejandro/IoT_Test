@@ -15,7 +15,8 @@
 #define PASSWORD_CHAR_UUID  "cba1d466-344c-4be3-ab3f-189f80dd7518"
 #define STATUS_CHAR_UUID    "8d8218b6-97bc-4527-a8db-13094ac06b1d"
 #define NETWORKS_CHAR_UUID  "fa87c0d0-afac-11de-8a39-0800200c9a66"  // WiFi networks scan result
-#define COMMAND_CHAR_UUID   "0b9f1e80-0f88-4b68-9a09-9d1d6921d0d8"  // Remote commands (e.g., clear WiFi)
+// Remote commands (e.g., clear WiFi). Keep in sync with dashboard JS.
+#define COMMAND_CHAR_UUID   "8b9d68c4-57b8-4b02-bf19-6fd94b62f709"
 
 // ==================== Global BLE Objects ====================
 static NimBLEServer* pServer = nullptr;
@@ -151,7 +152,8 @@ void initBLEProvisioning() {
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
   char deviceName[32];
-  snprintf(deviceName, sizeof(deviceName), "Controlador Smart Pool-%02X%02X", mac[4], mac[5]);
+  // Add version suffix to break cached GATT on clients
+  snprintf(deviceName, sizeof(deviceName), "Controlador Smart Pool-%02X%02X-v2", mac[4], mac[5]);
   
   Serial.print("[BLE] Device name: ");
   Serial.println(deviceName);
@@ -204,6 +206,8 @@ void initBLEProvisioning() {
   );
   pCommandCharacteristic->setCallbacks(new CharacteristicCallbacks());
   pCommandCharacteristic->setValue("");
+  Serial.print("[BLE] Command characteristic UUID: ");
+  Serial.println(COMMAND_CHAR_UUID);
   
   // Start the service
   pService->start();
@@ -278,13 +282,16 @@ void clearBLECredentials() {
  */
 String scanWiFiNetworks() {
   Serial.println("[BLE] Scanning WiFi networks...");
-  delay(100); // Give WiFi radio time to scan
+  
+  // Ensure WiFi is in station mode for scanning (required for BLE coexistence)
+  WiFi.mode(WIFI_STA);
+  delay(100); // Give WiFi radio time to initialize
   
   // Perform WiFi scan
   int numNetworks = WiFi.scanNetworks();
   
-  if (numNetworks == 0) {
-    Serial.println("[BLE] No networks found");
+  if (numNetworks == 0 || numNetworks == -1) {
+    Serial.println("[BLE] No networks found or scan failed");
     return "[]";
   }
   
@@ -305,26 +312,25 @@ String scanWiFiNetworks() {
     // Skip empty SSIDs
     if (ssid.length() == 0) continue;
     
-    if (networkCount > 0) json += ",";
+    // Build network entry
+    String entry = "{\"ssid\":\"";
+    entry += ssid;
+    entry += "\",\"rssi\":";
+    entry += String(rssi);
+    entry += ",\"open\":";
+    entry += (open ? "true" : "false");
+    entry += "}";
     
-    // Escape SSID quotes
-    ssid.replace("\"", "\\\"");
-    
-    json += "{\"ssid\":\"";
-    json += ssid;
-    json += "\",\"rssi\":";
-    json += String(rssi);
-    json += ",\"open\":";
-    json += (open ? "true" : "false");
-    json += "}";
-    
-    networkCount++;
-    
-    // Limit to 480 bytes to fit in BLE MTU (512 byte limit)
-    if (json.length() > 480) {
-      Serial.println("[BLE] Network list too large, truncating");
+    // Check if adding this entry would exceed safe BLE MTU (~400 bytes for reliable transmission)
+    int projectedSize = json.length() + entry.length() + (networkCount > 0 ? 1 : 0) + 1; // +1 for comma, +1 for ]
+    if (projectedSize > 400) {
+      Serial.println("[BLE] Network list too large, stopping here");
       break;
     }
+    
+    if (networkCount > 0) json += ",";
+    json += entry;
+    networkCount++;
   }
   
   json += "]";

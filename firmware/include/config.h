@@ -32,7 +32,9 @@
 
 // WiFi Status:
 // TOPIC_WIFI_STATE = ESP32 publica estado WiFi (JSON: ssid, ip, rssi, quality) -> dashboard se suscribe
+// TOPIC_WIFI_CLEAR = dashboard publica comando para borrar credenciales WiFi -> ESP32 se suscribe
 #define TOPIC_WIFI_STATE    "devices/" DEVICE_ID "/wifi/state"
+#define TOPIC_WIFI_CLEAR    "devices/" DEVICE_ID "/wifi/clear"
 
 // Timer Control:
 // TOPIC_TIMER_SET   = dashboard publica config timer (JSON: mode, duration) -> ESP32 se suscribe
