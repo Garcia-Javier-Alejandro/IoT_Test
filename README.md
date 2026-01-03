@@ -62,7 +62,9 @@ IoT/
 │   └── _routes.json            # Deployment routes config
 │
 ├── WIRING_DIAGRAM.md           # Complete hardware wiring guide
-├── WIFI_PROVISIONING.md        # BLE provisioning technical documentation
+├── DEVICE_PROVISIONING.md      # WiFi provisioning guide (BLE & Captive Portal)
+├── MULTI_USER_ARCHITECTURE.md  # Multi-user SaaS architecture guide (future scaling)
+├── CODE_REVIEW.md              # Code quality review and recommendations
 └── README.md                   # This file
 ```
 

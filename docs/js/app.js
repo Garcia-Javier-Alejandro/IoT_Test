@@ -33,28 +33,64 @@ const AppModule = (() => {
   /**
    * Get MQTT credentials for authentication
    * 
-   * PHASE 1 (Current): Returns hardcoded credentials for single-user mode
-   * PHASE 2 (Future): Fetch from backend API after user authentication
+   * ARCHITECTURE EVOLUTION:
    * 
-   * This abstraction allows easy migration to multi-user without changing
+   * PHASE 1 (Current - Single User):
+   * - Reads from APP_CONFIG.MQTT_USER and MQTT_PASS (config.js)
+   * - All dashboards connect with same credentials
+   * - All users share same MQTT topics (e.g., devices/esp32-pool-01/*)
+   * - Suitable for single-family/single-location deployment
+   * 
+   * PHASE 2 (Future - Multi-User):
+   * - User authenticates with personal account (username/password or OAuth)
+   * - Backend API returns user-specific MQTT credentials
+   * - Each user gets unique topic namespace (e.g., devices/{userId}/pool-01/*)
+   * - Enables multi-tenant SaaS deployment
+   * - Users can only see/control their own devices
+   * 
+   * This abstraction allows migration to multi-user without changing
    * the connection logic throughout the application.
    * 
    * @returns {Promise<{user: string, pass: string}>} MQTT credentials
    */
   async function getMQTTCredentials() {
-    // PHASE 1: Single-user hardcoded credentials
-    // TODO: Move these to config.js or environment variables
+    // PHASE 1: Single-user mode - shared credentials from config.js
+    // For DEVELOPMENT/TESTING: Use credentials from APP_CONFIG
+    // For PRODUCTION: Replace with environment variables or secure backend endpoint
+    
+    if (!window.APP_CONFIG.MQTT_USER || !window.APP_CONFIG.MQTT_PASS) {
+      throw new Error('MQTT credentials not configured in config.js');
+    }
+    
     return {
-      user: 'User-dashboard-01',
-      pass: 'Manzana1'
+      user: window.APP_CONFIG.MQTT_USER,
+      pass: window.APP_CONFIG.MQTT_PASS
     };
     
-    /* PHASE 2: Multi-user authentication (uncomment when backend ready)
+    /* PHASE 2: Multi-user authentication (implement when scaling to multiple users)
+     * 
+     * Example Implementation:
+     * 
+     * 1. User logs in with their account credentials
+     * 2. Backend validates user and generates/retrieves their MQTT credentials
+     * 3. Backend returns: { mqttUser, mqttPass, deviceTopicPrefix }
+     * 4. Dashboard uses these credentials to connect to MQTT
+     * 5. All topics are prefixed with user's namespace
+     * 
+     * Benefits:
+     * - Each user has isolated MQTT topics
+     * - Users can't access other users' devices
+     * - Fine-grained access control (read/write permissions)
+     * - Audit logging per user
+     * - Easy to add/remove users
+     * 
     try {
+      const authToken = getAuthToken(); // From login session (JWT, cookie, etc.)
+      
       const response = await fetch('/api/auth/mqtt-credentials', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${getAuthToken()}`, // JWT or session token
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -63,10 +99,15 @@ const AppModule = (() => {
         throw new Error('Failed to fetch MQTT credentials');
       }
       
-      const credentials = await response.json();
+      const data = await response.json();
+      // Expected response: { mqttUser, mqttPass, topicPrefix }
+      
+      // Store topic prefix for use in MQTT topics
+      window.APP_CONFIG.TOPIC_PREFIX = data.topicPrefix; // e.g., "users/john123"
+      
       return {
-        user: credentials.mqttUser,
-        pass: credentials.mqttPass
+        user: data.mqttUser,      // e.g., "mqtt_user_john123"
+        pass: data.mqttPass       // e.g., auto-generated secure password
       };
     } catch (error) {
       console.error('[Auth] Failed to get MQTT credentials:', error);
