@@ -1,4 +1,3 @@
-Placeholder for commit test
 # ESP32 Pool Control System v2.5
 
 IoT-based swimming pool control system using ESP32, MQTT, and DS18B20 temperature sensor. Controls a 220V pump and 24V electrovalves with manual override capability, automated scheduling, and BLE WiFi provisioning.
