@@ -19,6 +19,8 @@
 #define VALVE_SWITCH_DELAY      500       // Delay for valve switching (ms)
 #define WIFI_CONNECT_TIMEOUT    15000     // Timeout for WiFi connection (ms)
 #define WIFI_RECONNECT_INTERVAL 10000     // Check WiFi status every 10 seconds
+#define WIFI_RETRY_ATTEMPTS     3         // Number of connection retry attempts
+#define WIFI_RETRY_DELAY        5000      // Delay between retry attempts (ms)
 #define NTP_SYNC_TIMEOUT        15000     // Timeout for NTP synchronization (ms)
 #define WIFI_STATE_INTERVAL     30000     // Interval to publish WiFi state (ms)
 #define TIMER_PUBLISH_INTERVAL  10000     // Interval to publish timer state (ms)
@@ -570,40 +572,59 @@ void clearWiFiCredentials() {
 }
 
 /**
- * Connect to WiFi using stored credentials
+ * Connect to WiFi using stored credentials with retry logic
  * @param ssid WiFi SSID
  * @param password WiFi password
+ * @param retryAttempts Number of connection attempts (default: WIFI_RETRY_ATTEMPTS)
  * @return true if connected successfully, false otherwise
  */
-bool connectWiFi(const char* ssid, const char* password) {
+bool connectWiFi(const char* ssid, const char* password, int retryAttempts = WIFI_RETRY_ATTEMPTS) {
   Serial.print("[WiFi] Connecting to: ");
   Serial.println(ssid);
   
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  
-  uint32_t startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_CONNECT_TIMEOUT) {
-    delay(500);
-    Serial.print(".");
+  for (int attempt = 1; attempt <= retryAttempts; attempt++) {
+    if (attempt > 1) {
+      Serial.print("[WiFi] Retry attempt ");
+      Serial.print(attempt);
+      Serial.print("/");
+      Serial.println(retryAttempts);
+      delay(WIFI_RETRY_DELAY);
+    }
+    
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    
+    uint32_t startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_CONNECT_TIMEOUT) {
+      delay(500);
+      Serial.print(".");
+    }
+    Serial.println();
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("[WiFi] ✓ CONNECTED");
+      Serial.print("[WiFi] SSID: ");
+      Serial.println(WiFi.SSID());
+      Serial.print("[WiFi] IP: ");
+      Serial.println(WiFi.localIP());
+      Serial.print("[WiFi] RSSI: ");
+      Serial.print(WiFi.RSSI());
+      Serial.println(" dBm");
+      wifiProvisioned = true;
+      return true;
+    }
+    
+    if (attempt < retryAttempts) {
+      Serial.print("[WiFi] Connection failed, waiting ");
+      Serial.print(WIFI_RETRY_DELAY / 1000);
+      Serial.println(" seconds before retry...");
+    }
   }
-  Serial.println();
   
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("[WiFi] ✓ CONNECTED");
-    Serial.print("[WiFi] SSID: ");
-    Serial.println(WiFi.SSID());
-    Serial.print("[WiFi] IP: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("[WiFi] RSSI: ");
-    Serial.print(WiFi.RSSI());
-    Serial.println(" dBm");
-    wifiProvisioned = true;
-    return true;
-  } else {
-    Serial.println("[WiFi] ✗ Connection FAILED");
-    return false;
-  }
+  Serial.print("[WiFi] ✗ Connection FAILED after ");
+  Serial.print(retryAttempts);
+  Serial.println(" attempts");
+  return false;
 }
 
 /**
@@ -636,10 +657,10 @@ void onWiFiAPStart(WiFiManager* wm) {
  * 
  * Provisioning flow:
  * 1. Try to load WiFi credentials from NVS
- * 2. If credentials exist, connect to WiFi directly
- * 3. If no credentials, start BLE provisioning
- * 4. Wait for credentials from Web Bluetooth dashboard
- * 5. If BLE times out or fails, fall back to WiFiManager captive portal
+ * 2. If credentials exist, connect to WiFi with multiple retry attempts
+ * 3. If connection fails after retries, start BLE provisioning (keeps credentials for auto-retry)
+ * 4. If no credentials, start BLE provisioning
+ * 5. Wait for credentials from Web Bluetooth dashboard
  * 
  * @return true if connected to WiFi, false if provisioning is in progress
  */
@@ -647,26 +668,29 @@ bool initWiFiProvisioning() {
   Serial.println("[WiFi] Starting WiFi provisioning...");
   
   // OPTIONAL: Uncomment to clear credentials for testing
-  clearWiFiCredentials();
-  Serial.println("[WiFi] Credentials cleared for testing");
+  // clearWiFiCredentials();
+  // Serial.println("[WiFi] Credentials cleared for testing");
   
   // Step 1: Try to load credentials from NVS
   char ssid[33];
   char password[64];
   
   if (loadWiFiCredentials(ssid, password)) {
-    // Step 2: Try to connect with saved credentials
-    if (connectWiFi(ssid, password)) {
+    // Step 2: Try to connect with saved credentials (with retries for power failure recovery)
+    Serial.println("[WiFi] Found saved credentials, attempting connection with retries...");
+    if (connectWiFi(ssid, password, WIFI_RETRY_ATTEMPTS)) {
       return true;  // Success!
     }
     
-    // Credentials exist but connection failed - clear and re-provision
-    Serial.println("[WiFi] Saved credentials failed, clearing...");
-    clearWiFiCredentials();
+    // Credentials exist but connection failed after retries
+    // DO NOT clear credentials - network may be temporarily down (power failure)
+    // Start BLE provisioning so user can update if needed, but keep trying in loop
+    Serial.println("[WiFi] Connection failed after retries - network may be down");
+    Serial.println("[WiFi] Keeping credentials for auto-retry. Use BLE/MQTT to update if needed.");
   }
   
   // Step 3: No credentials or connection failed - start BLE provisioning
-  Serial.println("[WiFi] No valid credentials - starting BLE provisioning...");
+  Serial.println("[WiFi] Starting BLE provisioning (credentials preserved for retry)...");
   initBLEProvisioning();
   
   // BLE provisioning is non-blocking - credentials will be received in loop()
@@ -965,24 +989,42 @@ void loop() {
   // ===== Normal Operations (only when WiFi connected) =====
   // Check WiFi status periodically, not every loop (prevents spam)
   static uint32_t lastWiFiCheck = 0;
+  static int reconnectAttempts = 0;
   if (WiFi.status() != WL_CONNECTED && millis() - lastWiFiCheck > WIFI_RECONNECT_INTERVAL) {
     lastWiFiCheck = millis();
+    reconnectAttempts++;
     
     // WiFi disconnected - try to reconnect
-    Serial.println("[WiFi] Connection lost, attempting recovery...");
+    Serial.print("[WiFi] Connection lost (attempt ");
+    Serial.print(reconnectAttempts);
+    Serial.println("), attempting recovery...");
     
     char ssid[33];
     char password[64];
     if (loadWiFiCredentials(ssid, password)) {
-      connectWiFi(ssid, password);
+      // Try single connection attempt (we'll retry on next interval)
+      if (connectWiFi(ssid, password, 1)) {
+        reconnectAttempts = 0;  // Reset counter on success
+        // Reconnect MQTT after WiFi recovery
+        if (!mqtt.connected()) {
+          Serial.println("[System] WiFi recovered, reconnecting MQTT...");
+          connectMqtt();
+        }
+      }
     } else {
       // No credentials - restart BLE provisioning (only if not already active)
       if (!isBLEProvisioningActive()) {
         Serial.println("[WiFi] No credentials - starting BLE provisioning...");
         initBLEProvisioning();
+        reconnectAttempts = 0;
       }
     }
     return;
+  }
+  
+  // Reset reconnect counter when WiFi is connected
+  if (WiFi.status() == WL_CONNECTED && reconnectAttempts > 0) {
+    reconnectAttempts = 0;
   }
   
   // If WiFi not connected and BLE not active, just wait

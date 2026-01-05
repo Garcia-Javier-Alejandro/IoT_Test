@@ -325,7 +325,45 @@ If you want to switch back to BLE provisioning:
 
 ---
 
-## 🚀 Which Method Should I Use?
+## � Power Failure Recovery
+
+The ESP32 is designed to automatically recover from power failures without needing re-provisioning:
+
+### Automatic Reconnection After Power Failure
+
+**What happens:**
+1. **ESP32 boots** and loads saved WiFi credentials from non-volatile storage (NVS)
+2. **Attempts connection** with **5 retry attempts** (15 seconds timeout each)
+3. **Waits 5 seconds** between retry attempts
+4. **Keeps credentials** even if connection fails (router may still be booting)
+5. **Continues retrying** every 10 seconds in the background
+
+**Key Features:**
+- ✅ **Credentials preserved** - Never automatically deleted
+- ✅ **Multiple retries** - Up to 5 attempts on boot
+- ✅ **Background reconnection** - Continues trying every 10 seconds
+- ✅ **MQTT auto-recovery** - Reconnects to broker after WiFi recovery
+- ✅ **No user intervention** - Fully automatic recovery
+
+**Typical Power Failure Scenario:**
+```
+Power restored → Router boots (30-60s) → ESP32 retrying → Connection established
+Total recovery time: 1-2 minutes (automatic)
+```
+
+### Manual Credential Management
+
+**To update WiFi credentials:**
+- Use BLE provisioning from dashboard (overwrites saved credentials)
+- Send MQTT command: `clear` to topic `pool/wifi/clear` (erases and restarts)
+
+**To force re-provisioning:**
+- Send MQTT command to clear WiFi (see below)
+- Or flash new firmware (erases all settings)
+
+---
+
+## �🚀 Which Method Should I Use?
 
 ### Choose **BLE Provisioning** if:
 - ✅ You have an Android phone or Windows/macOS device
