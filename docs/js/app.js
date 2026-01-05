@@ -242,12 +242,14 @@ const AppModule = (() => {
       "pump-icon": "pumpIcon",
       "pump-ring": "pumpRing",
       "pump-toggle-dot": "pumpToggleDot",
-      "valve-toggle-dot": "valveToggleDot",
+      "btn-valve-cascada": "btnValveCascada",
+      "valve-cascada-dot": "valveCascadaDot",
+      "btn-valve-eyectores": "btnValveEyectores",
+      "valve-eyectores-dot": "valveEyectoresDot",
       "waterfall-icon": "waterfallIcon",
       "waterfall-label": "waterfallLabel",
       "waterjet-icon": "waterjetIcon",
       "waterjet-label": "waterjetLabel",
-      "btn-valve-toggle": "btnValveToggle",
       "btn-timer": "btnTimer",
       "btn-programas": "btnProgramas",
       "conn-text": "connText",
@@ -356,6 +358,47 @@ const AppModule = (() => {
    * - Program scheduling interface
    */
   function wireUIEvents() {
+    // Shared handler for valve mode changes
+    const requestValveMode = (newMode) => {
+      const modeName = newMode === "1" ? "Cascada" : "Eyectores";
+
+      // Timer conflict
+      if (timerState.active) {
+        const currentModeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
+        alert(`⚠️ Conflicto con Timer (${currentModeName}) - Pasando a control manual.`);
+        LogModule.append("⚠️ Timer cancelado");
+        stopTimer();
+      }
+
+      // Program conflict
+      if (window.ProgramasModule) {
+        const activeProgramName = ProgramasModule.getActiveProgramName();
+        if (activeProgramName) {
+          alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
+          LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+          ProgramasModule.setManualOverride();
+        }
+      }
+
+      LogModule.append(`Cambiando válvulas a modo ${newMode} (${modeName})...`);
+
+      // Debounce both toggles
+      if (elements.btnValveCascada) elements.btnValveCascada.disabled = true;
+      if (elements.btnValveEyectores) elements.btnValveEyectores.disabled = true;
+      setTimeout(() => {
+        if (MQTTModule.isConnected()) {
+          if (elements.btnValveCascada) elements.btnValveCascada.disabled = false;
+          if (elements.btnValveEyectores) elements.btnValveEyectores.disabled = false;
+        }
+      }, BUTTON_DEBOUNCE_MS);
+
+      MQTTModule.publish(
+        newMode,
+        window.APP_CONFIG.TOPIC_VALVE_CMD,
+        (msg) => LogModule.append(msg)
+      );
+    };
+
     // Connect button (hidden in single-user mode, kept for future multi-user)
     if (elements.btnConnect) {
       elements.btnConnect.addEventListener("click", async () => {
@@ -410,47 +453,12 @@ const AppModule = (() => {
       });
     }
 
-    // Valve mode toggle button
-    if (elements.btnValveToggle) {
-      elements.btnValveToggle.addEventListener("click", () => {
-        // Toggle between modes 1 and 2
-        const newMode = valveMode === "1" ? "2" : "1";
-        const modeName = newMode === "1" ? "Cascada" : "Eyectores";
-        
-        // Check if timer is active (must cancel timer to change mode)
-        if (timerState.active) {
-          const currentModeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
-          alert(`⚠️ Conflicto con Timer (${currentModeName}) - Pasando a control manual.`);
-          LogModule.append("⚠️ Timer cancelado");
-          stopTimer();
-        }
-        
-        // Check if a program is active (conflict detection)
-        if (window.ProgramasModule) {
-          const activeProgramName = ProgramasModule.getActiveProgramName();
-          if (activeProgramName) {
-            alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
-            LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
-            ProgramasModule.setManualOverride();
-          }
-        }
-        
-        LogModule.append(`Cambiando válvulas a modo ${newMode} (${modeName})...`);
-        
-        // Temporarily disable button to prevent rapid clicking
-        elements.btnValveToggle.disabled = true;
-        setTimeout(() => {
-          if (MQTTModule.isConnected()) {
-            elements.btnValveToggle.disabled = false;
-          }
-        }, BUTTON_DEBOUNCE_MS);
-        
-        MQTTModule.publish(
-          newMode,
-          window.APP_CONFIG.TOPIC_VALVE_CMD,
-          (msg) => LogModule.append(msg)
-        );
-      });
+    // Valve mode toggles (mutually exclusive sliders)
+    if (elements.btnValveCascada) {
+      elements.btnValveCascada.addEventListener("click", () => requestValveMode("1"));
+    }
+    if (elements.btnValveEyectores) {
+      elements.btnValveEyectores.addEventListener("click", () => requestValveMode("2"));
     }
 
     // Timer button
@@ -569,34 +577,35 @@ const AppModule = (() => {
   function setPumpState(state) {
     pumpState = state;
 
-    // Update vertical toggle switch appearance
+    // Update horizontal toggle switch appearance
     if (elements.btnPump && elements.pumpToggleDot) {
+      // Keep dot vertically centered
+      elements.pumpToggleDot.style.top = '4px';
+      elements.pumpToggleDot.style.bottom = 'auto';
+
       if (state === "ON") {
-        // Blue background, dot at top, icon at full opacity
+        // Blue background, dot aligned right, icon at full opacity
         elements.btnPump.classList.remove('bg-slate-300');
         elements.btnPump.classList.add('bg-primary');
-        elements.pumpToggleDot.style.top = '2px';
-        elements.pumpToggleDot.style.bottom = 'auto';
+        elements.pumpToggleDot.style.left = 'calc(100% - 36px)';
         elements.pumpToggleDot.style.backgroundColor = '#e2e8f0';
         if (elements.pumpIcon) {
           elements.pumpIcon.style.opacity = '1';
         }
       } else if (state === "OFF") {
-        // Grey background, dot at bottom, icon greyed out
+        // Grey background, dot aligned left, icon greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
-        elements.pumpToggleDot.style.bottom = '2px';
-        elements.pumpToggleDot.style.top = 'auto';
+        elements.pumpToggleDot.style.left = '4px';
         elements.pumpToggleDot.style.backgroundColor = 'white';
         if (elements.pumpIcon) {
           elements.pumpIcon.style.opacity = '0.3';
         }
       } else {
-        // Unknown state - grey, icon greyed out
+        // Unknown state - default to left, greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
-        elements.pumpToggleDot.style.bottom = '2px';
-        elements.pumpToggleDot.style.top = 'auto';
+        elements.pumpToggleDot.style.left = '4px';
         elements.pumpToggleDot.style.backgroundColor = 'white';
         if (elements.pumpIcon) {
           elements.pumpIcon.style.opacity = '0.3';
@@ -617,69 +626,37 @@ const AppModule = (() => {
   function setValveMode(mode) {
     valveMode = mode;
 
-    // Update vertical toggle slider based on active mode
-    if (elements.btnValveToggle && elements.valveToggleDot) {
-      if (mode === "1") {
-        // Cascada (Mode 1) active - dot at bottom
-        elements.btnValveToggle.classList.remove('bg-slate-300');
-        elements.btnValveToggle.classList.add('bg-primary');
-        elements.valveToggleDot.style.bottom = '2px';
-        elements.valveToggleDot.style.top = 'auto';
-        elements.valveToggleDot.style.backgroundColor = '#e2e8f0';
-        // Highlight Cascada icon and label
-        if (elements.waterfallIcon) {
-          elements.waterfallIcon.style.opacity = '1';
-        }
-        if (elements.waterfallLabel) {
-          elements.waterfallLabel.style.opacity = '1';
-        }
-        if (elements.waterjetIcon) {
-          elements.waterjetIcon.style.opacity = '0.3';
-        }
-        if (elements.waterjetLabel) {
-          elements.waterjetLabel.style.opacity = '0.3';
-        }
-      } else if (mode === "2") {
-        // Eyectores (Mode 2) active - dot at top
-        elements.btnValveToggle.classList.remove('bg-slate-300');
-        elements.btnValveToggle.classList.add('bg-primary');
-        elements.valveToggleDot.style.top = '2px';
-        elements.valveToggleDot.style.bottom = 'auto';
-        elements.valveToggleDot.style.backgroundColor = '#e2e8f0';
-        // Highlight Eyectores icon and label
-        if (elements.waterjetIcon) {
-          elements.waterjetIcon.style.opacity = '1';
-        }
-        if (elements.waterjetLabel) {
-          elements.waterjetLabel.style.opacity = '1';
-        }
-        if (elements.waterfallIcon) {
-          elements.waterfallIcon.style.opacity = '0.3';
-        }
-        if (elements.waterfallLabel) {
-          elements.waterfallLabel.style.opacity = '0.3';
-        }
-      } else {
-        // Unknown state
-        elements.btnValveToggle.classList.remove('bg-primary');
-        elements.btnValveToggle.classList.add('bg-slate-300');
-        elements.valveToggleDot.style.bottom = '2px';
-        elements.valveToggleDot.style.top = 'auto';
-        elements.valveToggleDot.style.backgroundColor = 'white';
-        // Reset both icons and labels
-        if (elements.waterfallIcon) {
-          elements.waterfallIcon.style.opacity = '0.3';
-        }
-        if (elements.waterfallLabel) {
-          elements.waterfallLabel.style.opacity = '0.3';
-        }
-        if (elements.waterjetIcon) {
-          elements.waterjetIcon.style.opacity = '0.3';
-        }
-        if (elements.waterjetLabel) {
-          elements.waterjetLabel.style.opacity = '0.3';
-        }
-      }
+    // Update horizontal sliders (mutually exclusive)
+    const setSlider = (btn, dot, active) => {
+      if (!btn || !dot) return;
+      btn.classList.toggle('bg-primary', active);
+      btn.classList.toggle('bg-slate-300', !active);
+      dot.style.top = '4px';
+      dot.style.left = active ? 'calc(100% - 36px)' : '4px';
+      dot.style.backgroundColor = active ? '#e2e8f0' : 'white';
+    };
+
+    if (mode === "1") {
+      setSlider(elements.btnValveCascada, elements.valveCascadaDot, true);
+      setSlider(elements.btnValveEyectores, elements.valveEyectoresDot, false);
+      if (elements.waterfallIcon) elements.waterfallIcon.style.opacity = '1';
+      if (elements.waterfallLabel) elements.waterfallLabel.style.opacity = '1';
+      if (elements.waterjetIcon) elements.waterjetIcon.style.opacity = '0.3';
+      if (elements.waterjetLabel) elements.waterjetLabel.style.opacity = '0.3';
+    } else if (mode === "2") {
+      setSlider(elements.btnValveCascada, elements.valveCascadaDot, false);
+      setSlider(elements.btnValveEyectores, elements.valveEyectoresDot, true);
+      if (elements.waterjetIcon) elements.waterjetIcon.style.opacity = '1';
+      if (elements.waterjetLabel) elements.waterjetLabel.style.opacity = '1';
+      if (elements.waterfallIcon) elements.waterfallIcon.style.opacity = '0.3';
+      if (elements.waterfallLabel) elements.waterfallLabel.style.opacity = '0.3';
+    } else {
+      setSlider(elements.btnValveCascada, elements.valveCascadaDot, false);
+      setSlider(elements.btnValveEyectores, elements.valveEyectoresDot, false);
+      if (elements.waterfallIcon) elements.waterfallIcon.style.opacity = '0.3';
+      if (elements.waterfallLabel) elements.waterfallLabel.style.opacity = '0.3';
+      if (elements.waterjetIcon) elements.waterjetIcon.style.opacity = '0.3';
+      if (elements.waterjetLabel) elements.waterjetLabel.style.opacity = '0.3';
     }
 
     updateButtonStates();
@@ -695,9 +672,8 @@ const AppModule = (() => {
     if (elements.btnPump) {
       elements.btnPump.disabled = !connected;
     }
-    if (elements.btnValveToggle) {
-      elements.btnValveToggle.disabled = !connected;
-    }
+    if (elements.btnValveCascada) elements.btnValveCascada.disabled = !connected;
+    if (elements.btnValveEyectores) elements.btnValveEyectores.disabled = !connected;
   }
 
   // ==================== Connection UI Feedback ====================

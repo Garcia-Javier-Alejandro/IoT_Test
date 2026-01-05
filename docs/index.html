@@ -159,6 +159,9 @@
       background-color: #001A72 !important;
       border-color: #001A72 !important;
     }
+    .mode-btn.active img {
+      filter: invert(1) brightness(2) !important;
+    }
     .mode-btn.active span {
       color: white !important;
     }
@@ -237,10 +240,10 @@
 </head>
 
 <!-- ==================== Application Body ==================== -->
-<body class="bg-slate-100 text-slate-900 font-sans flex justify-center items-center p-4 transition-colors duration-300">
+<body class="bg-slate-100 text-slate-900 font-sans flex justify-center items-stretch min-h-screen p-2 md:p-4 transition-colors duration-300">
   
   <!-- ==================== Main Container ==================== -->
-  <main class="w-full max-w-sm bg-white rounded-3xl shadow-xl border-2 border-slate-300 overflow-hidden relative flex flex-col max-h-[82vh]">
+  <main class="w-full max-w-sm bg-white rounded-3xl shadow-xl border-2 border-slate-300 overflow-hidden relative flex flex-col min-h-[calc(100vh-1rem)] md:min-h-[calc(100vh-2rem)]">
     
     <!-- ==================== Header Section ==================== -->
     <header class="pt-2 pb-2 px-6 text-center border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
@@ -329,42 +332,46 @@
               <!-- Pump Icon -->
               <img id="pump-icon" src="power-icon.png" alt="Power" class="w-10 h-10 transition-all duration-200">
               <!-- Pump Label -->
-              <div class="font-bold text-slate-900 text-lg">Bomba</div>
+              <div class="font-bold text-slate-900 text-[1.7rem]">Bomba</div>
             </div>
             <!-- Pump Toggle (Vertical, small) -->
             <button 
               id="btn-pump"
               disabled
-              class="relative inline-flex h-20 w-10 flex-col items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300 mr-2">
-              <span id="pump-toggle-dot" class="absolute inline-block h-8 w-8 rounded-full bg-white shadow-lg transition-all duration-200 top-1"></span>
+              class="relative inline-flex h-10 w-20 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300 mr-2">
+              <span id="pump-toggle-dot" class="absolute inline-block h-8 w-8 rounded-full bg-white shadow-lg transition-all duration-200 left-1 top-1"></span>
             </button>
           </div>
 
-          <!-- Rows 2-3: Valve Mode Icons/Labels and Valve Toggle -->
-          <div class="flex items-center justify-between py-3">
-            <!-- Left side: Eyectores and Cascada -->
-            <div class="flex items-center gap-4 flex-1">
-              <div class="flex flex-col gap-4">
-                <!-- Eyectores -->
-                <div class="flex items-center gap-3">
-                  <img id="waterjet-icon" src="waterjet-icon.png" alt="Eyectores" class="w-8 h-8 transition-all duration-200 opacity-50">
-                  <span id="waterjet-label" class="text-sm font-semibold text-slate-900 transition-all duration-200 opacity-50">Eyectores</span>
-                </div>
-                <!-- Cascada -->
-                <div class="flex items-center gap-3">
-                  <img id="waterfall-icon" src="waterfall-icon.png" alt="Cascada" class="w-8 h-8 transition-all duration-200 opacity-50">
-                  <span id="waterfall-label" class="text-sm font-semibold text-slate-900 transition-all duration-200 opacity-50">Cascada</span>
-                </div>
+          <!-- Mode sliders (mutually exclusive) -->
+          <div class="space-y-4">
+            <!-- Cascada row -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img id="waterfall-icon" src="waterfall-icon.png" alt="Cascada" class="w-8 h-8 transition-all duration-200 opacity-50">
+                <span id="waterfall-label" class="text-[1.3rem] font-semibold text-slate-900 transition-all duration-200 opacity-50">Cascada</span>
               </div>
+              <button 
+                id="btn-valve-cascada"
+                disabled
+                class="relative inline-flex h-10 w-20 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300 mr-2">
+                <span id="valve-cascada-dot" class="absolute inline-block h-8 w-8 rounded-full bg-white shadow-lg transition-all duration-200 left-1 top-1"></span>
+              </button>
             </div>
-            
-            <!-- Right side: Valve Mode Toggle (Vertical, small) -->
-            <button 
-              id="btn-valve-toggle"
-              disabled
-              class="relative inline-flex h-20 w-10 flex-col items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300 mr-2">
-              <span id="valve-toggle-dot" class="absolute inline-block h-8 w-8 rounded-full bg-white shadow-lg transition-all duration-200 top-1"></span>
-            </button>
+
+            <!-- Eyectores row -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img id="waterjet-icon" src="waterjet-icon.png" alt="Eyectores" class="w-8 h-8 transition-all duration-200 opacity-50">
+                <span id="waterjet-label" class="text-[1.3rem] font-semibold text-slate-900 transition-all duration-200 opacity-50">Eyectores</span>
+              </div>
+              <button 
+                id="btn-valve-eyectores"
+                disabled
+                class="relative inline-flex h-10 w-20 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed bg-slate-300 mr-2">
+                <span id="valve-eyectores-dot" class="absolute inline-block h-8 w-8 rounded-full bg-white shadow-lg transition-all duration-200 left-1 top-1"></span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -955,8 +962,8 @@
 
     <!-- ==================== Footer ==================== -->
     <footer class="pb-1.5 pt-1.5 text-center border-t border-slate-200 mt-auto bg-slate-50">
-      <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-        v3.1 • 2025
+          <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+        V3.2 - 2026
       </p>
     </footer>
 
