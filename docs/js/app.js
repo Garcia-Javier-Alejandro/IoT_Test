@@ -29,6 +29,93 @@ const AppModule = (() => {
   const STORAGE_KEY_USER = 'mqtt_user';      // localStorage key for MQTT username
   const STORAGE_KEY_PASS = 'mqtt_pass';      // localStorage key for MQTT password
   
+  // ==================== Credential Provider ====================
+  /**
+   * Get MQTT credentials for authentication
+   * 
+   * ARCHITECTURE EVOLUTION:
+   * 
+   * PHASE 1 (Current - Single User):
+   * - Reads from APP_CONFIG.MQTT_USER and MQTT_PASS (config.js)
+   * - All dashboards connect with same credentials
+   * - All users share same MQTT topics (e.g., devices/esp32-pool-01/*)
+   * - Suitable for single-family/single-location deployment
+   * 
+   * PHASE 2 (Future - Multi-User):
+   * - User authenticates with personal account (username/password or OAuth)
+   * - Backend API returns user-specific MQTT credentials
+   * - Each user gets unique topic namespace (e.g., devices/{userId}/pool-01/*)
+   * - Enables multi-tenant SaaS deployment
+   * - Users can only see/control their own devices
+   * 
+   * This abstraction allows migration to multi-user without changing
+   * the connection logic throughout the application.
+   * 
+   * @returns {Promise<{user: string, pass: string}>} MQTT credentials
+   */
+  async function getMQTTCredentials() {
+    // PHASE 1: Single-user mode - shared credentials from config.js
+    // For DEVELOPMENT/TESTING: Use credentials from APP_CONFIG
+    // For PRODUCTION: Replace with environment variables or secure backend endpoint
+    
+    if (!window.APP_CONFIG.MQTT_USER || !window.APP_CONFIG.MQTT_PASS) {
+      throw new Error('MQTT credentials not configured in config.js');
+    }
+    
+    return {
+      user: window.APP_CONFIG.MQTT_USER,
+      pass: window.APP_CONFIG.MQTT_PASS
+    };
+    
+    /* PHASE 2: Multi-user authentication (implement when scaling to multiple users)
+     * 
+     * Example Implementation:
+     * 
+     * 1. User logs in with their account credentials
+     * 2. Backend validates user and generates/retrieves their MQTT credentials
+     * 3. Backend returns: { mqttUser, mqttPass, deviceTopicPrefix }
+     * 4. Dashboard uses these credentials to connect to MQTT
+     * 5. All topics are prefixed with user's namespace
+     * 
+     * Benefits:
+     * - Each user has isolated MQTT topics
+     * - Users can't access other users' devices
+     * - Fine-grained access control (read/write permissions)
+     * - Audit logging per user
+     * - Easy to add/remove users
+     * 
+    try {
+      const authToken = getAuthToken(); // From login session (JWT, cookie, etc.)
+      
+      const response = await fetch('/api/auth/mqtt-credentials', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch MQTT credentials');
+      }
+      
+      const data = await response.json();
+      // Expected response: { mqttUser, mqttPass, topicPrefix }
+      
+      // Store topic prefix for use in MQTT topics
+      window.APP_CONFIG.TOPIC_PREFIX = data.topicPrefix; // e.g., "users/john123"
+      
+      return {
+        user: data.mqttUser,      // e.g., "mqtt_user_john123"
+        pass: data.mqttPass       // e.g., auto-generated secure password
+      };
+    } catch (error) {
+      console.error('[Auth] Failed to get MQTT credentials:', error);
+      throw new Error('Authentication failed. Please login again.');
+    }
+    */
+  }
+  
   // ==================== Application State ====================
   // UI state
   let pumpState = "UNKNOWN";   // "ON" | "OFF" | "UNKNOWN"
@@ -113,17 +200,27 @@ const AppModule = (() => {
     // Initialize UI state
     setPumpState("UNKNOWN");
     setValveMode("UNKNOWN");
+    resetWiFiStatus();  // Reset WiFi status display
     disconnectUI();
 
-    // Auto-connect if credentials are available
-    if (elements.userInput.value && elements.passInput.value) {
-      connectMQTT(
-        elements.userInput.value.trim(),
-        elements.passInput.value,
-        MQTT_WSS_URL
-      );
-    } else {
-      LogModule.append("Ingresá credenciales MQTT y presioná Conectar");
+    // Hide login card in single-user mode (PHASE 1)
+    // In PHASE 2 (multi-user), remove this to show login UI
+    if (elements.loginCard) {
+      elements.loginCard.style.display = 'none';
+    }
+
+    // Auto-connect to MQTT on page load (single-user mode)
+    try {
+      LogModule.append('Conectando automáticamente...');
+      const credentials = await getMQTTCredentials();
+      connectMQTT(credentials.user, credentials.pass, MQTT_WSS_URL);
+    } catch (error) {
+      console.error('[Auth] Auto-connect failed:', error);
+      LogModule.append('Error de autenticación');
+      // Show login card if auto-connect fails (fallback to manual login)
+      if (elements.loginCard) {
+        elements.loginCard.style.display = 'block';
+      }
     }
 
     // Cleanup on page unload
@@ -142,12 +239,17 @@ const AppModule = (() => {
   function cacheElements() {
     const mapping = {
       "pump-label": "pumpLabel",
+      "pump-icon": "pumpIcon",
       "pump-ring": "pumpRing",
       "pump-toggle-dot": "pumpToggleDot",
+      "btn-valve-cascada": "btnValveCascada",
+      "valve-cascada-dot": "valveCascadaDot",
+      "btn-valve-eyectores": "btnValveEyectores",
+      "valve-eyectores-dot": "valveEyectoresDot",
       "waterfall-icon": "waterfallIcon",
+      "waterfall-label": "waterfallLabel",
       "waterjet-icon": "waterjetIcon",
-      "btn-valve-1": "btnValve1",
-      "btn-valve-2": "btnValve2",
+      "waterjet-label": "waterjetLabel",
       "btn-timer": "btnTimer",
       "btn-programas": "btnProgramas",
       "conn-text": "connText",
@@ -163,10 +265,10 @@ const AppModule = (() => {
       "log-container": "logContainer",
       "log-toggle-icon": "logToggleIcon",
       "log-timestamp": "logTimestamp",
+      "login-card": "loginCard",
       "mqtt-user": "userInput",
       "mqtt-pass": "passInput",
       "btn-connect": "btnConnect",
-      "login-card": "loginCard",
       "btn-log-toggle": "btnLogToggle",
       "btn-log-clear": "btnLogClear",
       "main-screen": "mainScreen",
@@ -256,17 +358,56 @@ const AppModule = (() => {
    * - Program scheduling interface
    */
   function wireUIEvents() {
-    // Connect button
-    if (elements.btnConnect) {
-      elements.btnConnect.addEventListener("click", () => {
-        const u = elements.userInput.value.trim();
-        const p = elements.passInput.value;
-        if (!u || !p) {
-          LogModule.append("Completá username y password");
-          return;
+    // Shared handler for valve mode changes
+    const requestValveMode = (newMode) => {
+      const modeName = newMode === "1" ? "Cascada" : "Eyectores";
+
+      // Timer conflict
+      if (timerState.active) {
+        const currentModeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
+        alert(`⚠️ Conflicto con Timer (${currentModeName}) - Pasando a control manual.`);
+        LogModule.append("⚠️ Timer cancelado");
+        stopTimer();
+      }
+
+      // Program conflict
+      if (window.ProgramasModule) {
+        const activeProgramName = ProgramasModule.getActiveProgramName();
+        if (activeProgramName) {
+          alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
+          LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
+          ProgramasModule.setManualOverride();
         }
-        saveStoredCredentials(u, p);
-        connectMQTT(u, p, window.APP_CONFIG.MQTT_WSS_URL);
+      }
+
+      LogModule.append(`Cambiando válvulas a modo ${newMode} (${modeName})...`);
+
+      // Debounce both toggles
+      if (elements.btnValveCascada) elements.btnValveCascada.disabled = true;
+      if (elements.btnValveEyectores) elements.btnValveEyectores.disabled = true;
+      setTimeout(() => {
+        if (MQTTModule.isConnected()) {
+          if (elements.btnValveCascada) elements.btnValveCascada.disabled = false;
+          if (elements.btnValveEyectores) elements.btnValveEyectores.disabled = false;
+        }
+      }, BUTTON_DEBOUNCE_MS);
+
+      MQTTModule.publish(
+        newMode,
+        window.APP_CONFIG.TOPIC_VALVE_CMD,
+        (msg) => LogModule.append(msg)
+      );
+    };
+
+    // Connect button (hidden in single-user mode, kept for future multi-user)
+    if (elements.btnConnect) {
+      elements.btnConnect.addEventListener("click", async () => {
+        try {
+          const credentials = await getMQTTCredentials();
+          connectMQTT(credentials.user, credentials.pass, window.APP_CONFIG.MQTT_WSS_URL);
+        } catch (error) {
+          LogModule.append(`Error de autenticación: ${error.message}`);
+        }
       });
     }
 
@@ -312,68 +453,12 @@ const AppModule = (() => {
       });
     }
 
-    // Valve mode 1 button (Cascada)
-    if (elements.btnValve1) {
-      elements.btnValve1.addEventListener("click", () => {
-        if (valveMode === "1") return; // Already in mode 1
-        
-        // Check if timer is active (must cancel timer to change mode)
-        if (timerState.active) {
-          const modeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
-          alert(`⚠️ Conflicto con Timer (${modeName}) - Pasando a control manual.`);
-          LogModule.append("⚠️ Timer cancelado");
-          stopTimer();
-        }
-        
-        // Check if a program is active (conflict detection)
-        if (window.ProgramasModule) {
-          const activeProgramName = ProgramasModule.getActiveProgramName();
-          if (activeProgramName) {
-            alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
-            LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
-            ProgramasModule.setManualOverride();
-          }
-        }
-        
-        LogModule.append(`Cambiando válvulas a modo 1 (Cascada)...`);
-        MQTTModule.publish(
-          "1",
-          window.APP_CONFIG.TOPIC_VALVE_CMD,
-          (msg) => LogModule.append(msg)
-        );
-      });
+    // Valve mode toggles (mutually exclusive sliders)
+    if (elements.btnValveCascada) {
+      elements.btnValveCascada.addEventListener("click", () => requestValveMode("1"));
     }
-
-    // Valve mode 2 button (Eyectores)
-    if (elements.btnValve2) {
-      elements.btnValve2.addEventListener("click", () => {
-        if (valveMode === "2") return; // Already in mode 2
-        
-        // Check if timer is active
-        if (timerState.active) {
-          const modeName = timerState.mode === 1 ? "Cascada" : "Eyectores";
-          alert(`⚠️ Conflicto con Timer (${modeName}) - Pasando a control manual.`);
-          LogModule.append("⚠️ Timer cancelado");
-          stopTimer();
-        }
-        
-        // Check if a program is active
-        if (window.ProgramasModule) {
-          const activeProgramName = ProgramasModule.getActiveProgramName();
-          if (activeProgramName) {
-            alert(`⚠️ Conflicto con Programa (${activeProgramName}) - Pasando a control manual.`);
-            LogModule.append(`⚠️ Control manual - Programa "${activeProgramName}" en espera`);
-            ProgramasModule.setManualOverride();
-          }
-        }
-        
-        LogModule.append(`Cambiando válvulas a modo 2 (Eyectores)...`);
-        MQTTModule.publish(
-          "2",
-          window.APP_CONFIG.TOPIC_VALVE_CMD,
-          (msg) => LogModule.append(msg)
-        );
-      });
+    if (elements.btnValveEyectores) {
+      elements.btnValveEyectores.addEventListener("click", () => requestValveMode("2"));
     }
 
     // Timer button
@@ -485,36 +570,46 @@ const AppModule = (() => {
   
   /**
    * Update pump state display
-   * Updates label text and animation ring based on state
+   * Updates vertical toggle slider position based on state
    * 
    * @param {string} state - "ON" | "OFF" | "UNKNOWN"
    */
   function setPumpState(state) {
     pumpState = state;
 
-    // Update toggle switch appearance
+    // Update horizontal toggle switch appearance
     if (elements.btnPump && elements.pumpToggleDot) {
+      // Keep dot vertically centered
+      elements.pumpToggleDot.style.top = '4px';
+      elements.pumpToggleDot.style.bottom = 'auto';
+
       if (state === "ON") {
-        // Blue background, dot moved to right with light grey color
+        // Blue background, dot aligned right, icon at full opacity
         elements.btnPump.classList.remove('bg-slate-300');
         elements.btnPump.classList.add('bg-primary');
-        elements.pumpToggleDot.classList.remove('translate-x-1');
-        elements.pumpToggleDot.classList.add('translate-x-7');
+        elements.pumpToggleDot.style.left = 'calc(100% - 36px)';
         elements.pumpToggleDot.style.backgroundColor = '#e2e8f0';
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.opacity = '1';
+        }
       } else if (state === "OFF") {
-        // Grey background, dot on left with white color
+        // Grey background, dot aligned left, icon greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
-        elements.pumpToggleDot.classList.remove('translate-x-7');
-        elements.pumpToggleDot.classList.add('translate-x-1');
+        elements.pumpToggleDot.style.left = '4px';
         elements.pumpToggleDot.style.backgroundColor = 'white';
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.opacity = '0.3';
+        }
       } else {
-        // Unknown state - grey
+        // Unknown state - default to left, greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');
-        elements.pumpToggleDot.classList.remove('translate-x-7');
-        elements.pumpToggleDot.classList.add('translate-x-1');
+        elements.pumpToggleDot.style.left = '4px';
         elements.pumpToggleDot.style.backgroundColor = 'white';
+        if (elements.pumpIcon) {
+          elements.pumpIcon.style.opacity = '0.3';
+        }
       }
     }
 
@@ -523,50 +618,45 @@ const AppModule = (() => {
 
   /**
    * Update valve mode display
-   * Changes button styling to highlight active mode
-   * Mode 1 = Cascada (waterfall), Mode 2 = Eyectores (jets)
+   * Changes vertical toggle slider position to highlight active mode
+   * Top = Mode 1 (Cascada), Bottom = Mode 2 (Eyectores)
    * 
    * @param {string} mode - "1" | "2" | "UNKNOWN"
    */
   function setValveMode(mode) {
     valveMode = mode;
 
-    // Update button styles based on active mode
-    if (elements.btnValve1 && elements.btnValve2) {
-      if (mode === "1") {
-        // Cascada active
-        elements.btnValve1.className = "bg-primary hover:bg-primary-hover text-white font-bold text-base py-6 px-4 rounded-2xl border-2 border-primary shadow-lg transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
-        elements.btnValve2.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
-        // Change waterfall icon to white, reset waterjet
-        if (elements.waterfallIcon) {
-          elements.waterfallIcon.style.filter = 'brightness(0) saturate(100%) invert(100%)';
-        }
-        if (elements.waterjetIcon) {
-          elements.waterjetIcon.style.filter = '';
-        }
-      } else if (mode === "2") {
-        // Eyectores active
-        elements.btnValve1.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
-        elements.btnValve2.className = "bg-primary hover:bg-primary-hover text-white font-bold text-base py-6 px-4 rounded-2xl border-2 border-primary shadow-lg transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2";
-        // Change waterjet icon to white, reset waterfall
-        if (elements.waterjetIcon) {
-          elements.waterjetIcon.style.filter = 'brightness(0) saturate(100%) invert(100%)';
-        }
-        if (elements.waterfallIcon) {
-          elements.waterfallIcon.style.filter = '';
-        }
-      } else {
-        // Unknown state
-        elements.btnValve1.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
-        elements.btnValve2.className = "bg-white hover:bg-slate-50 text-slate-900 font-bold text-base py-6 px-4 rounded-2xl border-2 border-slate-300 shadow-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
-        // Reset both icons
-        if (elements.waterfallIcon) {
-          elements.waterfallIcon.style.filter = '';
-        }
-        if (elements.waterjetIcon) {
-          elements.waterjetIcon.style.filter = '';
-        }
-      }
+    // Update horizontal sliders (mutually exclusive)
+    const setSlider = (btn, dot, active) => {
+      if (!btn || !dot) return;
+      btn.classList.toggle('bg-primary', active);
+      btn.classList.toggle('bg-slate-300', !active);
+      dot.style.top = '4px';
+      dot.style.left = active ? 'calc(100% - 36px)' : '4px';
+      dot.style.backgroundColor = active ? '#e2e8f0' : 'white';
+    };
+
+    if (mode === "1") {
+      setSlider(elements.btnValveCascada, elements.valveCascadaDot, true);
+      setSlider(elements.btnValveEyectores, elements.valveEyectoresDot, false);
+      if (elements.waterfallIcon) elements.waterfallIcon.style.opacity = '1';
+      if (elements.waterfallLabel) elements.waterfallLabel.style.opacity = '1';
+      if (elements.waterjetIcon) elements.waterjetIcon.style.opacity = '0.3';
+      if (elements.waterjetLabel) elements.waterjetLabel.style.opacity = '0.3';
+    } else if (mode === "2") {
+      setSlider(elements.btnValveCascada, elements.valveCascadaDot, false);
+      setSlider(elements.btnValveEyectores, elements.valveEyectoresDot, true);
+      if (elements.waterjetIcon) elements.waterjetIcon.style.opacity = '1';
+      if (elements.waterjetLabel) elements.waterjetLabel.style.opacity = '1';
+      if (elements.waterfallIcon) elements.waterfallIcon.style.opacity = '0.3';
+      if (elements.waterfallLabel) elements.waterfallLabel.style.opacity = '0.3';
+    } else {
+      setSlider(elements.btnValveCascada, elements.valveCascadaDot, false);
+      setSlider(elements.btnValveEyectores, elements.valveEyectoresDot, false);
+      if (elements.waterfallIcon) elements.waterfallIcon.style.opacity = '0.3';
+      if (elements.waterfallLabel) elements.waterfallLabel.style.opacity = '0.3';
+      if (elements.waterjetIcon) elements.waterjetIcon.style.opacity = '0.3';
+      if (elements.waterjetLabel) elements.waterjetLabel.style.opacity = '0.3';
     }
 
     updateButtonStates();
@@ -582,12 +672,8 @@ const AppModule = (() => {
     if (elements.btnPump) {
       elements.btnPump.disabled = !connected;
     }
-    if (elements.btnValve1) {
-      elements.btnValve1.disabled = !connected;
-    }
-    if (elements.btnValve2) {
-      elements.btnValve2.disabled = !connected;
-    }
+    if (elements.btnValveCascada) elements.btnValveCascada.disabled = !connected;
+    if (elements.btnValveEyectores) elements.btnValveEyectores.disabled = !connected;
   }
 
   // ==================== Connection UI Feedback ====================
@@ -677,6 +763,18 @@ const AppModule = (() => {
     }
     
     if (elements.wifiSsid) elements.wifiSsid.textContent = ssid || "WiFi";
+  }
+
+  /**
+   * Reset WiFi status to disconnected state
+   * Used on page initialization to clear any cached WiFi data
+   */
+  function resetWiFiStatus() {
+    if (elements.wifiIcon) {
+      elements.wifiIcon.textContent = "wifi_off";
+      elements.wifiIcon.className = "material-icons-round text-slate-400 text-lg";
+    }
+    if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
   }
 
   /**
