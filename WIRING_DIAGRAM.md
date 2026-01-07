@@ -7,7 +7,7 @@
 - 1× Dual-channel relay module (2× Songle SRD-05VDC-SL-C relays)
 - 1× DS18B20 temperature sensor (waterproof)
 - 1× 4.7kΩ resistor (pull-up for DS18B20 data line)
-- 2× 10kΩ resistors (pull-down for GPIO 16 and GPIO 19)
+- 2× 10kΩ resistors (pull-down for GPIO 25 and GPIO 26)
 - 24V DC power supply (5.5A for pump + valves)
 - LM2596S buck converter (24V → 5V for ESP32)
 - 2× SPDT manual override switches (optional)
@@ -18,13 +18,13 @@
 
 ### Outputs (Relay Control)
 ```
-GPIO 16 → VALVE_RELAY_PIN   (Relay IN1: 2× 24V electrovalves) + 10kΩ pull-down to GND
-GPIO 19 → PUMP_RELAY_PIN    (Relay IN2: 220V pump)           + 10kΩ pull-down to GND
+GPIO 25 → VALVE_RELAY_PIN   (Relay IN1: 2× 24V electrovalves) + 10kΩ pull-down to GND
+GPIO 26 → PUMP_RELAY_PIN    (Relay IN2: 220V pump)           + 10kΩ pull-down to GND
 ```
 
 ### Inputs (Sensors)
 ```
-GPIO 33 → TEMP_SENSOR_PIN   (DS18B20 OneWire data line)      + 4.7kΩ pull-up to 3.3V
+GPIO 21 → TEMP_SENSOR_PIN   (DS18B20 OneWire data line)      + 4.7kΩ pull-up to 3.3V
 ```
 
 ---
@@ -37,8 +37,8 @@ Most dual-channel relay modules have **built-in optocouplers** and don't require
 ```
 VCC  → ESP32 5V (or VIN)
 GND  → ESP32 GND
-IN1  → ESP32 GPIO 16 (Valve control) + [10kΩ to GND]
-IN2  → ESP32 GPIO 19 (Pump control)  + [10kΩ to GND]
+IN1  → ESP32 GPIO 25 (Valve control) + [10kΩ to GND]
+IN2  → ESP32 GPIO 26 (Pump control)  + [10kΩ to GND]
 
 Relay 1 (IN1 - Valves):
   COM → 24V DC (+) from power supply
@@ -109,7 +109,7 @@ Result: NC valve CLOSED, NO valve OPEN
 ```
 Red    → ESP32 3.3V
 Black  → ESP32 GND
-Yellow → GPIO 33 + [4.7kΩ pull-up to 3.3V]
+Yellow → GPIO 21 + [4.7kΩ pull-up to 3.3V]
 ```
 
 ### Pull-up Resistor
@@ -118,7 +118,7 @@ ESP32 3.3V ──┬── DS18B20 VCC (red)
              │
          [4.7kΩ]
              │
-             └── DS18B20 DATA (yellow) ── GPIO 33
+             └── DS18B20 DATA (yellow) ── GPIO 21
 ```
 
 **Important:** Use **4.7kΩ** (not 47kΩ) for reliable OneWire communication.
@@ -131,8 +131,8 @@ To prevent relays from activating randomly during ESP32 boot/reset, install pull
 
 ### Wiring
 ```
-GPIO 16 ──[10kΩ]── GND  (Valve relay control)
-GPIO 19 ──[10kΩ]── GND  (Pump relay control)
+GPIO 25 ──[10kΩ]── GND  (Valve relay control)
+GPIO 26 ──[10kΩ]── GND  (Pump relay control)
 ```
 
 **Why needed:**
@@ -206,9 +206,9 @@ All GND connections must be common:
                     ┌──────────────────────────────────┐
                     │       ESP32 DevKit V1            │
                     │                                  │
-   ┌────────────────┤ GPIO 16 (Valves) + [10kΩ↓GND]   │
-   │  ┌─────────────┤ GPIO 19 (Pump)   + [10kΩ↓GND]   │
-   │  │  ┌──────────┤ GPIO 33 (Temp)   + [4.7kΩ↑3.3V] │
+   ┌────────────────┤ GPIO 25 (Valves) + [10kΩ↓GND]   │
+   │  ┌─────────────┤ GPIO 26 (Pump)   + [10kΩ↓GND]   │
+   │  │  ┌──────────┤ GPIO 21 (Temp)   + [4.7kΩ↑3.3V] │
    │  │  │          │                                  │
    │  │  │          │ VIN/5V ◄── 5V from LM2596S       │
    │  │  │          │ GND ◄──────────┬── Common GND    │

@@ -359,7 +359,9 @@ const AppModule = (() => {
    */
   function wireUIEvents() {
     // Shared handler for valve mode changes
-    const requestValveMode = (newMode) => {
+    const requestValveMode = (requestedMode) => {
+      // If clicking the active mode, switch to the opposite mode
+      const newMode = (valveMode === requestedMode) ? (requestedMode === "1" ? "2" : "1") : requestedMode;
       const modeName = newMode === "1" ? "Cascada" : "Eyectores";
 
       // Timer conflict

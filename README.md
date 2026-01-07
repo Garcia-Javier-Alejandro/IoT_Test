@@ -471,9 +471,9 @@ IoT/
 ### 1. Hardware Assembly
 
 1. Connect ESP32 → SONGLE relay modules
-2. GPIO 16 → Relay IN1 (Valve control) + 10kΩ pull-down
-3. GPIO 19 → Relay IN2 (Pump control) + 10kΩ pull-down
-4. GPIO 33 → DS18B20 data line + 4.7kΩ pull-up
+2. GPIO 25 → Relay IN1 (Valve control) + 10kΩ pull-down
+3. GPIO 26 → Relay IN2 (Pump control) + 10kΩ pull-down
+4. GPIO 21 → DS18B20 data line + 4.7kΩ pull-up
 5. Wire relays in parallel with manual SPDT switches (optional)
 
 ### 2. Firmware Setup
@@ -705,7 +705,7 @@ When you manually control pump/valves while a program is active:
 
 ```cpp
 // User clicks "Turn ON" in dashboard
-1. Set GPIO 19 HIGH (relay closes)
+1. Set GPIO 26 HIGH (relay closes)
 2. Pump motor receives 220V AC power
 3. Update internal state variable
 4. Publish "ON" to MQTT pump/state topic
@@ -715,7 +715,7 @@ When you manually control pump/valves while a program is active:
 
 ```cpp
 // User clicks "Change to Mode 2"
-1. Set GPIO 16 HIGH (relay energizes)
+1. Set GPIO 25 HIGH (relay energizes)
 2. NC valve closes, NO valve opens (opposite polarity)
 3. Water flow direction changes
 4. Update internal mode variable
@@ -724,7 +724,7 @@ When you manually control pump/valves while a program is active:
 
 ### Temperature Reading
 
-**DS18B20 OneWire sensor on GPIO 33:**
+**DS18B20 OneWire sensor on GPIO 21:**
 
 ```cpp
 // Every 60 seconds in loop()
