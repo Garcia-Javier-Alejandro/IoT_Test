@@ -1,0 +1,21 @@
+name = "iot-pool-controller"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "docs"
+
+# Environment Variables
+[vars]
+# Public variables (can be committed)
+ENVIRONMENT = "production"
+
+# Optional: Configure these for event logging and history
+# KV Namespace for event storage (optional)
+# [[kv_namespaces]]
+# binding = "EVENTS"
+# id = "your-kv-namespace-id"
+
+# D1 Database for history (optional)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "iot-pool-history"
+# database_id = "your-database-id"

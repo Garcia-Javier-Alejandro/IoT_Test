@@ -1,0 +1,22 @@
+{
+  "name": "iot-pool-controller",
+  "version": "3.1.0",
+  "description": "Single-user IoT Pool Controller - ESP32 + MQTT + Cloudflare Pages",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev docs --compatibility-date=2024-01-01",
+    "deploy": "wrangler pages deploy docs"
+  },
+  "keywords": [
+    "iot",
+    "pool-controller",
+    "esp32",
+    "mqtt",
+    "cloudflare"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.54.0"
+  }
+}
