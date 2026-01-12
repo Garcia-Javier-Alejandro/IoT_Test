@@ -758,6 +758,9 @@ const AppModule = (() => {
       if (elements.wifiIcon) elements.wifiIcon.textContent = "wifi_off";
       if (elements.wifiIcon) elements.wifiIcon.className = "material-icons-round text-red-600 text-lg";
       if (elements.wifiSsid) elements.wifiSsid.textContent = "Sin WiFi";
+      
+      // Clear temperature display when device is offline
+      if (elements.tempValue) elements.tempValue.textContent = "--";
       return;
     }
 
