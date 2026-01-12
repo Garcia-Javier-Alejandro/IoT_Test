@@ -258,6 +258,7 @@ const AppModule = (() => {
       "wifi-ssid": "wifiSsid",
       "temp-icon": "tempIcon",
       "temp-value": "tempValue",
+      "temp-refresh-btn": "tempRefreshBtn",
       "weather-icon": "weatherIcon",
       "weather-temp": "weatherTemp",
       "btn-pump": "btnPump",
@@ -461,6 +462,28 @@ const AppModule = (() => {
     }
     if (elements.btnValveEyectores) {
       elements.btnValveEyectores.addEventListener("click", () => requestValveMode("2"));
+    }
+
+    // Temperature refresh button
+    if (elements.tempRefreshBtn) {
+      elements.tempRefreshBtn.addEventListener("click", () => {
+        LogModule.append("Refrescando temperatura...");
+        MQTTModule.publish(
+          "refresh",
+          window.APP_CONFIG.TOPIC_TEMP_REFRESH,
+          (msg) => LogModule.append(msg)
+        );
+        
+        // Add visual feedback - spin the icon
+        const icon = elements.tempRefreshBtn.querySelector(".material-icons-round");
+        if (icon) {
+          icon.style.transition = "transform 0.5s ease";
+          icon.style.transform = "rotate(360deg)";
+          setTimeout(() => {
+            icon.style.transform = "rotate(0deg)";
+          }, 500);
+        }
+      });
     }
 
     // Timer button

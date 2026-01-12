@@ -24,7 +24,7 @@
 #define NTP_SYNC_TIMEOUT        15000     // Timeout for NTP synchronization (ms)
 #define WIFI_STATE_INTERVAL     30000     // Interval to publish WiFi state (ms)
 #define TIMER_PUBLISH_INTERVAL  10000     // Interval to publish timer state (ms)
-#define TEMP_PUBLISH_INTERVAL   60000     // Interval to publish temperature (ms) - 1 minute
+#define TEMP_PUBLISH_INTERVAL   10000     // Interval to publish temperature (ms) - 10 seconds
 #define BLE_CHECK_INTERVAL      1000      // Check for BLE credentials every 1 second
 #define MIN_VALID_EPOCH         1700000000L // Minimum valid epoch for NTP (Nov 2023)
 
@@ -198,6 +198,13 @@ void publishTimerState() {
 void publishTemperature() {
   if (isnan(currentTemperature)) {
     Serial.println("[MQTT] Skip temperature publish - invalid reading");
+    // Publish diagnostic to error topic for visibility
+    String err = "{\"error\":\"sensor_disconnected\"}";
+    mqtt.publish(TOPIC_TEMP_ERROR, err.c_str(), true /*retain*/);
+    Serial.print("[MQTT] publish ");
+    Serial.print(TOPIC_TEMP_ERROR);
+    Serial.print(" = ");
+    Serial.println(err);
     return;
   }
   
@@ -482,6 +489,17 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
       Serial.print(", duration=");
       Serial.println(duration);
       startTimer(mode, duration);
+    }
+    return;
+  }
+
+  // ===== Temperature Refresh Command =====
+  if (t == TOPIC_TEMP_REFRESH) {
+    Serial.println("[MQTT] Temperature refresh command received");
+    // Force immediate temperature reading
+    currentTemperature = readTemperature();
+    if (mqtt.connected()) {
+      publishTemperature();
     }
     return;
   }
@@ -846,6 +864,10 @@ bool connectMqtt() {
   Serial.print("[MQTT] Subscribed: ");
   Serial.println(TOPIC_WIFI_CLEAR);
 
+  mqtt.subscribe(TOPIC_TEMP_REFRESH);
+  Serial.print("[MQTT] Subscribed: ");
+  Serial.println(TOPIC_TEMP_REFRESH);
+
   // Publish initial state
   publishPumpState();
   publishValveState();
@@ -859,19 +881,7 @@ bool connectMqtt() {
   return true;
 }
 
-// ==================== Arduino Setup & Loop ====================
 
-/**
- * System initialization (executed once at startup)
- * Sequence:
- * 1. Configure Serial for debug
- * 2. Configure output pins (relays for pump and valves)
- * 3. Initialize DS18B20 temperature sensor
- * 4. Initial state: all relays off
- * 5. Connect WiFi (trying multiple networks)
- * 6. Synchronize time with NTP (required for TLS)
- * 7. Configure and connect MQTT with TLS
- */
 void setup() {
   Serial.begin(115200);
   delay(500);

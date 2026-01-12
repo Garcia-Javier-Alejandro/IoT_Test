@@ -58,5 +58,6 @@ window.APP_CONFIG = {
   TOPIC_TIMER_STATE: "devices/esp32-pool-01/timer/state",  // JSON: {active, remaining, mode, duration}
 
   // Temperature Monitoring
-  TOPIC_TEMP_STATE: "devices/esp32-pool-01/temperature/state"  // Value: temperature in °C
+  TOPIC_TEMP_STATE: "devices/esp32-pool-01/temperature/state",    // Value: temperature in °C
+  TOPIC_TEMP_REFRESH: "devices/esp32-pool-01/temperature/refresh" // Command: force immediate reading
 };

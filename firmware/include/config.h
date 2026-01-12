@@ -44,4 +44,11 @@
 
 // Temperature:
 // TOPIC_TEMP_STATE = ESP32 publica temperatura actual (°C) -> dashboard se suscribe
+// TOPIC_TEMP_REFRESH = dashboard publica comando para forzar lectura inmediata -> ESP32 se suscribe
 #define TOPIC_TEMP_STATE    "devices/" DEVICE_ID "/temperature/state"
+#define TOPIC_TEMP_REFRESH  "devices/" DEVICE_ID "/temperature/refresh"
+
+// Temperature Error/Diagnostics:
+// TOPIC_TEMP_ERROR = ESP32 publica diagnóstico cuando no puede leer la sonda
+// Ejemplos: {"error":"sensor_disconnected"}, {"error":"read_failed"}
+#define TOPIC_TEMP_ERROR    "devices/" DEVICE_ID "/temperature/error"
