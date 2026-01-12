@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MQTT Temperature Debug</title>
+  <script src="https://unpkg.com/mqtt@5.11.0/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #00ff00;
+    }
+    h1 { color: #00ff00; }
+    #log {
+      background: #000;
+      padding: 20px;
+      border: 2px solid #00ff00;
+      height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .timestamp { color: #888; }
+    .error { color: #ff0000; }
+    .success { color: #00ff00; }
+    .info { color: #00aaff; }
+    button {
+      background: #00ff00;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #00cc00; }
+  </style>
+</head>
+<body>
+  <h1>🔍 MQTT Temperature Sensor Debugger</h1>
+  <div>
+    <button onclick="connectMQTT()">Connect to MQTT</button>
+    <button onclick="requestTemperature()">Force Temperature Reading</button>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+  <div id="log"></div>
+
+  <script>
+    let client = null;
+    const MQTT_WSS_URL = "wss://1f1fff2e23204fa08aef0663add440bc.s1.eu.hivemq.cloud:8884/mqtt";
+    const MQTT_USER = "User-dashboard-01";
+    const MQTT_PASS = "Manzana1";
+    const DEVICE_ID = "esp32-pool-01";
+
+    const TOPIC_TEMP_STATE = `devices/${DEVICE_ID}/temperature/state`;
+    const TOPIC_TEMP_REFRESH = `devices/${DEVICE_ID}/temperature/refresh`;
+    const TOPIC_TEMP_ERROR = `devices/${DEVICE_ID}/temperature/error`;
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = type;
+      entry.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    function connectMQTT() {
+      if (client) {
+        log('Already connected or connecting...', 'info');
+        return;
+      }
+
+      log('🔌 Connecting to MQTT broker...', 'info');
+      log(`   URL: ${MQTT_WSS_URL}`, 'info');
+
+      client = mqtt.connect(MQTT_WSS_URL, {
+        username: MQTT_USER,
+        password: MQTT_PASS,
+        clientId: 'mqtt-temp-debugger-' + Math.random().toString(16).substr(2, 8),
+        clean: true,
+        reconnectPeriod: 5000
+      });
+
+      client.on('connect', () => {
+        log('✓ Connected to MQTT broker!', 'success');
+        
+        // Subscribe to temperature topics
+        client.subscribe(TOPIC_TEMP_STATE, { qos: 0 }, (err) => {
+          if (!err) {
+            log(`✓ Subscribed to: ${TOPIC_TEMP_STATE}`, 'success');
+          } else {
+            log(`✗ Failed to subscribe to temperature state: ${err.message}`, 'error');
+          }
+        });
+
+        client.subscribe(TOPIC_TEMP_ERROR, { qos: 0 }, (err) => {
+          if (!err) {
+            log(`✓ Subscribed to: ${TOPIC_TEMP_ERROR}`, 'success');
+          } else {
+            log(`✗ Failed to subscribe to temperature error: ${err.message}`, 'error');
+          }
+        });
+
+        log('⏳ Waiting for temperature messages...', 'info');
+        log('   (ESP32 publishes every 10 seconds)', 'info');
+      });
+
+      client.on('error', (error) => {
+        log(`✗ MQTT Error: ${error.message}`, 'error');
+      });
+
+      client.on('offline', () => {
+        log('⚠️ MQTT client offline', 'error');
+      });
+
+      client.on('reconnect', () => {
+        log('⟳ Attempting to reconnect...', 'info');
+      });
+
+      client.on('message', (topic, message) => {
+        const msg = message.toString();
+        const time = new Date().toLocaleTimeString();
+        
+        if (topic === TOPIC_TEMP_STATE) {
+          const temp = parseFloat(msg);
+          if (!isNaN(temp)) {
+            log(`🌡️ TEMPERATURE RECEIVED: ${temp.toFixed(1)}°C`, 'success');
+          } else {
+            log(`⚠️ Invalid temperature value: ${msg}`, 'error');
+          }
+        } else if (topic === TOPIC_TEMP_ERROR) {
+          log(`❌ TEMPERATURE ERROR: ${msg}`, 'error');
+        } else {
+          log(`📨 Message on ${topic}: ${msg}`, 'info');
+        }
+      });
+    }
+
+    function requestTemperature() {
+      if (!client || !client.connected) {
+        log('✗ Not connected to MQTT. Click "Connect to MQTT" first.', 'error');
+        return;
+      }
+
+      log(`📤 Sending temperature refresh command to: ${TOPIC_TEMP_REFRESH}`, 'info');
+      client.publish(TOPIC_TEMP_REFRESH, 'refresh', { qos: 0 }, (err) => {
+        if (err) {
+          log(`✗ Failed to send refresh command: ${err.message}`, 'error');
+        } else {
+          log('✓ Refresh command sent! Waiting for ESP32 response...', 'success');
+        }
+      });
+    }
+
+    // Auto-connect on load
+    window.addEventListener('load', () => {
+      log('🚀 MQTT Temperature Debugger ready', 'success');
+      log('Click "Connect to MQTT" to start monitoring', 'info');
+    });
+  </script>
+</body>
+</html>

@@ -24,7 +24,7 @@
 #define NTP_SYNC_TIMEOUT        15000     // Timeout for NTP synchronization (ms)
 #define WIFI_STATE_INTERVAL     30000     // Interval to publish WiFi state (ms)
 #define TIMER_PUBLISH_INTERVAL  10000     // Interval to publish timer state (ms)
-#define TEMP_PUBLISH_INTERVAL   10000     // Interval to publish temperature (ms) - 10 seconds
+#define TEMP_PUBLISH_INTERVAL   60000     // Interval to publish temperature (ms) - 60 seconds
 #define BLE_CHECK_INTERVAL      1000      // Check for BLE credentials every 1 second
 #define MIN_VALID_EPOCH         1700000000L // Minimum valid epoch for NTP (Nov 2023)
 
@@ -898,6 +898,13 @@ void setup() {
   // Initial state: all relays off
   digitalWrite(PUMP_RELAY_PIN, LOW);
   digitalWrite(VALVE_RELAY_PIN, LOW);
+
+  // ===== DIAGNOSTIC: Check GPIO 21 idle state (OneWire bus should be HIGH when idle) =====
+  pinMode(TEMP_SENSOR_PIN, INPUT);
+  int gpio21State = digitalRead(TEMP_SENSOR_PIN);
+  Serial.print("[DIAGNOSTIC] GPIO 21 idle state: ");
+  Serial.println(gpio21State ? "HIGH (3.3V) ✓" : "LOW (0V) ✗ BUS STUCK!");
+  // ========================================================================================
 
   // Initialize DS18B20 temperature sensor
   Serial.println("[SENSOR] Initializing DS18B20...");
