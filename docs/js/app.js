@@ -33,30 +33,30 @@ const AppModule = (() => {
   /**
    * Get MQTT credentials for authentication
    * 
-   * ARCHITECTURE EVOLUTION:
+   * AUTHENTICATION ARCHITECTURE:
    * 
-   * PHASE 1 (Current - Single User):
+   * Current (Single-User Personal Pool):
    * - Reads from APP_CONFIG.MQTT_USER and MQTT_PASS (config.js)
    * - All dashboards connect with same credentials
    * - All users share same MQTT topics (e.g., devices/esp32-pool-01/*)
    * - Suitable for single-family/single-location deployment
    * 
-   * PHASE 2 (Future - Multi-User):
+   * Future Enhancement (If Multi-User Needed):
    * - User authenticates with personal account (username/password or OAuth)
    * - Backend API returns user-specific MQTT credentials
    * - Each user gets unique topic namespace (e.g., devices/{userId}/pool-01/*)
-   * - Enables multi-tenant SaaS deployment
-   * - Users can only see/control their own devices
+   * - Enables multi-user deployment with access control
+   * - See docs/ARCHITECTURE.md for scaling roadmap
    * 
-   * This abstraction allows migration to multi-user without changing
+   * This abstraction allows future migration to multi-user without changing
    * the connection logic throughout the application.
    * 
    * @returns {Promise<{user: string, pass: string}>} MQTT credentials
    */
   async function getMQTTCredentials() {
-    // PHASE 1: Single-user mode - shared credentials from config.js
-    // For DEVELOPMENT/TESTING: Use credentials from APP_CONFIG
-    // For PRODUCTION: Replace with environment variables or secure backend endpoint
+    // Current: Single-user mode - shared credentials from config.js
+    // Development/Testing: Use credentials from APP_CONFIG
+    // Production: Replace with environment variables or secure backend endpoint
     
     if (!window.APP_CONFIG.MQTT_USER || !window.APP_CONFIG.MQTT_PASS) {
       throw new Error('MQTT credentials not configured in config.js');
@@ -67,9 +67,9 @@ const AppModule = (() => {
       pass: window.APP_CONFIG.MQTT_PASS
     };
     
-    /* PHASE 2: Multi-user authentication (implement when scaling to multiple users)
+    /* FUTURE ENHANCEMENT: Multi-user authentication (if needed)
      * 
-     * Example Implementation:
+     * Implementation example:
      * 
      * 1. User logs in with their account credentials
      * 2. Backend validates user and generates/retrieves their MQTT credentials
@@ -203,13 +203,13 @@ const AppModule = (() => {
     resetWiFiStatus();  // Reset WiFi status display
     disconnectUI();
 
-    // Hide login card in single-user mode (PHASE 1)
-    // In PHASE 2 (multi-user), remove this to show login UI
+    // Hide login card (single-user personal pool setup)
+    // In future multi-user deployment, replace with login UI
     if (elements.loginCard) {
       elements.loginCard.style.display = 'none';
     }
 
-    // Auto-connect to MQTT on page load (single-user mode)
+    // Auto-connect to MQTT on page load
     try {
       LogModule.append('Conectando automáticamente...');
       const credentials = await getMQTTCredentials();
@@ -402,7 +402,7 @@ const AppModule = (() => {
       );
     };
 
-    // Connect button (hidden in single-user mode, kept for future multi-user)
+    // Connect button (for manual reconnection, kept for testing/debugging)
     if (elements.btnConnect) {
       elements.btnConnect.addEventListener("click", async () => {
         try {
