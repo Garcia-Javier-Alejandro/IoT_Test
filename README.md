@@ -16,7 +16,7 @@ Automate your pool with **simple controls**:
 - 📅 **Weekly Scheduling** - Create up to 3 programs, auto-execute daily
 - 🎨 **Modern Dashboard** - Beautiful, responsive UI works on phone/tablet/desktop
 - 🔄 **Manual Override** - Physical switches still work if needed
-- 🖥️ **MQTT Control** - Integrate with Home Assistant, Node-RED, or custom apps
+- 🖥️ **Standard MQTT** - Compatible with any MQTT client (Home Assistant, Node-RED, custom apps)
 
 **No commercial subscription. Works locally. Takes 30 seconds to set up.**
 

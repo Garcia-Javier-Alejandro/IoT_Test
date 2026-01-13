@@ -24,7 +24,7 @@ GPIO 26 → PUMP_RELAY_PIN    (Relay IN2: 220V pump)           + 10kΩ pull-down
 
 ### Inputs (Sensors)
 ```
-GPIO 21 → TEMP_SENSOR_PIN   (DS18B20 OneWire data line)      + 4.7kΩ pull-up to 3.3V
+GPIO 4 → TEMP_SENSOR_PIN   (DS18B20 OneWire data line)      + 4.7kΩ pull-up to 3.3V
 ```
 
 ---
@@ -109,7 +109,7 @@ Result: NC valve CLOSED, NO valve OPEN
 ```
 Red    → ESP32 3.3V
 Black  → ESP32 GND
-Yellow → GPIO 21 + [4.7kΩ pull-up to 3.3V]
+Yellow → GPIO 4 + [4.7kΩ pull-up to 3.3V]
 ```
 
 ### Pull-up Resistor
@@ -118,7 +118,7 @@ ESP32 3.3V ──┬── DS18B20 VCC (red)
              │
          [4.7kΩ]
              │
-             └── DS18B20 DATA (yellow) ── GPIO 21
+             └── DS18B20 DATA (yellow) ── GPIO 4
 ```
 
 **Important:** Use **4.7kΩ** (not 47kΩ) for reliable OneWire communication.
@@ -208,7 +208,7 @@ All GND connections must be common:
                     │                                  │
    ┌────────────────┤ GPIO 25 (Valves) + [10kΩ↓GND]   │
    │  ┌─────────────┤ GPIO 26 (Pump)   + [10kΩ↓GND]   │
-   │  │  ┌──────────┤ GPIO 21 (Temp)   + [4.7kΩ↑3.3V] │
+   │  │  ┌──────────┤ GPIO 4 (Temp)    + [4.7kΩ↑3.3V] │
    │  │  │          │                                  │
    │  │  │          │ VIN/5V ◄── 5V from LM2596S       │
    │  │  │          │ GND ◄──────────┬── Common GND    │
@@ -323,7 +323,7 @@ Power Supply Chain:
 |---------|--------------|----------|
 | Relay clicks but pump doesn't start | Manual override switch open | Check switch position or bypass for testing |
 | ESP32 resets when relay activates | Insufficient power supply current | Upgrade to 3A+ power supply, check buck converter |
-| Temperature reads -127°C | DS18B20 not connected or wrong pin | Verify GPIO 21, check pull-up resistor, test sensor |
+| Temperature reads -127°C | DS18B20 not connected or wrong pin | Verify GPIO 4, check pull-up resistor, test sensor |
 | Temperature erratic/drops out | 47kΩ resistor (too high) | Replace with 4.7kΩ resistor |
 | Relay doesn't click at all | GPIO not configured or wrong logic | Check firmware, verify Active HIGH/LOW setting |
 | Valve stuck in one mode | Relay contacts welded or valve failure | Test relay with multimeter, check valve power |
