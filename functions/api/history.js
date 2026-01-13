@@ -1,3 +1,64 @@
+/**
+ * ============================================================================
+ * Event History Query API - Cloudflare Worker
+ * ============================================================================
+ * 
+ * GET endpoint for retrieving pool control event history from D1 database
+ * 
+ * @route GET /api/history?deviceId=esp32-01&range=24h&limit=200
+ * @env DB: Cloudflare D1 database binding
+ * 
+ * Query Parameters:
+ * - deviceId: Device ID to query (default: "esp32-01")
+ * - range: Time range to retrieve (default: "24h")
+ *   - Format: "XmXhXd" (e.g., "24h", "7d", "60m")
+ *   - Special value: "all" (retrieves 1 year of history)
+ *   - Limits: 1m minimum, 30d maximum
+ * - limit: Maximum number of events to return (default: 200, max: 500)
+ * 
+ * Response (Success 200):
+ * {
+ *   "ok": true,
+ *   "deviceId": "esp32-01",
+ *   "count": number,
+ *   "range": "24h",
+ *   "events": [
+ *     {
+ *       "id": number,
+ *       "deviceId": "esp32-01",
+ *       "ts": number (epoch milliseconds),
+ *       "state": "ON" | "OFF",
+ *       "valveId": 1 | 2
+ *     },
+ *     ...
+ *   ]
+ * }
+ * 
+ * Response (Error):
+ * {
+ *   "ok": false,
+ *   "error": "error description"
+ * }
+ * 
+ * Error Codes:
+ * - 405: Method not allowed (use GET)
+ * - 500: Server error (database issue)
+ * 
+ * Example Queries:
+ * - Last 24 hours: /api/history?deviceId=esp32-01&range=24h&limit=100
+ * - Last 7 days: /api/history?deviceId=esp32-01&range=7d&limit=500
+ * - All history: /api/history?deviceId=esp32-01&range=all
+ * - Last hour: /api/history?deviceId=esp32-01&range=60m
+ * 
+ * Use Cases:
+ * - Dashboard historical data visualization
+ * - Event trending analysis
+ * - Device usage reports
+ * - Data export for troubleshooting
+ * 
+ * ============================================================================
+ */
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -6,7 +67,7 @@ function json(data, status = 200) {
 }
 
 function parseRangeToMs(rangeStr) {
-  // Acepta: "24h", "7d", "60m", "all"
+  // Accepts: "24h", "7d", "60m", "all"
   const raw = (rangeStr || "24h").toString().trim().toLowerCase();
   
   // Special case: "all" means all time (use a very old timestamp)
@@ -25,7 +86,7 @@ function parseRangeToMs(rangeStr) {
     unit === "h" ? 60 * 60 * 1000 :
     24 * 60 * 60 * 1000;
 
-  // límites razonables para evitar abusos: 1m a 30d
+  // Reasonable limits to prevent abuse: 1m to 30d
   const ms = n * mult;
   const min = 60 * 1000;
   const max = 30 * 24 * 60 * 60 * 1000;

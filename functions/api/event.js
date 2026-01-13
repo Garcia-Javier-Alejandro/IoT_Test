@@ -1,3 +1,52 @@
+/**
+ * ============================================================================
+ * Event Logging API - Cloudflare Worker
+ * ============================================================================
+ * 
+ * POST endpoint for logging pool control events to D1 database
+ * 
+ * @route POST /api/event
+ * @auth Required: x-api-key header
+ * @env DB: Cloudflare D1 database binding
+ * @env API_KEY: Secret API key for authentication
+ * 
+ * Request Body (JSON):
+ * {
+ *   "deviceId": "esp32-01" (optional, default: "esp32-01"),
+ *   "state": "ON" | "OFF" (required),
+ *   "ts": number (required, epoch milliseconds),
+ *   "valveId": 1 | 2 (optional, default: 1)
+ * }
+ * 
+ * Response (Success 200):
+ * {
+ *   "ok": true,
+ *   "inserted": 1,
+ *   "eventId": number,
+ *   "ts": number
+ * }
+ * 
+ * Response (Error):
+ * {
+ *   "ok": false,
+ *   "error": "error description"
+ * }
+ * 
+ * Error Codes:
+ * - 400: Invalid request (bad JSON, missing required fields, invalid values)
+ * - 401: Unauthorized (missing or invalid API key)
+ * - 405: Method not allowed (use POST)
+ * - 500: Server error (database issue or missing configuration)
+ * 
+ * Example:
+ * curl -X POST https://api.example.com/api/event \\
+ *   -H "x-api-key: your-secret-key" \\
+ *   -H "Content-Type: application/json" \\
+ *   -d '{"deviceId":"esp32-01","state":"ON","ts":1704067200000,"valveId":1}'
+ * 
+ * ============================================================================
+ */
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
