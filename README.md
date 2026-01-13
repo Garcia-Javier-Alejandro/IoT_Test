@@ -1,8 +1,8 @@
 # ESP32 Pool Control System v3.1
 
-**Control your swimming pool remotely. Simple. Secure. Works offline.**
+**Control your swimming pool remotely. Simple. Secure. Cloud-connected.**
 
-✅ **Production Ready** | 🌐 **Cloud-Connected** | 📱 **Mobile Dashboard** | 🔒 **Encrypted Communications**
+✅ **Production Ready** | 🌐 **Cloud MQTT** | 📱 **Mobile Dashboard** | 🔒 **Encrypted Communications**
 
 ---
 
@@ -74,13 +74,15 @@ That's it! You now have a pool controller. 🎉
 **Single-User Design** (today):
 - One ESP32 controls one pool
 - Dashboard runs in your browser
-- Direct MQTT connection (no backend)
+- Direct MQTT connection to cloud broker (HiveMQ)
 - Perfect for personal use, homes, small installations
+- **Requires**: Internet connection + WiFi (not offline-capable)
 
 **How It Works:**
-1. Dashboard → MQTT broker → ESP32 → Relay → Pool equipment
-2. ESP32 → Temperature readings → MQTT broker → Dashboard
-3. 100-500ms latency (depending on WiFi)
+1. Dashboard (browser) → Internet → HiveMQ Cloud MQTT broker
+2. ESP32 (WiFi) → MQTT broker → subscribes to commands
+3. ESP32 → Temperature readings → MQTT broker → Dashboard
+4. 100-500ms latency (depending on WiFi + internet connection)
 
 [👉 Full architecture details](docs/ARCHITECTURE.md)
 
