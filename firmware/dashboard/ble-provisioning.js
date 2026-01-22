@@ -15,7 +15,7 @@ const ESP32BLEProvisioning = {
   PASSWORD_CHAR_UUID: 'cba1d466-344c-4be3-ab3f-189f80dd7518',
   STATUS_CHAR_UUID: '8d8218b6-97bc-4527-a8db-13094ac06b1d',
   NETWORKS_CHAR_UUID: 'fa87c0d0-afac-11de-8a39-0800200c9a66',
-  COMMAND_CHAR_UUID: '0b9f1e80-0f88-4b68-9a09-9d1d6921d0d8',
+  COMMAND_CHAR_UUID: '8b9d68c4-57b8-4b02-bf19-6fd94b62f709',
 
   // State
   device: null,
@@ -107,34 +107,46 @@ const ESP32BLEProvisioning = {
   },
 
   /**
-   * Send WiFi credentials to ESP32
+   * Send WiFi credentials to ESP32 with automatic retry on failure
    * @param {string} ssid - WiFi network name
    * @param {string} password - WiFi password
+   * @param {number} maxRetries - Maximum retry attempts (default: 3)
    * @returns {Promise<boolean>} true if sent successfully
    */
-  async sendCredentials(ssid, password) {
+  async sendCredentials(ssid, password, maxRetries = 3) {
     if (!this.server || !this.server.connected) {
       throw new Error('Not connected to device. Call connect() first.');
     }
 
-    try {
-      console.log(`[BLE] Sending SSID: ${ssid}`);
-      const ssidEncoder = new TextEncoder();
-      await this.ssidCharacteristic.writeValue(ssidEncoder.encode(ssid));
-      console.log('[BLE] ✓ SSID sent');
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[BLE] Sending SSID: ${ssid} (attempt ${attempt}/${maxRetries})`);
+        const ssidEncoder = new TextEncoder();
+        await this.ssidCharacteristic.writeValue(ssidEncoder.encode(ssid));
+        console.log('[BLE] ✓ SSID sent');
 
-      // Small delay between writes
-      await new Promise(resolve => setTimeout(resolve, 100));
+        // Small delay between writes
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('[BLE] Sending password...');
-      const passwordEncoder = new TextEncoder();
-      await this.passwordCharacteristic.writeValue(passwordEncoder.encode(password));
-      console.log('[BLE] ✓ Password sent');
+        console.log('[BLE] Sending password...');
+        const passwordEncoder = new TextEncoder();
+        await this.passwordCharacteristic.writeValue(passwordEncoder.encode(password));
+        console.log('[BLE] ✓ Password sent');
 
-      return true;
-    } catch (error) {
-      console.error('[BLE] Error sending credentials:', error);
-      throw error;
+        return true;
+      } catch (error) {
+        console.warn(`[BLE] Credential send attempt ${attempt} failed:`, error);
+        
+        if (attempt === maxRetries) {
+          console.error(`[BLE] All ${maxRetries} attempts failed`);
+          throw error;
+        }
+        
+        // Exponential backoff: 500ms, 1000ms, 2000ms...
+        const backoff = Math.min(500 * Math.pow(2, attempt - 1), 5000);
+        console.log(`[BLE] Retrying in ${backoff}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoff));
+      }
     }
   },
 

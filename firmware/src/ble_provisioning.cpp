@@ -283,15 +283,20 @@ void clearBLECredentials() {
 String scanWiFiNetworks() {
   Serial.println("[BLE] Scanning WiFi networks...");
   
-  // Ensure WiFi is in station mode for scanning (required for BLE coexistence)
+  // Properly reset WiFi driver state for BLE coexistence
+  // After WiFi.disconnect(true, true) the driver may be in inconsistent state
+  WiFi.mode(WIFI_OFF);
+  delay(100);
   WiFi.mode(WIFI_STA);
-  delay(100); // Give WiFi radio time to initialize
+  delay(200);  // Give WiFi radio time to initialize after BLE is active
   
   // Perform WiFi scan
   int numNetworks = WiFi.scanNetworks();
   
   if (numNetworks == 0 || numNetworks == -1) {
     Serial.println("[BLE] No networks found or scan failed");
+    Serial.print("[BLE] WiFi status code: ");
+    Serial.println(WiFi.status());
     return "[]";
   }
   
